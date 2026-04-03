@@ -35,22 +35,10 @@ export class PaymentService {
 		private readonly paypalApiService: PayPalApiService
 	) {}
 
-	async processPayment(userId: string, paymentData: PaymentData): Promise<PaymentResult> {
-		return this.processPaymentInternal(null, userId, paymentData);
-	}
-
-	async processPaymentWithTransaction(
-		entityManager: EntityManager,
+	async processPayment(
 		userId: string,
-		paymentData: PaymentData
-	): Promise<PaymentResult> {
-		return this.processPaymentInternal(entityManager, userId, paymentData);
-	}
-
-	private async processPaymentInternal(
-		entityManager: EntityManager | null,
-		userId: string,
-		paymentData: PaymentData
+		paymentData: PaymentData,
+		entityManager: EntityManager | null = null
 	): Promise<PaymentResult> {
 		const repo = entityManager ? entityManager.getRepository(PaymentHistoryEntity) : this.paymentHistoryRepository;
 		let paymentHistory: PaymentHistoryEntity | null = null;
@@ -154,7 +142,7 @@ export class PaymentService {
 			case PaymentMethod.MANUAL_CREDIT:
 				return this.processManualCreditPayment(paymentHistory, paymentData, normalizedAmount, currency);
 			case PaymentMethod.PAYPAL:
-				return await this.processPayPalPayment(paymentHistory, paymentData, normalizedAmount, currency);
+				return this.processPayPalPayment(paymentHistory, paymentData, normalizedAmount, currency);
 			default:
 				logger.paymentFailed(paymentHistory.providerTransactionId, 'Unsupported payment method', {
 					userId,
@@ -444,7 +432,7 @@ export class PaymentService {
 	}
 
 	async findByPaypalOrderId(orderId: string): Promise<PaymentHistoryEntity | null> {
-		return await this.paymentHistoryRepository
+		return this.paymentHistoryRepository
 			.createQueryBuilder('payment')
 			.where("payment.metadata->>'paypalOrderId' = :orderId", { orderId })
 			.getOne();

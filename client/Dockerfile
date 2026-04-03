@@ -1,43 +1,36 @@
-# Align Node major with server image (pnpm workspace build)
+# Multi-stage: builder = Node toolchain; final image = nginx + static `dist/` only (`COPY --from=builder`).
 FROM node:20-alpine AS builder
 
-# Install pnpm (match server / lockfile)
+RUN apk upgrade --no-cache
+
 RUN npm install -g pnpm@9
 
-# Set working directory
 WORKDIR /app
 
-# Copy workspace configuration
 COPY pnpm-workspace.yaml ./
 COPY pnpm-lock.yaml ./
 
-# Copy all packages
 COPY client/ ./client/
 COPY server/ ./server/
 COPY shared/ ./shared/
 
-# Copy .npmrc for pnpm configuration
 COPY .npmrc ./
 
-# Install all dependencies at workspace level
 RUN pnpm install
 
+ARG VITE_API_BASE_URL=USE_ORIGIN_API_PREFIX
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
-# Build production client bundle
 WORKDIR /app/client
 RUN pnpm run build
 
-# Production stage
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
-# Copy built application from builder stage
+RUN apk upgrade --no-cache
+
 COPY --from=builder /app/client/dist /usr/share/nginx/html
-
-# Copy nginx configuration
 COPY client/nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 3000
 EXPOSE 3000
 
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

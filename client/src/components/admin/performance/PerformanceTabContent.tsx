@@ -9,8 +9,8 @@ import {
 	ADMIN_GAME_STATS_SPEC,
 	AdminGameStatFormat,
 	AdminKey,
-	Colors,
 	PerformanceTabAccordion,
+	SEMANTIC_ICON_TEXT,
 	StatsSectionLayout,
 } from '@/constants';
 import type { StatCardProps } from '@/types';
@@ -56,21 +56,21 @@ export function PerformanceTabContent() {
 				icon: GamepadIcon,
 				label: t(AdminKey.AVERAGE_GAMES),
 				value: globalStats?.averageGames ?? 0,
-				color: Colors.GREEN_500.text,
+				color: SEMANTIC_ICON_TEXT.success,
 			},
 			{
 				icon: Timer,
 				label: t(AdminKey.AVERAGE_GAME_TIME),
 				value: Math.round((globalStats?.averageGameTime ?? 0) / TIME_DURATIONS_SECONDS.MINUTE),
 				suffix: 'm',
-				color: Colors.YELLOW_500.text,
+				color: SEMANTIC_ICON_TEXT.warning,
 			},
 			{
 				icon: TrendingUp,
 				label: t(AdminKey.CONSISTENCY),
 				value: globalStats?.consistency ?? 0,
 				suffix: '%',
-				color: Colors.PURPLE_500.text,
+				color: SEMANTIC_ICON_TEXT.secondary,
 			},
 		],
 		[globalStats, t]

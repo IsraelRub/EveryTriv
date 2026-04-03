@@ -36,7 +36,6 @@ export const LEADERBOARD_PERIOD_CONFIG: Record<LeaderboardPeriod, { durationMs: 
 
 const GROQ_DEFAULT_MODEL = 'llama-3.1-8b-instant';
 
-
 export const GROQ_FREE_TIER_MODELS = ['llama-3.1-8b-instant'] as const;
 
 export const GROQ_MODELS: Record<string, GroqModelConfig> = {

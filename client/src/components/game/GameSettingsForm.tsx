@@ -3,13 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { cva } from 'class-variance-authority';
 import { FileQuestion, Gauge, LayoutList, Tag, TimerReset, UserPlus } from 'lucide-react';
 
-import { DIFFICULTY_CONFIG, DifficultyLevel, GAME_MODES_CONFIG, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
+import { DIFFICULTY_CONFIG, DifficultyLevel, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
 import { namesMatch } from '@shared/utils';
 import { matchesLocaleText } from '@shared/validation';
 
 import {
 	AlertVariant,
 	ButtonSize,
+	DIFFICULTY_UI_CONFIG,
+	GAME_MODES_UI_CONFIG,
 	GameKey,
 	isTopicBadgeType,
 	TextLanguageStatus,
@@ -20,19 +22,10 @@ import {
 } from '@/constants';
 import type { GameSettingsFormProps, TopicWithMeta } from '@/types';
 import { cn, formatTimeLimitDisplay, getDifficultyDisplayLabel } from '@/utils';
-import {
-	Alert,
-	AlertDescription,
-	Badge,
-	Button,
-	Input,
-	Label,
-	NumberInput,
-	Textarea,
-} from '@/components';
-import { SurpriseMeDialog } from './surpriseMeDialog';
+import { Alert, AlertDescription, Badge, Button, Input, Label, NumberInput, Textarea } from '@/components';
 import { useAppSelector, usePopularTopics, useUserAnalytics } from '@/hooks';
 import { selectLocale } from '@/redux/selectors';
+import { SurpriseMeDialog } from './SurpriseMeDialog';
 
 const topicChipVariants = cva(
 	'inline-flex items-center rounded-md border transition-colors h-auto py-1.5 gap-2 shrink-0',
@@ -179,8 +172,8 @@ export function GameSettingsForm({
 	}, [mostPlayedTopic, userTopics, popularTopics, analytics?.game?.topicsPlayed, locale, t]);
 
 	// Determine visibility based on selectedMode or default behavior
-	const shouldShowQuestionLimit = selectedMode ? GAME_MODES_CONFIG[selectedMode]?.showQuestionLimit : showMaxPlayers; // If multiplayer (showMaxPlayers=true), show question limit
-	const shouldShowTimeLimit = selectedMode ? GAME_MODES_CONFIG[selectedMode]?.showTimeLimit : false; // Never show time limit in multiplayer
+	const shouldShowQuestionLimit = selectedMode ? GAME_MODES_UI_CONFIG[selectedMode]?.showQuestionLimit : showMaxPlayers; // If multiplayer (showMaxPlayers=true), show question limit
+	const shouldShowTimeLimit = selectedMode ? GAME_MODES_UI_CONFIG[selectedMode]?.showTimeLimit : false; // Never show time limit in multiplayer
 
 	const questionsLimitInput =
 		shouldShowQuestionLimit && maxQuestionsPerGame !== undefined && onMaxQuestionsPerGameChange ? (
@@ -325,7 +318,8 @@ export function GameSettingsForm({
 							const config = DIFFICULTY_CONFIG[level];
 							return config ? [{ level, ...config }] : [];
 						})
-						.map(({ level, dotColor }) => {
+						.map(({ level }) => {
+							const dotColor = DIFFICULTY_UI_CONFIG[level].dotColor;
 							const isSelected = selectedDifficulty === level;
 							return (
 								<Button

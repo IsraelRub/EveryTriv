@@ -11,6 +11,7 @@ import {
 	LOCALHOST_CONFIG,
 	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
+	VITE_API_BUNDLE_USE_ORIGIN_PREFIX,
 } from '@shared/constants';
 import type {
 	ApiError,
@@ -46,12 +47,21 @@ import { clientLogger as logger, storageService } from '@/services';
 import { authRequestInterceptor, InterceptorsService } from './interceptors.service';
 
 export class ApiConfig {
-	static getBaseUrl(): string {
+	static get baseUrl(): string {
 		const envUrl = import.meta.env.VITE_API_BASE_URL;
-		return envUrl ?? LOCALHOST_CONFIG.urls.SERVER;
+		if (envUrl === VITE_API_BUNDLE_USE_ORIGIN_PREFIX) {
+			if (typeof window !== 'undefined' && isNonEmptyString(window.location?.origin)) {
+				return `${window.location.origin}/api`;
+			}
+			return LOCALHOST_CONFIG.urls.SERVER;
+		}
+		if (isNonEmptyString(envUrl)) {
+			return envUrl;
+		}
+		return LOCALHOST_CONFIG.urls.SERVER;
 	}
 
-	static getOAuthBaseUrl(): string {
+	static get oauthBaseUrl(): string {
 		if (
 			typeof window !== 'undefined' &&
 			isNonEmptyString(window.location?.origin) &&
@@ -59,7 +69,14 @@ export class ApiConfig {
 		) {
 			return LOCALHOST_CONFIG.urls.SERVER;
 		}
-		return ApiConfig.getBaseUrl();
+		if (
+			import.meta.env.VITE_API_BASE_URL === VITE_API_BUNDLE_USE_ORIGIN_PREFIX &&
+			typeof window !== 'undefined' &&
+			isNonEmptyString(window.location?.origin)
+		) {
+			return window.location.origin;
+		}
+		return ApiConfig.baseUrl;
 	}
 }
 
@@ -94,19 +111,22 @@ class ApiService {
 	}
 
 	constructor() {
-		this.baseURL = ApiConfig.getBaseUrl();
+		this.baseURL = ApiConfig.baseUrl;
 		this.interceptors = new InterceptorsService();
 
 		// Register auth request interceptor
 		this.interceptors.useRequest(authRequestInterceptor);
 	}
 
-	private createTimeoutController(timeoutMs: number): AbortController {
+	private createTimeoutController(timeoutMs: number): {
+		controller: AbortController;
+		timeoutId: ReturnType<typeof setTimeout>;
+	} {
 		const controller = new AbortController();
-		setTimeout(() => {
+		const timeoutId = setTimeout(() => {
 			controller.abort();
 		}, timeoutMs);
-		return controller;
+		return { controller, timeoutId };
 	}
 
 	private getRequestKey(url: string, method: HttpMethod, requestId?: string): string {
@@ -137,20 +157,17 @@ class ApiService {
 	): Promise<ApiResponse<T>> {
 		// Generate request key for deduplication
 		const requestKey = this.getRequestKey(url, method, config.requestId);
+		const shouldDeduplicate = method === HttpMethod.GET && !config.skipDeduplication;
 
 		// Check for duplicate request (if not skipped)
-		if (!config.skipDeduplication && this.activeRequests.has(requestKey)) {
+		if (shouldDeduplicate) {
 			const existingRequest = this.activeRequests.get(requestKey);
 			if (existingRequest) {
-				try {
-					const response = await existingRequest;
-					if (this.isValidApiResponse<T>(response)) {
-						return response;
-					}
-					throw new Error(ERROR_MESSAGES.api.INVALID_API_RESPONSE_STRUCTURE);
-				} catch (error) {
-					throw error;
+				const response = await existingRequest;
+				if (this.isValidApiResponse<T>(response)) {
+					return response;
 				}
+				throw new Error(ERROR_MESSAGES.api.INVALID_API_RESPONSE_STRUCTURE);
 			}
 		}
 
@@ -158,7 +175,7 @@ class ApiService {
 		const requestPromise = this.executeRequestInternal<T>(url, method, config, data, false);
 
 		// Store active request for deduplication
-		if (!config.skipDeduplication) {
+		if (shouldDeduplicate) {
 			const requestPromiseUnknown: Promise<ApiResponse<unknown>> = requestPromise;
 			this.activeRequests.set(requestKey, requestPromiseUnknown);
 			requestPromise.finally(() => {
@@ -176,10 +193,14 @@ class ApiService {
 		data?: RequestData,
 		hasAttemptedRefresh: boolean = false
 	): Promise<ApiResponse<T>> {
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+		let detachAbortListeners: (() => void) | null = null;
 		try {
 			// Merge timeout with signal
 			const timeout = config.timeout ?? HTTP_CLIENT_CONFIG.TIMEOUT;
-			const timeoutController = this.createTimeoutController(timeout);
+			const timeoutBundle = this.createTimeoutController(timeout);
+			const timeoutController = timeoutBundle.controller;
+			timeoutId = timeoutBundle.timeoutId;
 
 			// Combine signals if both provided (use provided signal as primary, timeout as fallback)
 			let signal: AbortSignal = timeoutController.signal;
@@ -209,6 +230,10 @@ class ApiService {
 				// Set up event listeners for both signals
 				config.signal.addEventListener('abort', abortIfNeeded);
 				timeoutController.signal.addEventListener('abort', abortIfNeeded);
+				detachAbortListeners = () => {
+					config.signal?.removeEventListener('abort', abortIfNeeded);
+					timeoutController.signal.removeEventListener('abort', abortIfNeeded);
+				};
 
 				// Check again after setting up listeners in case signal was aborted in between
 				if (isEitherAborted()) {
@@ -256,14 +281,12 @@ class ApiService {
 				});
 			}
 
-			// Prepare fetch config - body must be set after spreading interceptedConfig to prevent it from being overwritten
-			// Extract body from interceptedConfig if it exists and exclude it from spread to prevent overwriting our body
-			// Also exclude other RequestInit properties that might interfere with body
+			// Omit conflicting RequestInit keys so explicit values below stay authoritative.
 			const {
-				body: _ignoredBody,
-				method: _ignoredMethod,
-				headers: _ignoredHeaders,
-				signal: _ignoredSignal,
+				body: interceptedBody,
+				method: interceptedMethod,
+				headers: interceptedHeaders,
+				signal: interceptedSignal,
 				...configWithoutRequestInit
 			} = interceptedConfig;
 
@@ -281,12 +304,11 @@ class ApiService {
 			// Build fetch config with explicit body handling
 			// Ensure cookies are sent with requests (needed for httpOnly cookies from OAuth)
 			const fetchConfig: RequestInit = {
+				...configWithoutRequestInit,
 				method,
 				headers,
 				signal: interceptedConfig.signal,
 				credentials: 'include',
-				// Spread config without RequestInit properties to preserve custom properties only
-				...configWithoutRequestInit,
 			};
 
 			// Body must be set last and explicitly to prevent it from being overwritten
@@ -377,6 +399,11 @@ class ApiService {
 			};
 
 			throw apiError;
+		} finally {
+			if (timeoutId !== null) {
+				clearTimeout(timeoutId);
+			}
+			detachAbortListeners?.();
 		}
 	}
 
@@ -429,11 +456,6 @@ class ApiService {
 						// Retry the original request with new token
 						// The originalRequest function will mark hasAttemptedRefresh=true to prevent infinite loop
 						const retryResponse = await originalRequest();
-
-						// If retry also returns 401, don't try to refresh again
-						if (retryResponse.statusCode === 401) {
-							await this.clearTokensAndThrowSessionExpired();
-						}
 						return retryResponse;
 					} catch (error) {
 						// If error is already SessionExpiredError, re-throw it
@@ -590,11 +612,11 @@ class ApiService {
 
 		// Store tokens securely using centralized constants
 		if (authResult.accessToken) {
-			await storageService.set(STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
+			await storageService.setString(STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
 		}
 		if (authResult.refreshToken) {
-			await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
-			await storageService.set(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.setString(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.setString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
 		}
 
 		return authResult;
@@ -635,7 +657,7 @@ class ApiService {
 		if (authResult.accessToken) {
 			// Clear any existing token first to prevent conflicts
 			await storageService.delete(STORAGE_KEYS.AUTH_TOKEN);
-			await storageService.set(STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
+			await storageService.setString(STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
 
 			// Verify token was stored correctly
 			const storedTokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
@@ -650,8 +672,8 @@ class ApiService {
 		}
 		if (authResult.refreshToken) {
 			await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
-			await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
-			await storageService.set(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.setString(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.setString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
 			logger.authInfo('Refresh token stored');
 		}
 
@@ -702,7 +724,7 @@ class ApiService {
 
 		// Store new access token
 		if (response.data.accessToken) {
-			await storageService.set(STORAGE_KEYS.AUTH_TOKEN, response.data.accessToken);
+			await storageService.setString(STORAGE_KEYS.AUTH_TOKEN, response.data.accessToken);
 		}
 
 		return response.data;

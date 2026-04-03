@@ -10,6 +10,7 @@ import {
 	HTTP_TIMEOUTS,
 	Locale,
 	OUTPUT_LANGUAGE_LABELS,
+	RETRY_LIMITS,
 	SURPRISE_SCOPE_DEFAULT,
 	SurpriseScope,
 	TIME_DURATIONS_SECONDS,
@@ -235,7 +236,7 @@ export class GameService {
 				excludeQuestionsSet.add(normalized);
 			};
 			const generationTimeout = HTTP_TIMEOUTS.QUESTION_GENERATION;
-			const maxRetries = VALIDATION_COUNT.RETRY_ATTEMPTS.QUESTION_GENERATION;
+			const maxRetries = RETRY_LIMITS.questionGeneration;
 			const delayBetweenQuestionsMs = TIME_PERIODS_MS.TWO_SECONDS;
 
 			const actualAnswerCount = clamp(

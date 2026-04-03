@@ -7,6 +7,7 @@ import {
 	PAYPAL_API_ENDPOINTS,
 	PAYPAL_ORDER_STATUSES,
 	PAYPAL_RETRY_CONFIG,
+	RETRY_LIMITS,
 } from '@shared/constants';
 import { delay, isNetworkError, isServerError, isTimeoutError } from '@shared/utils';
 
@@ -32,7 +33,7 @@ export class PayPalApiService {
 	async getOrderDetails(orderId: string): Promise<PayPalOrderResponse> {
 		return this.executeWithRetry(
 			async () => {
-				const baseUrl = this.getBaseUrl();
+				const baseUrl = this.baseUrl;
 				const accessToken = await this.paypalAuthService.getAccessToken();
 
 				const response = await firstValueFrom(
@@ -67,7 +68,7 @@ export class PayPalApiService {
 
 		return this.executeWithRetry(
 			async () => {
-				const baseUrl = this.getBaseUrl();
+				const baseUrl = this.baseUrl;
 				const accessToken = await this.paypalAuthService.getAccessToken();
 
 				const response = await firstValueFrom(
@@ -89,7 +90,7 @@ export class PayPalApiService {
 	async captureOrder(orderId: string): Promise<PayPalCaptureResponse> {
 		return this.executeWithRetry(
 			async () => {
-				const baseUrl = this.getBaseUrl();
+				const baseUrl = this.baseUrl;
 				const accessToken = await this.paypalAuthService.getAccessToken();
 
 				const response = await firstValueFrom(
@@ -117,7 +118,7 @@ export class PayPalApiService {
 	): Promise<PayPalWebhookVerificationResponse> {
 		return this.executeWithRetry(
 			async () => {
-				const baseUrl = this.getBaseUrl();
+				const baseUrl = this.baseUrl;
 				const accessToken = await this.paypalAuthService.getAccessToken();
 
 				const response = await firstValueFrom(
@@ -170,26 +171,27 @@ export class PayPalApiService {
 		return order.status === PAYPAL_ORDER_STATUSES.APPROVED;
 	}
 
-	private getBaseUrl(): string {
+	private get baseUrl(): string {
 		const environment = AppConfig.paypal.environment;
 		return environment === 'production' ? PAYPAL_API_BASE_URLS.PRODUCTION : PAYPAL_API_BASE_URLS.SANDBOX;
 	}
 
 	private async executeWithRetry<T>(operation: () => Promise<T>, orderId: string, operationName: string): Promise<T> {
 		let lastError: unknown = null;
+		const maxRetries = RETRY_LIMITS.paypalHttp;
 
-		for (let attempt = 0; attempt <= PAYPAL_RETRY_CONFIG.MAX_RETRIES; attempt++) {
+		for (let attempt = 0; attempt <= maxRetries; attempt++) {
 			try {
 				return await operation();
 			} catch (error) {
 				lastError = error;
 
-				if (!this.isRetryableError(error) || attempt === PAYPAL_RETRY_CONFIG.MAX_RETRIES) {
+				if (!this.isRetryableError(error) || attempt === maxRetries) {
 					const errorMessage = extractPayPalError(error);
 					logger.paymentFailed(orderId, `Failed to ${operationName}`, {
 						errorInfo: { message: errorMessage },
 						attempt: attempt + 1,
-						maxRetries: PAYPAL_RETRY_CONFIG.MAX_RETRIES,
+						maxRetries,
 					});
 					throw createServerError(operationName, new Error(errorMessage));
 				}

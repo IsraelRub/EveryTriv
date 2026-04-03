@@ -4,7 +4,6 @@ import type { AnswerHistory, GameState, MultiplayerRoom, TriviaQuestion } from '
 import { LoadingMessages } from '@/constants';
 import type { GameModeState } from '../domain/game';
 
-
 export interface GameSessionState {
 	gameId: string | null;
 	currentQuestionIndex: number;
@@ -38,7 +37,7 @@ export interface AudioSettingsState {
 
 export interface MultiplayerAnswerBreakdownEntry {
 	question: string;
-	/** Stable id for dedupe when the same question text appears more than once */
+
 	questionId?: string;
 	isCorrect: boolean;
 	correctAnswerText?: string;

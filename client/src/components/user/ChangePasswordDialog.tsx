@@ -2,10 +2,18 @@ import { useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, Key } from 'lucide-react';
 
-import { LengthKey, validatePasswordMatch, validateStringLength } from '@shared/validation';
+import { LengthKey } from '@shared/constants';
+import { validatePasswordMatch, validateStringLength } from '@shared/validation';
 
-import { AlertIconSize, AuthKey, Colors, CommonKey, ValidationKey, VariantBase } from '@/constants';
-import { ChangePasswordValidationErrorKey } from '@/constants';
+import {
+	AlertIconSize,
+	AuthKey,
+	ChangePasswordValidationErrorKey,
+	CommonKey,
+	SEMANTIC_ICON_TEXT,
+	ValidationKey,
+	VariantBase,
+} from '@/constants';
 import type { ChangePasswordDialogProps } from '@/types';
 import { clientLogger as logger } from '@/services';
 import { cn } from '@/utils';
@@ -146,8 +154,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							<p className='text-sm text-destructive flex items-center gap-1'>
 								<AlertIcon size={AlertIconSize.SM} />
 								{t(
-									passwordFieldErrors.currentPassword ===
-										ChangePasswordValidationErrorKey.CURRENT_PASSWORD_REQUIRED
+									passwordFieldErrors.currentPassword === ChangePasswordValidationErrorKey.CURRENT_PASSWORD_REQUIRED
 										? ValidationKey.CURRENT_PASSWORD_REQUIRED
 										: passwordFieldErrors.currentPassword === ChangePasswordValidationErrorKey.PASSWORD_INVALID
 											? ValidationKey.PASSWORD_INVALID
@@ -189,17 +196,14 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 							{passwordData.confirmPassword &&
 								passwordData.newPassword === passwordData.confirmPassword &&
 								!passwordFieldErrors.confirmPassword && (
-									<CheckCircle
-										className={cn('form-success-icon', Colors.GREEN_500.text)}
-									/>
+									<CheckCircle className={cn('form-success-icon', SEMANTIC_ICON_TEXT.success)} />
 								)}
 						</div>
 						{passwordFieldErrors.confirmPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>
 								<AlertIcon size={AlertIconSize.SM} />
 								{t(
-									passwordFieldErrors.confirmPassword ===
-										ChangePasswordValidationErrorKey.CURRENT_PASSWORD_REQUIRED
+									passwordFieldErrors.confirmPassword === ChangePasswordValidationErrorKey.CURRENT_PASSWORD_REQUIRED
 										? ValidationKey.CURRENT_PASSWORD_REQUIRED
 										: passwordFieldErrors.confirmPassword === ChangePasswordValidationErrorKey.PASSWORD_INVALID
 											? ValidationKey.PASSWORD_INVALID

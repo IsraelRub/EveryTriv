@@ -78,9 +78,7 @@ export default {
 				glass: {
 					light: 'var(--glass-light)',
 					medium: 'var(--glass-medium)',
-					strong: 'var(--glass-strong)',
 					border: 'var(--glass-border)',
-					'border-strong': 'var(--glass-border-strong)',
 				},
 			},
 			borderRadius: {

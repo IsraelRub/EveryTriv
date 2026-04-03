@@ -3,15 +3,22 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { FileText, Shield } from 'lucide-react';
 
-import { AuthKey, ButtonSize, DialogContentSize, LegalKey, ROUTES, VariantBase } from '@/constants';
-import { LegalDocumentKind, LegalDocumentLayoutVariant } from '@/constants';
+import {
+	AuthKey,
+	ButtonSize,
+	DialogContentSize,
+	LegalDocumentKind,
+	LegalDocumentLayoutVariant,
+	LegalKey,
+	ROUTES,
+	VariantBase,
+} from '@/constants';
 import type { LegalDocumentModalProps } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-
 import { LegalDocumentPage } from './LegalDocumentPage';
-import { buildPrivacyPolicySections } from './privacyPolicySections';
-import { buildTermsOfServiceSections } from './termsOfServiceSections';
+import { buildPrivacyPolicySections } from './PrivacyPolicySections';
+import { buildTermsOfServiceSections } from './TermsOfServiceSections';
 
 export function LegalDocumentModal({ open, onOpenChange, document }: LegalDocumentModalProps): JSX.Element {
 	const { t } = useTranslation(['legal', 'auth']);
@@ -71,4 +78,3 @@ export function LegalDocumentModal({ open, onOpenChange, document }: LegalDocume
 		</Dialog>
 	);
 }
-

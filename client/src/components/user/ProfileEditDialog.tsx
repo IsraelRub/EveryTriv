@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Edit, Key, Pencil } from 'lucide-react';
 
+import { LengthKey } from '@shared/constants';
 import { getDisplayNameFromUserFields } from '@shared/utils';
-import { LengthKey, validateStringLength } from '@shared/validation';
+import { validateStringLength } from '@shared/validation';
 
 import {
 	AuthKey,

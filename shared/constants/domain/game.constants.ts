@@ -5,7 +5,6 @@ import { VALIDATION_COUNT } from '../core/validation.constants';
 
 export const CUSTOM_DIFFICULTY_PREFIX = 'custom:';
 
-/** API / logging context for `validateText` (topic field vs custom difficulty description). */
 export enum ValidateTextContext {
 	TOPIC = 'topic',
 	CUSTOM_DIFFICULTY = 'customDifficulty',
@@ -18,7 +17,7 @@ export enum DifficultyLevel {
 	CUSTOM = 'custom',
 }
 
-export const DIFFICULTIES = new Set<string>(Object.values(DifficultyLevel));
+export const DIFFICULTIES: ReadonlySet<string> = new Set<string>(Object.values(DifficultyLevel));
 
 export enum GameMode {
 	QUESTION_LIMITED = 'question-limited',
@@ -27,7 +26,7 @@ export enum GameMode {
 	MULTIPLAYER = 'multiplayer',
 }
 
-export const GAME_MODES = new Set<string>(Object.values(GameMode));
+export const GAME_MODES: ReadonlySet<string> = new Set<string>(Object.values(GameMode));
 
 export enum TimePeriod {
 	HOURLY = 'hourly',
@@ -43,7 +42,7 @@ export enum LeaderboardPeriod {
 	YEARLY = 'yearly',
 }
 
-export const LEADERBOARD_PERIODS = new Set<string>(Object.values(LeaderboardPeriod));
+export const LEADERBOARD_PERIODS: ReadonlySet<string> = new Set<string>(Object.values(LeaderboardPeriod));
 
 export const MAX_POINTS_PER_QUESTION = 50;
 
@@ -52,45 +51,23 @@ export const TIME_LIMITED_CREDITS_PER_30_SECONDS = 5;
 export const DIFFICULTY_CONFIG: Record<string, DifficultyConfigEntry> = {
 	[DifficultyLevel.EASY]: {
 		order: 1,
-		label: 'Easy',
-		dotColor: 'bg-green-500',
-		badgeClasses: 'bg-green-500/10 text-green-500 border-green-500/30',
 		baseScore: 10,
-		promptGuidance:
-			'Use well-known, commonly known facts that most people would know. Simple, straightforward questions.',
 	},
 	[DifficultyLevel.MEDIUM]: {
 		order: 2,
-		label: 'Medium',
-		dotColor: 'bg-yellow-500',
-		badgeClasses: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
 		baseScore: 20,
-		promptGuidance:
-			'Use moderately known facts that require some knowledge of the topic. Balance between common and specialized knowledge.',
 	},
 	[DifficultyLevel.HARD]: {
 		order: 3,
-		label: 'Hard',
-		dotColor: 'bg-red-500',
-		badgeClasses: 'bg-red-500/10 text-red-500 border-red-500/30',
 		baseScore: 30,
-		promptGuidance:
-			'Use specialized, less commonly known facts that require deeper knowledge or expertise in the topic.',
 	},
 	[DifficultyLevel.CUSTOM]: {
 		order: 4,
-		label: 'Custom',
-		dotColor: 'bg-purple-500',
-		badgeClasses: 'bg-muted text-muted-foreground',
 	},
 };
 
 export const GAME_MODES_CONFIG = {
 	[GameMode.QUESTION_LIMITED]: {
-		name: 'Question Mode',
-		description: 'Answer a set number of questions',
-		showQuestionLimit: true,
-		showTimeLimit: false,
 		defaults: {
 			timeLimit: undefined,
 			maxQuestionsPerGame: 10,
@@ -102,10 +79,6 @@ export const GAME_MODES_CONFIG = {
 		hostPaysOnly: undefined,
 	},
 	[GameMode.TIME_LIMITED]: {
-		name: 'Time Attack',
-		description: 'Answer as many as you can in time',
-		showQuestionLimit: false,
-		showTimeLimit: true,
 		defaults: {
 			timeLimit: VALIDATION_COUNT.TIME_LIMIT.DEFAULT,
 			maxQuestionsPerGame: undefined,
@@ -117,10 +90,6 @@ export const GAME_MODES_CONFIG = {
 		hostPaysOnly: undefined,
 	},
 	[GameMode.UNLIMITED]: {
-		name: 'Unlimited',
-		description: 'Play until your credits run out',
-		showQuestionLimit: false,
-		showTimeLimit: false,
 		defaults: {
 			timeLimit: undefined,
 			maxQuestionsPerGame: undefined,
@@ -132,10 +101,6 @@ export const GAME_MODES_CONFIG = {
 		hostPaysOnly: undefined,
 	},
 	[GameMode.MULTIPLAYER]: {
-		name: 'Multiplayer',
-		description: 'Compete with friends',
-		showQuestionLimit: false,
-		showTimeLimit: false,
 		defaults: {
 			timeLimit: TIME_DURATIONS_SECONDS.MINUTE,
 			maxQuestionsPerGame: 10,

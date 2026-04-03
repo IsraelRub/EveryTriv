@@ -68,15 +68,8 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	async getSecurityMetrics(): Promise<SecurityMetrics> {
-		try {
-			return this.securityData;
-		} catch (error) {
-			logger.analyticsError('getSecurityMetrics', {
-				errorInfo: { message: getErrorMessage(error) },
-			});
-			throw error;
-		}
+	get securityMetrics(): SecurityMetrics {
+		return this.securityData;
 	}
 
 	async getSystemRecommendations(): Promise<SystemRecommendation[]> {

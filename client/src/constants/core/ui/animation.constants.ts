@@ -7,6 +7,7 @@ export const ANIMATION_CONFIG = {
 	},
 	EASING: {
 		EASE_OUT: [0.4, 0, 0.2, 1],
+		EASE_PULSE: [0.4, 0, 0.6, 1],
 	},
 	EASING_NAMES: {
 		EASE_OUT: 'easeOut',
@@ -14,7 +15,6 @@ export const ANIMATION_CONFIG = {
 	},
 } as const;
 
-/** Framer Motion / UI entrance delays in seconds (literals only — no fixed-delay arithmetic at call sites). */
 export enum ANIMATION_DELAYS {
 	STAGGER_EXTRA_SMALL = 0.03,
 	STAGGER_SMALL = 0.05,
@@ -31,10 +31,6 @@ export enum ANIMATION_DELAYS {
 	MULTIPLAYER_STANDINGS_ROW_BASE = 0.5,
 }
 
-/**
- * Single summary: yellow star reveal via `setTimeout` (ms).
- * `CONTAINER_DELAY_MS` matches {@link ANIMATION_DELAYS.SEQUENCE_AFTER_HEADER} on the stars block (seconds → ms).
- */
 export const SINGLE_SUMMARY_STAR_SEQUENCE_MS = {
 	CONTAINER_DELAY_MS: ANIMATION_DELAYS.SEQUENCE_AFTER_HEADER * 1000,
 	BEFORE_FIRST_STAR_MS: TIME_PERIODS_MS.SECOND + TIME_PERIODS_MS.TWO_HUNDRED_MILLISECONDS,

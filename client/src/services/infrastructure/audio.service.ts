@@ -381,10 +381,6 @@ class AudioService {
 			audio.volume = this.isMuted ? 0 : finalVolume;
 		});
 	}
-
-	public playAnswerFeedback(isCorrect: boolean): void {
-		this.play(isCorrect ? AudioKey.CORRECT_ANSWER : AudioKey.WRONG_ANSWER);
-	}
 }
 
 export const audioService = new AudioService();

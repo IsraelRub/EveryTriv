@@ -11,7 +11,7 @@ import { serverLogger as logger } from '@internal/services';
 import type { UserIdRow } from '@internal/types';
 import { calculateCategoryStats } from '@internal/utils';
 
-import { UserStatsUpdateService } from '../analytics/services/user-stats-update.service';
+import { UserStatsUpdateService } from '../analytics/services/userStatsUpdate.service';
 
 @Injectable()
 export class UserStatsMaintenanceService {
@@ -47,7 +47,7 @@ export class UserStatsMaintenanceService {
 
 			const streakData = await this.userStatsUpdateService.calculateStreaksFromHistory(userId);
 			userStats.currentStreak = streakData.current;
-			userStats.longestStreak = Math.max(userStats.longestStreak, streakData.best);
+			userStats.longestStreak = streakData.best;
 
 			const timeBasedScores = this.userStatsUpdateService.calculateTimeBasedScoresFromHistory(gameHistory);
 			userStats.weeklyScore = timeBasedScores.weeklyScore;

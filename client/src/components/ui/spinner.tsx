@@ -3,12 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { cva } from 'class-variance-authority';
 import { Circle, Loader2 } from 'lucide-react';
 
-import { APP_SHELL_MAIN_CLASS, APP_SHELL_MAIN_ID, ComponentSize, VIEW_MAIN_CLASS } from '@/constants';
-import { FullPageSpinnerLayout } from '@/constants';
+import {
+	APP_SHELL_MAIN_CLASS,
+	APP_SHELL_MAIN_ID,
+	ComponentSize,
+	FullPageSpinnerLayout,
+	VIEW_MAIN_CLASS,
+} from '@/constants';
 import type { FullPageSpinnerProps, SpinnerProps } from '@/types';
 import { cn } from '@/utils';
-import { HomeButton } from './button';
-
+import { HomeButton } from '../navigation/HomeButton';
 
 export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>((props, ref) => {
 	const { message, messageInline, size, className, ...rest } = props;
@@ -69,4 +73,3 @@ const spinnerSizeVariants = cva('', {
 	},
 	defaultVariants: { size: ComponentSize.MD },
 });
-

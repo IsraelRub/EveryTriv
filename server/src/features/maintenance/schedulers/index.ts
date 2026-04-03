@@ -1,2 +1,2 @@
-export { ScoreResetScheduler } from './score-reset.scheduler';
-export { GameSessionScheduler } from './game-session.scheduler';
+export { ScoreResetScheduler } from './scoreReset.scheduler';
+export { GameSessionScheduler } from './gameSession.scheduler';

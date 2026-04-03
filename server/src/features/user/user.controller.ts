@@ -342,21 +342,11 @@ export class UserController {
 			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
-			if (!field || !body.value) {
+			if (!field || body.value === undefined) {
 				throw new HttpException(ErrorCode.REQUIRED_FIELD_AND_VALUE, HttpStatus.BAD_REQUEST);
 			}
 
-			const validFieldsSet = new Set<string>([
-				'email',
-				'firstName',
-				'lastName',
-				'avatar',
-				'isActive',
-				'credits',
-				'purchasedCredits',
-				'role',
-				'status',
-			]);
+			const validFieldsSet = new Set<string>(['firstName', 'lastName']);
 
 			if (!validFieldsSet.has(field)) {
 				throw new HttpException(ERROR_MESSAGES.validation.INVALID_FIELD(field), HttpStatus.BAD_REQUEST);
@@ -492,36 +482,6 @@ export class UserController {
 			logger.userError('Error deleting user', {
 				errorInfo: { message: getErrorMessage(error) },
 				userId: id,
-			});
-			throw error;
-		}
-	}
-
-	@Patch(':userId/status')
-	@Roles(UserRole.ADMIN)
-	async updateUserStatus(@Param('userId') userId: string, @Body() statusData: UpdateUserStatusDto) {
-		try {
-			if (!userId || !statusData.status) {
-				throw new HttpException(ErrorCode.REQUIRED_USER_ID_AND_STATUS, HttpStatus.BAD_REQUEST);
-			}
-
-			if (!USER_STATUSES.has(statusData.status)) {
-				throw new HttpException(ErrorCode.INVALID_STATUS, HttpStatus.BAD_REQUEST);
-			}
-
-			const result = await this.userService.updateUserStatus(userId, statusData.status);
-
-			logger.apiUpdate('user_status_admin', {
-				userId,
-				status: statusData.status,
-			});
-
-			return result;
-		} catch (error) {
-			logger.userError('Error updating user status', {
-				errorInfo: { message: getErrorMessage(error) },
-				userId,
-				status: statusData.status,
 			});
 			throw error;
 		}

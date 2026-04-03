@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
 
 import { LegalKey } from '@/constants';
-import { LegalDocumentPage, buildTermsOfServiceSections } from '@/components/legal';
+import { buildTermsOfServiceSections, LegalDocumentPage } from '@/components/legal';
 
 export function TermsOfServiceView() {
 	const { t } = useTranslation('legal');

@@ -4,7 +4,7 @@ import { getDisplayNameFromUserFields } from '@shared/utils';
 
 import { AvatarSize, AvatarVariant, DISPLAY_NAME_FALLBACKS } from '@/constants';
 import type { UserAvatarProps } from '@/types';
-import { ApiConfig } from '@/services';
+import { ApiConfig, clientLogger as logger } from '@/services';
 import { getAvatarImageSource, toAbsoluteAvatarUrl } from '@/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -36,7 +36,7 @@ export const UserAvatar = memo(function UserAvatar({
 	);
 
 	const rawSrc = src ?? getAvatarImageSource(avatarUrl, avatarId);
-	const imageSrc = rawSrc ? (toAbsoluteAvatarUrl(rawSrc, ApiConfig.getBaseUrl()) ?? rawSrc) : undefined;
+	const imageSrc = rawSrc ? (toAbsoluteAvatarUrl(rawSrc, ApiConfig.baseUrl) ?? rawSrc) : undefined;
 
 	const effectiveSize = size ?? AvatarSize.MD;
 	const initials = imageSrc
@@ -55,7 +55,18 @@ export const UserAvatar = memo(function UserAvatar({
 
 	return (
 		<Avatar key={imageSrc ?? 'no-image'} size={effectiveSize} variant={variant} pointerEventsNone={pointerEventsNone}>
-			{imageSrc && <AvatarImage src={imageSrc} />}
+			{imageSrc && (
+				<AvatarImage
+					src={imageSrc}
+					onError={() => {
+						logger.apiDebug('Avatar image failed to load', {
+							url: imageSrc,
+							...(avatarId != null && { avatar: avatarId }),
+							baseUrl: avatarUrl,
+						});
+					}}
+				/>
+			)}
 			<AvatarFallback className={FALLBACK_TEXT_BY_SIZE[effectiveSize]}>{initials}</AvatarFallback>
 		</Avatar>
 	);

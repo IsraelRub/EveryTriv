@@ -2,9 +2,15 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-import type { ViteProxyConfig } from '@shared/types';
+import type { ViteProxyConfig } from './src/types/infrastructure/viteProxy.types';
 
-import { APP_NAME, HttpMethod, LOCALHOST_CONFIG, TIME_PERIODS_MS } from '../shared/constants';
+import {
+	APP_NAME,
+	HttpMethod,
+	LOCALHOST_CONFIG,
+	TIME_PERIODS_MS,
+	VITE_API_BUNDLE_USE_ORIGIN_PREFIX,
+} from '../shared/constants';
 
 const HTML_APP_NAME_PLACEHOLDER = '__APP_NAME__';
 
@@ -33,11 +39,17 @@ export default defineConfig({
 	server: {
 		port: LOCALHOST_CONFIG.ports.CLIENT,
 		proxy: (() => {
-			// API paths that should be proxied to the server (must match server API_ENDPOINTS bases).
-			// /auth/callback is handled by React Router, not proxied.
+			// Same-origin API prefix (matches Docker nginx /api/) for USE_ORIGIN_API_PREFIX dev builds.
+			const apiPrefixProxy: ViteProxyConfig = {
+				target: LOCALHOST_CONFIG.urls.SERVER,
+				changeOrigin: true,
+				secure: false,
+				rewrite: (reqPath: string) =>
+					reqPath.startsWith('/api/health') ? reqPath : reqPath.replace(/^\/api/, ''),
+			};
+			// Legacy paths when VITE_API_BASE_URL points at :3002 (direct server).
 			const proxyPaths = [
 				'/auth',
-				'/api',
 				'/users',
 				'/analytics',
 				'/credits',
@@ -59,7 +71,16 @@ export default defineConfig({
 					return null;
 				},
 			};
-			const proxyMap: Record<string, ViteProxyConfig> = {};
+			const socketIoProxy: ViteProxyConfig = {
+				target: LOCALHOST_CONFIG.urls.SERVER,
+				changeOrigin: true,
+				secure: false,
+				ws: true,
+			};
+			const proxyMap: Record<string, ViteProxyConfig> = {
+				'/api': apiPrefixProxy,
+				'/socket.io': socketIoProxy,
+			};
 			proxyPaths.forEach(path => {
 				proxyMap[path] = proxyConfig;
 			});
@@ -88,9 +109,18 @@ export default defineConfig({
 			'@shared': path.resolve(__dirname, '../shared'),
 		},
 	},
-	define: {
-		'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
-		'process.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || LOCALHOST_CONFIG.urls.SERVER),
-		'process.env.VITE_APP_NAME': JSON.stringify(process.env.VITE_APP_NAME || APP_NAME),
-	},
+	define: (() => {
+		const rawViteApi = process.env.VITE_API_BASE_URL;
+		const bakedViteApi =
+			rawViteApi === VITE_API_BUNDLE_USE_ORIGIN_PREFIX
+				? VITE_API_BUNDLE_USE_ORIGIN_PREFIX
+				: rawViteApi != null && rawViteApi !== ''
+					? rawViteApi
+					: LOCALHOST_CONFIG.urls.SERVER;
+		return {
+			'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+			'process.env.VITE_API_BASE_URL': JSON.stringify(bakedViteApi),
+			'process.env.VITE_APP_NAME': JSON.stringify(process.env.VITE_APP_NAME || APP_NAME),
+		};
+	})(),
 });

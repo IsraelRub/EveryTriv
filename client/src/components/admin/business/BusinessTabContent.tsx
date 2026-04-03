@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
 	Activity,
 	AlertTriangle,
@@ -11,10 +12,19 @@ import {
 	Users,
 } from 'lucide-react';
 
-import { TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { ERROR_MESSAGES, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
+import type { BusinessMetrics } from '@shared/types';
 import { formatNumericValue } from '@shared/utils';
 
-import { AdminKey, BusinessTabAccordion, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
+import {
+	AdminKey,
+	BusinessTabAccordion,
+	QUERY_KEYS,
+	SEMANTIC_ICON_TEXT,
+	SKELETON_PLACEHOLDER_COUNTS,
+	SkeletonVariant,
+} from '@/constants';
+import { analyticsService } from '@/services';
 import {
 	Accordion,
 	AccordionContent,
@@ -27,11 +37,24 @@ import {
 	Skeleton,
 	StatCard,
 } from '@/components';
-import { useBusinessMetrics } from '@/hooks';
+import { useUserRole } from '@/hooks';
 
 export function BusinessTabContent() {
 	const { t } = useTranslation('admin');
-	const { data: businessMetrics, isLoading: businessMetricsLoading } = useBusinessMetrics();
+	const { isAdmin } = useUserRole();
+
+	const { data: businessMetrics, isLoading: businessMetricsLoading } = useQuery<BusinessMetrics>({
+		queryKey: QUERY_KEYS.admin.businessMetrics(),
+		queryFn: async () => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.getBusinessMetrics();
+		},
+		enabled: isAdmin,
+		staleTime: TIME_PERIODS_MS.THIRTY_MINUTES,
+		gcTime: TIME_PERIODS_MS.HOUR,
+	});
 
 	if (businessMetricsLoading) {
 		return (
@@ -64,19 +87,19 @@ export function BusinessTabContent() {
 						icon={DollarSign}
 						label={t(AdminKey.TOTAL_REVENUE)}
 						value={formatNumericValue(businessMetrics.revenue.total, 2, undefined, '$')}
-						color={Colors.GREEN_500.text}
+						color={SEMANTIC_ICON_TEXT.success}
 					/>
 					<StatCard
 						icon={TrendingUp}
 						label={t(AdminKey.MONTHLY_RECURRING_REVENUE)}
 						value={formatNumericValue(businessMetrics.revenue.mrr, 2, undefined, '$')}
-						color={Colors.BLUE_500.text}
+						color={SEMANTIC_ICON_TEXT.primary}
 					/>
 					<StatCard
 						icon={Users}
 						label={t(AdminKey.AVERAGE_REVENUE_PER_USER)}
 						value={formatNumericValue(businessMetrics.revenue.arpu, 2, undefined, '$')}
-						color={Colors.PURPLE_500.text}
+						color={SEMANTIC_ICON_TEXT.secondary}
 					/>
 				</div>
 			</SectionCard>
@@ -103,25 +126,25 @@ export function BusinessTabContent() {
 								icon={Users}
 								label={t(AdminKey.TOTAL_USERS)}
 								value={businessMetrics.users.total.toLocaleString()}
-								color={Colors.BLUE_500.text}
+								color={SEMANTIC_ICON_TEXT.primary}
 							/>
 							<StatCard
 								icon={UserCheck}
 								label={t(AdminKey.ACTIVE_USERS)}
 								value={businessMetrics.users.active.toLocaleString()}
-								color={Colors.GREEN_500.text}
+								color={SEMANTIC_ICON_TEXT.success}
 							/>
 							<StatCard
 								icon={TrendingUp}
 								label={t(AdminKey.NEW_THIS_MONTH)}
 								value={businessMetrics.users.newThisMonth.toLocaleString()}
-								color={Colors.PURPLE_500.text}
+								color={SEMANTIC_ICON_TEXT.secondary}
 							/>
 							<StatCard
 								icon={AlertTriangle}
 								label={t(AdminKey.CHURN_RATE)}
 								value={formatNumericValue(businessMetrics.users.churnRate, 2, '%')}
-								color={Colors.RED_500.text}
+								color={SEMANTIC_ICON_TEXT.destructive}
 							/>
 						</div>
 						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.USER_GROWTH_DESC)}</p>
@@ -140,19 +163,19 @@ export function BusinessTabContent() {
 								icon={Activity}
 								label={t(AdminKey.DAILY_ACTIVE_USERS)}
 								value={businessMetrics.engagement.dau.toLocaleString()}
-								color={Colors.BLUE_500.text}
+								color={SEMANTIC_ICON_TEXT.primary}
 							/>
 							<StatCard
 								icon={Users}
 								label={t(AdminKey.WEEKLY_ACTIVE_USERS)}
 								value={businessMetrics.engagement.wau.toLocaleString()}
-								color={Colors.GREEN_500.text}
+								color={SEMANTIC_ICON_TEXT.success}
 							/>
 							<StatCard
 								icon={CalendarDays}
 								label={t(AdminKey.MONTHLY_ACTIVE_USERS)}
 								value={businessMetrics.engagement.mau.toLocaleString()}
-								color={Colors.PURPLE_500.text}
+								color={SEMANTIC_ICON_TEXT.secondary}
 							/>
 							<StatCard
 								icon={Timer}
@@ -162,7 +185,7 @@ export function BusinessTabContent() {
 									2,
 									'm'
 								)}
-								color={Colors.YELLOW_500.text}
+								color={SEMANTIC_ICON_TEXT.warning}
 							/>
 						</div>
 						<p className='mt-2 text-sm text-muted-foreground'>{t(AdminKey.ENGAGEMENT_DESC)}</p>

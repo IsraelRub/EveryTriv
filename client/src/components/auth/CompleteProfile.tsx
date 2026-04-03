@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
+import { LengthKey } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
-import { LengthKey, validateStringLength } from '@shared/validation';
+import { validateStringLength } from '@shared/validation';
 
 import {
 	AlertIconSize,
@@ -12,14 +13,19 @@ import {
 	ComponentSize,
 	getRegisterOptionalAvatarSearch,
 	LoadingKey,
-	QUERY_KEYS,
+	ProfileNameField,
 	ROUTES,
 	STORAGE_KEYS,
 } from '@/constants';
-import { ProfileNameField } from '@/constants';
 import type { CompleteProfileProps, ProfileFieldErrors } from '@/types';
 import { authService, clientLogger as logger, queryClient, queryInvalidationService } from '@/services';
-import { getTranslatedErrorMessage, profileResponseToBasicUser, translateValidationMessage } from '@/utils';
+import {
+	getAuthCurrentUserQueryKey,
+	getTranslatedErrorMessage,
+	profileResponseToBasicUser,
+	readAuthTokenSnapshotForQueryKey,
+	translateValidationMessage,
+} from '@/utils';
 import { AlertIcon, Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
 
 function validateProfileNameField(name: ProfileNameField, value: string): string | null {
@@ -99,8 +105,11 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 				});
 
 				if (profileResponse.profile) {
-					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), profileResponseToBasicUser(profileResponse));
-					queryInvalidationService.invalidateAuthQueries(queryClient);
+					queryClient.setQueryData(
+						getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
+						profileResponseToBasicUser(profileResponse)
+					);
+					await queryInvalidationService.invalidateAuthQueries(queryClient);
 				}
 
 				// Call optional onComplete callback
@@ -110,8 +119,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 
 				let pendingOptionalAvatar = false;
 				try {
-					pendingOptionalAvatar =
-						sessionStorage.getItem(STORAGE_KEYS.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE) === '1';
+					pendingOptionalAvatar = sessionStorage.getItem(STORAGE_KEYS.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE) === '1';
 					sessionStorage.removeItem(STORAGE_KEYS.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE);
 				} catch {
 					// sessionStorage unavailable
@@ -119,10 +127,7 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 
 				if (pendingOptionalAvatar) {
 					logger.userInfo('Redirecting to optional avatar step after profile completion');
-					navigate(
-						{ pathname: ROUTES.REGISTER, search: getRegisterOptionalAvatarSearch() },
-						{ replace: true }
-					);
+					navigate({ pathname: ROUTES.REGISTER, search: getRegisterOptionalAvatarSearch() }, { replace: true });
 				} else {
 					logger.userInfo('Redirecting to home after profile completion');
 					navigate(ROUTES.HOME, { replace: true });

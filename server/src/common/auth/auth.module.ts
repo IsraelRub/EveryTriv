@@ -4,7 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AppConfig } from '@config';
 
 import { AuthenticationManager } from './authentication.manager';
-import { JwtTokenService } from './jwt-token.service';
+import { JwtTokenService } from './jwtToken.service';
 import { PasswordService } from './password.service';
 
 @Module({

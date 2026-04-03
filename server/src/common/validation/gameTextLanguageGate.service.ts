@@ -24,9 +24,6 @@ export class GameTextLanguageGateService {
 		}
 	}
 
-	/**
-	 * Shared trivia rules (length, forbidden words, difficulty shape) plus LanguageTool on topic and custom-difficulty text.
-	 */
 	async assertTriviaGameInputValid(topic: string, difficulty: GameDifficulty, outputLanguage: Locale): Promise<void> {
 		const triviaValidation = validateTriviaRequest(topic, difficulty);
 		if (!triviaValidation.isValid) {
@@ -39,9 +36,6 @@ export class GameTextLanguageGateService {
 		await this.assertTopicAndCustomDifficultyLanguageValid(topic, difficulty, outputLanguage);
 	}
 
-	/**
-	 * LanguageTool only — caller must run structural validation first when needed.
-	 */
 	async assertTopicAndCustomDifficultyLanguageValid(
 		topic: string,
 		difficulty: GameDifficulty,

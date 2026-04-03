@@ -14,7 +14,7 @@ import {
 import type { LeaderboardTableProps } from '@/types';
 import { cn } from '@/utils';
 import { EmptyState, UserAvatar } from '@/components';
-import { LeaderboardSkeleton } from '../skeleton';
+import { LeaderboardSkeleton } from '../StatisticSkeletons';
 
 export const LeaderboardTable = memo(function LeaderboardTable({
 	entries,

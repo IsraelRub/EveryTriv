@@ -5,7 +5,7 @@ import { Coins, Crown, Plus } from 'lucide-react';
 
 import { GRANTED_CREDITS_CAP, Locale } from '@shared/constants';
 
-import { Colors, ComponentSize, GameKey, LoadingKey, PaymentKey, ROUTES } from '@/constants';
+import { ComponentSize, GameKey, LoadingKey, PaymentKey, ROUTES, SEMANTIC_ICON_TEXT } from '@/constants';
 import { cn } from '@/utils';
 import { Spinner } from '@/components';
 import { useCreditBalance, useUserRole } from '@/hooks';
@@ -46,9 +46,9 @@ export function CreditBalance() {
 	return (
 		<div className='flex items-center rounded-full bg-primary/10 overflow-hidden'>
 			<div className='flex items-center gap-2 px-3 py-1.5 min-w-0'>
-				<Coins className={cn('w-4 h-4 shrink-0', Colors.YELLOW_500.text)} />
+				<Coins className={cn('w-4 h-4 shrink-0', SEMANTIC_ICON_TEXT.warning)} />
 				<div className='flex min-w-0 flex-col items-start'>
-					<span className={cn('text-sm font-medium', Colors.YELLOW_500.text)}>
+					<span className={cn('text-sm font-medium', SEMANTIC_ICON_TEXT.warning)}>
 						{isAdmin ? t(GameKey.UNLIMITED) : totalCredits}
 					</span>
 					{grantedRefillHint ? (
@@ -68,7 +68,7 @@ export function CreditBalance() {
 			{/* Credits Actions */}
 			{isAdmin ? (
 				<div className='flex items-center gap-1.5 px-3 py-1.5'>
-					<Crown className={cn('w-4 h-4', Colors.AMBER_600.text)} />
+					<Crown className={cn('w-4 h-4', SEMANTIC_ICON_TEXT.warning)} />
 				</div>
 			) : (
 				<Link
@@ -76,12 +76,12 @@ export function CreditBalance() {
 					className='flex items-center gap-1.5 px-3 py-1.5 hover:bg-primary/20 transition-colors cursor-pointer group'
 				>
 					<Plus
-						className={cn('w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity', Colors.YELLOW_500.text)}
+						className={cn('w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity', SEMANTIC_ICON_TEXT.warning)}
 					/>
 					<span
 						className={cn(
 							'text-xs font-medium opacity-70 group-hover:opacity-100 transition-opacity',
-							Colors.YELLOW_500.text
+							SEMANTIC_ICON_TEXT.warning
 						)}
 					>
 						{t(PaymentKey.ADD_CREDITS)}

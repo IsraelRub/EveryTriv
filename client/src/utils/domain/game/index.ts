@@ -1,3 +1,4 @@
+export { getDifficultyBadgeClasses } from './difficultyBadge.utils';
 export { getDifficultyDisplayLabel } from './difficultyDisplay.utils';
 export {
 	getSingleSessionCompletionState,

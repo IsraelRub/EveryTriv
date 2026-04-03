@@ -168,7 +168,6 @@ export class UserIdParamDto {
 	userId!: string;
 }
 
-
 export class UserTrendQueryDto {
 	@ApiPropertyOptional({
 		description: 'Start date for user trend analytics',
@@ -396,7 +395,7 @@ export class UnifiedUserAnalyticsQueryDto {
 		example: 'a7c8b9d0-1234-4def-9abc-5e6f7d8c9b0a',
 	})
 	@IsOptional()
-	@ValidateIf((_o, v) => v !== '' && v != null)
+	@ValidateIf((obj, v) => obj != null && v !== '' && v != null)
 	@IsString()
 	targetUserId?: string;
 
@@ -405,8 +404,7 @@ export class UnifiedUserAnalyticsQueryDto {
 		enum: ComparisonTarget,
 	})
 	@IsOptional()
-	@ValidateIf((_o, v) => v !== '' && v != null)
+	@ValidateIf((obj, v) => obj != null && v !== '' && v != null)
 	@IsEnum(ComparisonTarget, { message: 'Target must be either global or user' })
 	comparisonTarget?: ComparisonTarget;
 }
-

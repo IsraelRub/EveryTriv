@@ -1,6 +1,6 @@
 import 'reflect-metadata';
+import '../loadEnv';
 
-import '../load-env';
 import { DataSource } from 'typeorm';
 
 import { AppConfig } from './app.config';

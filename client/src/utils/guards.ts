@@ -40,7 +40,6 @@ export function isAuthPage(): boolean {
 	return currentPath === ROUTES.LOGIN || currentPath === ROUTES.REGISTER;
 }
 
-/** Paths that require an authenticated session (must stay in sync with ProtectedRoute / AppRoutes). */
 export function isProtectedAppPath(pathname: string): boolean {
 	return (
 		pathname.startsWith('/game') ||

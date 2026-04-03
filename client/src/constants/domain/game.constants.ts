@@ -3,7 +3,7 @@ import { Award, Crown, Flame, Star, User } from 'lucide-react';
 import { DEFAULT_GAME_CONFIG, DifficultyLevel, GameMode, SurpriseScope } from '@shared/constants';
 
 import type { GameModeState, RankDisplayEntry, RankKey, TopicBadgeMeta } from '@/types';
-import { Colors } from '../core/ui/color.constants';
+import { SEMANTIC_ICON_TEXT } from '../core/ui/color.constants';
 import { GameKey } from '../core/ui/localeKeys.constants';
 import { VariantBase } from '../core/ui/variant.constants';
 
@@ -28,7 +28,37 @@ export const ANSWER_LETTER_KEYS: readonly string[] = [
 	GameKey.ANSWER_LETTER_FIFTH,
 ];
 
-export const GAME_MODES_SET: ReadonlySet<string> = new Set(Object.values(GameMode));
+export const DIFFICULTY_UI_CONFIG: Record<
+	DifficultyLevel,
+	{
+		dotColor: string;
+		badgeClasses: string;
+	}
+> = {
+	[DifficultyLevel.EASY]: {
+		dotColor: 'bg-green-500',
+		badgeClasses: 'bg-green-500/10 text-green-500 border-green-500/30',
+	},
+	[DifficultyLevel.MEDIUM]: {
+		dotColor: 'bg-yellow-500',
+		badgeClasses: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
+	},
+	[DifficultyLevel.HARD]: {
+		dotColor: 'bg-red-500',
+		badgeClasses: 'bg-red-500/10 text-red-500 border-red-500/30',
+	},
+	[DifficultyLevel.CUSTOM]: {
+		dotColor: 'bg-purple-500',
+		badgeClasses: 'bg-muted text-muted-foreground',
+	},
+};
+
+export const GAME_MODES_UI_CONFIG: Record<GameMode, { showQuestionLimit: boolean; showTimeLimit: boolean }> = {
+	[GameMode.QUESTION_LIMITED]: { showQuestionLimit: true, showTimeLimit: false },
+	[GameMode.TIME_LIMITED]: { showQuestionLimit: false, showTimeLimit: true },
+	[GameMode.UNLIMITED]: { showQuestionLimit: false, showTimeLimit: false },
+	[GameMode.MULTIPLAYER]: { showQuestionLimit: false, showTimeLimit: false },
+};
 
 export enum TimerMode {
 	COUNTDOWN = 'countdown',
@@ -74,22 +104,22 @@ export const initialGameModeState: GameModeState = {
 export const RANK_DISPLAY = {
 	1: {
 		icon: Crown,
-		textColor: Colors.YELLOW_500.text,
-		bgColor: Colors.YELLOW_500.bg,
+		textColor: SEMANTIC_ICON_TEXT.warning,
+		bgColor: 'bg-warning',
 		podiumSlotIndex: 1,
 		podiumHeight: 'h-40',
 	},
 	2: {
 		icon: Award,
-		textColor: Colors.GRAY_400.text,
-		bgColor: Colors.GRAY_400.bg,
+		textColor: SEMANTIC_ICON_TEXT.muted,
+		bgColor: 'bg-muted',
 		podiumSlotIndex: 0,
 		podiumHeight: 'h-32',
 	},
 	3: {
 		icon: Award,
-		textColor: Colors.AMBER_600.text,
-		bgColor: Colors.AMBER_600.bg,
+		textColor: 'text-orange-600',
+		bgColor: 'bg-orange-500',
 		podiumSlotIndex: 2,
 		podiumHeight: 'h-24',
 	},
@@ -132,6 +162,12 @@ export const TOPIC_BADGE_LABEL_KEYS: Partial<Record<TopicBadgeType, string>> = {
 	[TopicBadgeType.POPULAR]: GameKey.POPULAR,
 };
 
+const TOPIC_BADGE_TYPE_SET: ReadonlySet<string> = new Set([
+	TopicBadgeType.MOST_PLAYED,
+	TopicBadgeType.YOUR,
+	TopicBadgeType.BASIC,
+	TopicBadgeType.POPULAR,
+]);
 
 export function isTopicBadgeType(value: string): value is TopicBadgeType {
 	return TOPIC_BADGE_TYPE_SET.has(value);
@@ -149,8 +185,8 @@ export const TOPIC_BADGE_META: Partial<Record<TopicBadgeType, TopicBadgeMeta>> =
 		label: 'Your',
 		variant: VariantBase.OUTLINE,
 		icon: User,
-		iconClassName: `${Colors.AMBER_600.text} dark:text-amber-400 h-3.5 w-3.5`,
-		badgeClassName: `${Colors.AMBER_600.border}/40 ${Colors.AMBER_600.bg}/15 text-amber-700 dark:text-amber-300`,
+		iconClassName: `${SEMANTIC_ICON_TEXT.warning} dark:text-warning/90 h-3.5 w-3.5`,
+		badgeClassName: 'border-warning/40 bg-warning/15 text-warning dark:text-warning/90',
 	},
 	[TopicBadgeType.POPULAR]: {
 		label: 'Popular',
@@ -171,11 +207,3 @@ export enum ExitGameButtonVariant {
 	GAME = 'game',
 	ROOM = 'room',
 }
-
-const TOPIC_BADGE_TYPE_SET: ReadonlySet<string> = new Set([
-	TopicBadgeType.MOST_PLAYED,
-	TopicBadgeType.YOUR,
-	TopicBadgeType.BASIC,
-	TopicBadgeType.POPULAR,
-]);
-

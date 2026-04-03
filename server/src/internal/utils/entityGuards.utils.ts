@@ -49,7 +49,6 @@ const createArrayGuard =
 	(value: unknown): value is T[] =>
 		Array.isArray(value) && value.every(itemGuard);
 
-
 export const isCreditBalanceCacheEntry = (value: unknown): value is CreditBalance => {
 	if (!isRecord(value)) {
 		return false;
@@ -64,29 +63,27 @@ export const isCreditBalanceCacheEntry = (value: unknown): value is CreditBalanc
 	);
 };
 
-export const isCreditPurchaseOptionArray = createArrayGuard(
-	(value: unknown): value is CreditPurchaseOption => {
-		if (!isRecord(value)) {
-			return false;
-		}
-
-		return (
-			hasBasicValue(value.id, 'string') &&
-			hasBasicValue(value.credits, 'number') &&
-			hasBasicValue(value.price, 'number') &&
-			hasBasicValue(value.priceDisplay, 'string') &&
-			hasBasicValue(value.pricePerCredit, 'number') &&
-			hasOptionalBasicValue(value.description, 'string') &&
-			hasOptionalBasicValue(value.currency, 'string') &&
-			hasOptionalBasicValue(value.bonus, 'number') &&
-			hasOptionalBasicValue(value.savings, 'string') &&
-			hasOptionalBasicValue(value.popular, 'boolean') &&
-			hasOptionalBasicValue(value.paypalProductId, 'string') &&
-			hasOptionalBasicValue(value.paypalPrice, 'string') &&
-			(value.supportedMethods === undefined || Array.isArray(value.supportedMethods))
-		);
+export const isCreditPurchaseOptionArray = createArrayGuard((value: unknown): value is CreditPurchaseOption => {
+	if (!isRecord(value)) {
+		return false;
 	}
-);
+
+	return (
+		hasBasicValue(value.id, 'string') &&
+		hasBasicValue(value.credits, 'number') &&
+		hasBasicValue(value.price, 'number') &&
+		hasBasicValue(value.priceDisplay, 'string') &&
+		hasBasicValue(value.pricePerCredit, 'number') &&
+		hasOptionalBasicValue(value.description, 'string') &&
+		hasOptionalBasicValue(value.currency, 'string') &&
+		hasOptionalBasicValue(value.bonus, 'number') &&
+		hasOptionalBasicValue(value.savings, 'string') &&
+		hasOptionalBasicValue(value.popular, 'boolean') &&
+		hasOptionalBasicValue(value.paypalProductId, 'string') &&
+		hasOptionalBasicValue(value.paypalPrice, 'string') &&
+		(value.supportedMethods === undefined || Array.isArray(value.supportedMethods))
+	);
+});
 
 export const isTopicAnalyticsRecordArray = createArrayGuard(
 	(value: unknown): value is TopicAnalyticsRecord =>
@@ -241,19 +238,13 @@ const isUnifiedUserAnalyticsResponse = (value: unknown): value is UnifiedUserAna
 	return true;
 };
 
-
-
 export const isAnalyticsResponseUserTrendPointArray = (
 	value: unknown
 ): value is AnalyticsResponse<UserTrendPoint[]> => {
 	if (!isRecord(value) || !('data' in value) || !('timestamp' in value)) {
 		return false;
 	}
-	return (
-		hasBasicValue(value.timestamp, 'string') &&
-		Array.isArray(value.data) &&
-		isUserTrendPointArray(value.data)
-	);
+	return hasBasicValue(value.timestamp, 'string') && Array.isArray(value.data) && isUserTrendPointArray(value.data);
 };
 
 export const isAnalyticsResponseUnifiedUserAnalytics = (

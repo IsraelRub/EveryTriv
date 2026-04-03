@@ -37,4 +37,3 @@ export interface PlatformTrendsSectionStats {
 	value: string;
 	color: string;
 }
-

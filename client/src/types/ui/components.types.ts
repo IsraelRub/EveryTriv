@@ -1,4 +1,4 @@
-import { ReactNode, type ButtonHTMLAttributes, type ComponentPropsWithoutRef, type HTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, ComponentPropsWithoutRef, HTMLAttributes, ReactNode } from 'react';
 import { type LinkProps } from 'react-router-dom';
 import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import * as SliderPrimitive from '@radix-ui/react-slider';
@@ -63,7 +63,6 @@ export interface SpinnerProps extends HTMLAttributes<HTMLSpanElement> {
 
 	messageInline?: boolean;
 }
-
 
 export interface FullPageSpinnerProps {
 	message: string;

@@ -55,7 +55,6 @@ export interface GameSessionHudProps extends GameTimerProps {
 	timerAside?: ReactNode;
 }
 
-
 export interface QuestionBreakdownProps {
 	entries: QuestionBreakdownEntry[];
 }
@@ -132,4 +131,3 @@ export interface QuestionBreakdownEntry {
 	correctAnswerText?: string;
 	userAnswerText?: string;
 }
-

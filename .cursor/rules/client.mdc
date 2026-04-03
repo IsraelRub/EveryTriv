@@ -24,7 +24,7 @@ alwaysApply: false
 - ✅ Setting up data fetching → Check Data Fetching Patterns section
 - ✅ Organizing constants → Check Constants Organization section
 - ✅ Implementing services → Check Services & Infrastructure section
-- ✅ Adding or editing custom CSS (`index.css`, `styles/global.css`) → Check Stylelint (CSS Linting) under Styling Patterns
+- ✅ Adding or editing custom CSS (`client/src/global.css`) → Check Stylelint (CSS Linting) under Styling Patterns
 
 ### Pattern Matching
 **ALWAYS** look for existing similar code in the codebase and follow the same pattern. If you find:
@@ -313,11 +313,11 @@ const { data, isLoading, error } = useQuery({
 - Example: `buttonVariants`, `answerButtonVariants`
 
 ### Stylelint (CSS Linting)
-- Use **Stylelint** for linting custom CSS (`client/src/index.css`, `client/src/styles/global.css`).
-- Run Stylelint as a **standalone** tool (e.g. `pnpm run lint:css`), **not** as an ESLint plugin.
-- Config must allow Tailwind at-rules: `@tailwind`, `@layer`, `@apply` (e.g. `at-rule-no-unknown` overrides).
+- Use **Stylelint** for linting custom CSS (`client/src/global.css`). Config: `tools/stylelint.config.cjs`.
+- Run as a **standalone** tool from the repo root: `pnpm run lint:css` / `pnpm run lint:css:fix` (not via ESLint).
+- Config allows Tailwind at-rules: `@tailwind`, `@layer`, `@apply` (`at-rule-no-unknown` overrides) and `theme()` where needed.
 - When adding or changing custom CSS, run Stylelint and fix reported issues.
-- Prefer `stylelint-config-standard` with Tailwind-compatible overrides; use `stylelint-config-prettier` if CSS is also formatted by Prettier.
+- Base stack: `stylelint-config-standard` (Stylelint 17); `stylelint-config-prettier` is not used (peer range incompatible with current Stylelint).
 
 ## 🧪 Testing
 

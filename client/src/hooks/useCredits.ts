@@ -98,14 +98,23 @@ export const useDeductCredits = () => {
 
 			return { previousBalance };
 		},
-		onError: (_err, _variables, context) => {
+		onError: (error, variables, context) => {
+			logger.apiDebug('Rolling back credit balance after deduct failure', {
+				errorInfo: { message: getErrorMessage(error) },
+				gameMode: variables.gameMode,
+				questionsPerRequest: variables.questionsPerRequest,
+			});
 			// Rollback on error
 			if (context?.previousBalance) {
 				queryClient.setQueryData(QUERY_KEYS.credits.balance(), context.previousBalance);
 			}
 		},
 		onSettled: () => {
-			queryInvalidationService.invalidateCreditsQueries(queryClient);
+			void queryInvalidationService.invalidateCreditsQueries(queryClient).catch(error => {
+				logger.apiDebug('invalidateCreditsQueries after deduct settled failed', {
+					errorInfo: { message: getErrorMessage(error) },
+				});
+			});
 		},
 	});
 };
@@ -134,8 +143,8 @@ export const usePurchaseCredits = () => {
 
 	return useMutation({
 		mutationFn: (request: CreditsPurchaseRequest) => paymentService.purchaseCredits(request),
-		onSuccess: () => {
-			queryInvalidationService.invalidateCreditsQueries(queryClient);
+		onSuccess: async () => {
+			await queryInvalidationService.invalidateCreditsQueries(queryClient);
 		},
 	});
 };

@@ -1,16 +1,12 @@
 import type { ErrorInfo, ReactElement } from 'react';
 import { LucideIcon } from 'lucide-react';
 
-
-
 export interface ErrorBoundaryProps {
 	children: ReactElement | ReactElement[];
 	featureName?: string;
 	fallback?: ReactElement | null;
 	onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
-
-
 
 export interface ErrorState extends ErrorBoundaryState {
 	retryCount: number;
@@ -42,4 +38,3 @@ export interface FeatureErrorBoundaryProps {
 	fallback?: ReactElement | null;
 	onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
-

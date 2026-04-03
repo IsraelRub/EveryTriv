@@ -1,4 +1,4 @@
-import type { StorageOperationResult, TypeGuard } from '@shared/types';
+import type { StorageOperationResult } from '@shared/types';
 import { VALIDATORS } from '@shared/validation';
 
 import { AUTH_STORAGE_KEYS, AUTH_TOKEN_CHANGED_EVENT, STORAGE_KEYS, type StorageKey } from '@/constants';
@@ -7,33 +7,33 @@ function getStorage(key: StorageKey): Storage {
 	return AUTH_STORAGE_KEYS.has(key) ? sessionStorage : localStorage;
 }
 
+function createFailResult<T>(data: T | undefined): StorageOperationResult<T> {
+	return {
+		success: false,
+		data,
+		timestamp: new Date(),
+	};
+}
+
 class StorageService {
 	async getString(key: StorageKey): Promise<StorageOperationResult<string>> {
-		return this.get(key, VALIDATORS.string);
-	}
-
-	private async get<T>(key: StorageKey, validator: TypeGuard<T>): Promise<StorageOperationResult<T>> {
 		try {
 			const item = getStorage(key).getItem(key);
 			if (item === null) {
-				return { success: false, data: undefined, timestamp: new Date() };
+				return createFailResult<string>(undefined);
 			}
 
 			const parsed = JSON.parse(item);
 
-			// Perform runtime validation
-			if (validator(parsed)) {
+			if (VALIDATORS.string(parsed)) {
 				return { success: true, data: parsed, timestamp: new Date() };
-			} else {
-				// Validation failed - return error
-				return { success: false, data: undefined, timestamp: new Date() };
 			}
-		} catch {
-			return { success: false, data: undefined, timestamp: new Date() };
-		}
+		} catch {}
+
+		return createFailResult<string>(undefined);
 	}
 
-	async set<T>(key: StorageKey, value: T): Promise<StorageOperationResult<T>> {
+	async setString(key: StorageKey, value: string): Promise<StorageOperationResult<string>> {
 		try {
 			getStorage(key).setItem(key, JSON.stringify(value));
 
@@ -43,9 +43,9 @@ class StorageService {
 			}
 
 			return { success: true, data: value, timestamp: new Date() };
-		} catch {
-			return { success: false, data: undefined, timestamp: new Date() };
-		}
+		} catch {}
+
+		return createFailResult<string>(undefined);
 	}
 
 	async delete(key: StorageKey): Promise<StorageOperationResult<boolean>> {
@@ -58,9 +58,9 @@ class StorageService {
 			}
 
 			return { success: true, data: true, timestamp: new Date() };
-		} catch {
-			return { success: false, data: false, timestamp: new Date() };
-		}
+		} catch {}
+
+		return createFailResult<boolean>(false);
 	}
 }
 

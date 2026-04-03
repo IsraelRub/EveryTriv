@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { Slot } from '@radix-ui/react-slot';
 import { cva } from 'class-variance-authority';
-import { ArrowRight, Home, RefreshCw, X } from 'lucide-react';
+import { ArrowRight, RefreshCw, X } from 'lucide-react';
 
 import {
 	AudioKey,
@@ -18,7 +18,6 @@ import {
 import type {
 	ButtonProps,
 	CloseButtonProps,
-	HomeButtonProps,
 	LinkButtonProps,
 	PaginationButtonsProps,
 	RefreshButtonProps,
@@ -76,24 +75,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 	}
 );
 Button.displayName = 'Button';
-
-export const HomeButton = forwardRef<HTMLButtonElement, HomeButtonProps>(({ onBeforeNavigate, className }, ref) => {
-	const { t } = useTranslation();
-	const navigate = useNavigate();
-
-	const handleClick = useCallback(() => {
-		onBeforeNavigate?.();
-		navigate(ROUTES.HOME, { replace: true });
-	}, [navigate, onBeforeNavigate]);
-
-	return (
-		<Button ref={ref} variant={VariantBase.OUTLINE} size={ButtonSize.LG} onClick={handleClick} className={className}>
-			<Home className='h-4 w-4 mr-2' />
-			{t(CommonKey.BACK_TO_HOME)}
-		</Button>
-	);
-});
-HomeButton.displayName = 'HomeButton';
 
 export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(
 	({ to, variant, size, className, children, ...linkProps }, ref) => {

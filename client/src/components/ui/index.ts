@@ -14,7 +14,7 @@ export * from './EmptyState';
 export * from './ErrorBoundary';
 export * from './input';
 export * from './label';
-export * from './numberInput';
+export * from './NumberInput';
 export * from './progress';
 export * from './radio-group';
 export * from './select';

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, CopyCheck, Star, CircleStar, Tag, Trophy } from 'lucide-react';
+import { CircleStar, Clock, CopyCheck, Star, Tag, Trophy } from 'lucide-react';
 
 import { DEFAULT_GAME_CONFIG } from '@shared/constants';
 import { calculatePercentage, calculateScoreRate, formatTitle, getErrorMessage, namesMatch } from '@shared/utils';
@@ -10,11 +10,11 @@ import { calculatePercentage, calculateScoreRate, formatTitle, getErrorMessage, 
 import {
 	ANIMATION_CONFIG,
 	ANIMATION_DELAYS,
-	SINGLE_SUMMARY_STAR_SEQUENCE_MS,
 	AudioKey,
-	Colors,
 	GameKey,
 	ROUTES,
+	SEMANTIC_ICON_TEXT,
+	SINGLE_SUMMARY_STAR_SEQUENCE_MS,
 	SocialShareMode,
 	SPRING_CONFIGS,
 	STAR_GRADE_LEVELS_AND_THRESHOLDS,
@@ -211,7 +211,10 @@ export function SingleSummaryView() {
 							transition={{ delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM, ...SPRING_CONFIGS.GENTLE }}
 						>
 							<Trophy
-								className={cn('w-16 md:w-20 lg:w-24 h-16 md:h-20 lg:h-24 mx-auto mb-2 md:mb-4', Colors.YELLOW_500.text)}
+								className={cn(
+									'w-16 md:w-20 lg:w-24 h-16 md:h-20 lg:h-24 mx-auto mb-2 md:mb-4',
+									SEMANTIC_ICON_TEXT.warning
+								)}
 							/>
 						</motion.div>
 						<motion.p
@@ -274,7 +277,7 @@ export function SingleSummaryView() {
 										}
 									>
 										<Star
-											className={cn('w-16 h-16', isLit ? Colors.YELLOW_500.text : Colors.GRAY_400.text)}
+											className={cn('w-16 h-16', isLit ? SEMANTIC_ICON_TEXT.warning : SEMANTIC_ICON_TEXT.muted)}
 											fill='currentColor'
 											strokeWidth={0}
 										/>

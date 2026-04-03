@@ -1,10 +1,14 @@
 import { io, Socket } from 'socket.io-client';
 
 import { MultiplayerEvent, TIME_PERIODS_MS } from '@shared/constants';
-import type { CreateRoomConfig } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import type { MultiplayerErrorMessage, MultiplayerEventListener } from '@/types';
+import type {
+	MultiplayerErrorMessage,
+	MultiplayerEventCallback,
+	MultiplayerEventStream,
+	MultiplayerUnsubscribe,
+} from '@/types';
 import { ApiConfig, clientLogger as logger } from '@/services';
 
 class MultiplayerService {
@@ -13,8 +17,8 @@ class MultiplayerService {
 	private readonly maxReconnectAttempts = 5;
 	private readonly reconnectDelay = TIME_PERIODS_MS.SECOND;
 	private isConnecting = false;
-	private pendingListeners: MultiplayerEventListener[] = [];
-	private listeners: Map<string, Set<(data: unknown) => void>> = new Map();
+	private pendingListeners: Array<{ event: string; callback: MultiplayerEventCallback }> = [];
+	private listeners: Map<string, Set<MultiplayerEventCallback>> = new Map();
 
 	connect(token: string): Socket {
 		// Check if already connected and socket exists
@@ -57,7 +61,7 @@ class MultiplayerService {
 		this.isConnecting = true;
 		logger.gameInfo('Creating new multiplayer WebSocket connection');
 
-		const serverUrl = ApiConfig.getBaseUrl();
+		const serverUrl = ApiConfig.baseUrl;
 		// Convert HTTP/HTTPS URL to WebSocket URL
 		const wsProtocol = serverUrl.startsWith('https') ? 'wss' : 'ws';
 		const wsUrl = serverUrl.replace(/^https?:\/\//, '').split('/')[0];
@@ -107,7 +111,7 @@ class MultiplayerService {
 		}
 	}
 
-	isConnected(): boolean {
+	get isConnected(): boolean {
 		return this.socket?.connected ?? false;
 	}
 
@@ -188,6 +192,42 @@ class MultiplayerService {
 		this.socket.emit(event, data);
 	}
 
+	stream(event: string): MultiplayerEventStream {
+		return {
+			subscribe: (callback: MultiplayerEventCallback): MultiplayerUnsubscribe => {
+				return this.attachListener(event, callback);
+			},
+		};
+	}
+
+	private attachListener(event: string, callback: MultiplayerEventCallback): MultiplayerUnsubscribe {
+		let isActive = true;
+		const wrappedCallback: MultiplayerEventCallback = (data: unknown): void => {
+			if (isActive) {
+				callback(data);
+			}
+		};
+
+		if (!this.listeners.has(event)) {
+			this.listeners.set(event, new Set());
+		}
+		this.listeners.get(event)?.add(wrappedCallback);
+
+		if (!this.socket) {
+			this.pendingListeners.push({ event, callback: wrappedCallback });
+		} else {
+			this.socket.on(event, wrappedCallback);
+		}
+
+		return () => {
+			if (!isActive) {
+				return;
+			}
+			isActive = false;
+			this.removeListener(event, wrappedCallback);
+		};
+	}
+
 	clearAppListeners(): void {
 		this.pendingListeners = [];
 		if (!this.socket) {
@@ -201,71 +241,19 @@ class MultiplayerService {
 		this.listeners.clear();
 	}
 
-	on(eventListener: MultiplayerEventListener): void {
-		const wrappedCallback = (data: unknown): void => {
-			eventListener.callback(data);
-		};
-
-		if (!this.socket) {
-			this.pendingListeners.push({ event: eventListener.event, callback: wrappedCallback });
+	private removeListener(event: string, callback: MultiplayerEventCallback): void {
+		this.pendingListeners = this.pendingListeners.filter(
+			listener => !(listener.event === event && listener.callback === callback)
+		);
+		this.socket?.off(event, callback);
+		const callbacks = this.listeners.get(event);
+		if (!callbacks) {
 			return;
 		}
-
-		if (!this.listeners.has(eventListener.event)) {
-			this.listeners.set(eventListener.event, new Set());
+		callbacks.delete(callback);
+		if (callbacks.size === 0) {
+			this.listeners.delete(event);
 		}
-		this.listeners.get(eventListener.event)?.add(wrappedCallback);
-		this.socket.on(eventListener.event, wrappedCallback);
-	}
-
-	off(event: string, callback?: (data: unknown) => void): void {
-		if (!this.socket) return;
-
-		if (callback) {
-			this.socket.off(event, callback);
-			const callbacks = this.listeners.get(event);
-			if (callbacks) {
-				callbacks.delete(callback);
-				if (callbacks.size === 0) {
-					this.listeners.delete(event);
-				}
-			}
-		} else {
-			const callbacks = this.listeners.get(event);
-			if (callbacks) {
-				callbacks.forEach(cb => {
-					this.socket?.off(event, cb);
-				});
-				this.listeners.delete(event);
-			} else {
-				this.socket.off(event);
-			}
-		}
-	}
-
-	createRoom(config: CreateRoomConfig): void {
-		this.emit(MultiplayerEvent.CREATE_ROOM, config);
-	}
-
-	joinRoom(roomId: string): void {
-		this.emit(MultiplayerEvent.JOIN_ROOM, { roomId });
-	}
-
-	leaveRoom(roomId: string): void {
-		this.emit(MultiplayerEvent.LEAVE_ROOM, { roomId });
-	}
-
-	startGame(roomId: string): void {
-		this.emit(MultiplayerEvent.START_GAME, { roomId });
-	}
-
-	submitAnswer(roomId: string, questionId: string, answer: number, timeSpent: number): void {
-		this.emit(MultiplayerEvent.SUBMIT_ANSWER, {
-			roomId,
-			questionId,
-			answer,
-			timeSpent,
-		});
 	}
 }
 

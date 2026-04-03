@@ -9,8 +9,8 @@ import { ensureErrorObject, getErrorMessage } from '@shared/utils';
 import { UserStatsEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
 
-import { UserStatsUpdateService } from '../../analytics/services/user-stats-update.service';
-import { UserStatsMaintenanceService } from '../user-stats-maintenance.service';
+import { UserStatsUpdateService } from '../../analytics/services/userStatsUpdate.service';
+import { UserStatsMaintenanceService } from '../userStatsMaintenance.service';
 
 @Injectable()
 export class ScoreResetScheduler {

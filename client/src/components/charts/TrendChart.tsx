@@ -4,7 +4,14 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 
 import { formatDate, formatNumericValue, mean } from '@shared/utils';
 
-import { CHART_HEIGHTS, CommonKey, CssColor, SkeletonVariant, StatisticsPerformanceKey, TREND_CHART_DATA_KEYS } from '@/constants';
+import {
+	CHART_HEIGHTS,
+	CommonKey,
+	CssColor,
+	SkeletonVariant,
+	StatisticsPerformanceKey,
+	TREND_CHART_DATA_KEYS,
+} from '@/constants';
 import type { TrendChartProps } from '@/types';
 import { formatDateShort } from '@/utils';
 import { EmptyState, Skeleton } from '@/components';

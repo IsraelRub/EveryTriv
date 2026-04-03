@@ -15,10 +15,10 @@ import type { CreditPurchaseOption } from '@shared/types';
 import { formatCurrency } from '@shared/utils';
 
 import {
-	Colors,
 	LoadingKey,
 	PaymentKey,
 	PaymentTab,
+	SEMANTIC_ICON_TEXT,
 	SKELETON_PLACEHOLDER_COUNTS,
 	SkeletonVariant,
 	TabsListVariant,
@@ -95,7 +95,7 @@ function CreditPackageCard({
 			<Card className='relative overflow-hidden'>
 				{hasBonus && (
 					<div className='absolute top-0 end-0'>
-						<Badge className={cn('rounded-none rounded-bl-lg', Colors.GREEN_500.bg)}>
+						<Badge className='rounded-none rounded-bl-lg bg-success text-white'>
 							+{pkg.bonus} {t(PaymentKey.BONUS)}
 						</Badge>
 					</div>
@@ -107,7 +107,7 @@ function CreditPackageCard({
 					</CardTitle>
 					{hasBonus && (
 						<CardDescription>
-							<span className={Colors.GREEN_500.text}>{t(PaymentKey.BONUS_CREDITS, { count: pkg.bonus })}</span>
+							<span className={SEMANTIC_ICON_TEXT.success}>{t(PaymentKey.BONUS_CREDITS, { count: pkg.bonus })}</span>
 						</CardDescription>
 					)}
 				</CardHeader>
@@ -338,7 +338,7 @@ export function PaymentView() {
 			<Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
 				<DialogContent className='sm:max-w-md'>
 					<DialogHeader>
-						<DialogTitle className={cn('flex items-center gap-2', Colors.GREEN_500.text)}>
+						<DialogTitle className={cn('flex items-center gap-2', SEMANTIC_ICON_TEXT.success)}>
 							<CheckCircle className='w-6 h-6' />
 							{t(PaymentKey.PURCHASE_COMPLETE)}
 						</DialogTitle>
@@ -346,8 +346,8 @@ export function PaymentView() {
 					</DialogHeader>
 					<div className='py-6'>
 						<div className='flex flex-col items-center text-center space-y-4'>
-							<div className={cn('p-4 rounded-full', `${Colors.GREEN_500.bg}/10`)}>
-								<Wallet className={cn('w-12 h-12', Colors.GREEN_500.text)} />
+							<div className={cn('p-4 rounded-full', 'bg-success/10')}>
+								<Wallet className={cn('w-12 h-12', SEMANTIC_ICON_TEXT.success)} />
 							</div>
 							<div>
 								<p className='text-lg font-medium'>

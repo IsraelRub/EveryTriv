@@ -1,12 +1,11 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { ErrorCode, PaymentMethod, VALIDATION_LENGTH } from '@shared/constants';
+import { ErrorCode, LengthKey, PaymentMethod, VALIDATION_LENGTH } from '@shared/constants';
 import type { ValidationResult } from '@shared/types';
 import { calculateDuration, isNonEmptyString, isRecord, sanitizeCardNumber } from '@shared/utils';
 import {
 	isPaymentMethod,
 	isValidCardNumber,
-	LengthKey,
 	validateCVV,
 	validateExpiryDate,
 	validateStringLength,

@@ -1,12 +1,11 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { ensureErrorObject } from '@shared/utils';
 
-import { LoadingMessages, QUERY_KEYS, ROUTES } from '@/constants';
-import { FullPageSpinnerLayout } from '@/constants';
-import { isProtectedAppPath } from '@/utils';
+import { FullPageSpinnerLayout, LoadingMessages, ROUTES } from '@/constants';
 import { authService, clientLogger as logger, prefetchAuthenticatedQueries } from '@/services';
+import { getAuthCurrentUserQueryKey, isProtectedAppPath, readAuthTokenSnapshotForQueryKey } from '@/utils';
 import { BackgroundAnimation } from '@/components/ui/BackgroundAnimation';
 import { FullPageSpinner } from '@/components/ui/spinner';
 
@@ -14,10 +13,6 @@ interface AppAuthBootstrapProps {
 	children: ReactNode;
 }
 
-/**
- * After Redux Persist rehydrate: restore session from refresh token if needed, validate access token
- * with /me, and prefetch authenticated queries — all behind the same full-page shell as PersistGate.
- */
 export function AppAuthBootstrap({ children }: AppAuthBootstrapProps): JSX.Element {
 	const queryClient = useQueryClient();
 	const [isReady, setIsReady] = useState(false);
@@ -52,7 +47,7 @@ export function AppAuthBootstrap({ children }: AppAuthBootstrapProps): JSX.Eleme
 				setSpinnerMessage(LoadingMessages.AUTHENTICATING);
 				try {
 					await queryClient.fetchQuery({
-						queryKey: QUERY_KEYS.auth.currentUser(),
+						queryKey: getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
 						queryFn: () => authService.getCurrentUser(),
 					});
 				} catch {

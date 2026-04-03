@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
 	DEFAULT_GAME_CONFIG,
 	DifficultyLevel,
+	LengthKey,
 	Locale,
 	ValidateTextContext,
 	VALIDATION_COUNT,
@@ -12,7 +13,6 @@ import type { GameDifficulty } from '@shared/types';
 import {
 	createCustomDifficulty,
 	isLocale,
-	LengthKey,
 	validateCustomDifficultyText,
 	validateNoForbiddenWords,
 	validateStringLength,

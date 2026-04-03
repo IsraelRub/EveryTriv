@@ -45,7 +45,7 @@ import {
 	isTopicAnalyticsRecordArray,
 } from '@internal/utils';
 
-import { AnalyticsCommonService } from './common-analytics.service';
+import { AnalyticsCommonService } from './commonAnalytics.service';
 
 @Injectable()
 export class GlobalAnalyticsService {

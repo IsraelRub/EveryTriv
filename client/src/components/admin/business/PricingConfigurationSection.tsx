@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BadgeDollarSign, Loader2, RotateCcw, Save } from 'lucide-react';
 
-import { CREDIT_PURCHASE_PACKAGES } from '@shared/constants';
+import { CREDIT_PURCHASE_PACKAGES, ERROR_MESSAGES, TIME_PERIODS_MS } from '@shared/constants';
 import type { CreditPurchaseOption } from '@shared/types';
 
-import { AdminKey, ButtonSize, CommonKey, SkeletonVariant, VariantBase } from '@/constants';
-import type { CreditPackageEditItem } from '@/types';
+import { AdminKey, ButtonSize, CommonKey, QUERY_KEYS, SkeletonVariant, VariantBase } from '@/constants';
+import type { AdminPricingResponse, AdminPricingUpdatePayload, CreditPackageEditItem } from '@/types';
+import { adminService } from '@/services';
 import {
 	Badge,
 	Button,
@@ -25,7 +27,7 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components';
-import { useAdminPricing, useUpdateAdminPricing } from '@/hooks';
+import { useUserRole } from '@/hooks';
 
 function toLocalPackages(packages: CreditPurchaseOption[]): CreditPackageEditItem[] {
 	return packages.map(p => ({
@@ -38,8 +40,29 @@ function toLocalPackages(packages: CreditPurchaseOption[]): CreditPackageEditIte
 
 export function PricingConfigurationSection() {
 	const { t } = useTranslation('admin');
-	const { data: pricingData, isLoading: pricingLoading } = useAdminPricing();
-	const updatePricing = useUpdateAdminPricing();
+	const queryClient = useQueryClient();
+	const { isAdmin } = useUserRole();
+
+	const { data: pricingData, isLoading: pricingLoading } = useQuery<AdminPricingResponse>({
+		queryKey: QUERY_KEYS.admin.pricing(),
+		queryFn: async () => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return adminService.getAdminPricing();
+		},
+		enabled: isAdmin,
+		staleTime: TIME_PERIODS_MS.MINUTE,
+		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
+	});
+
+	const updatePricing = useMutation({
+		mutationFn: (payload: AdminPricingUpdatePayload) => adminService.updateAdminPricing(payload),
+		onSuccess: () => {
+			void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.pricing() });
+			void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.credits.packages() });
+		},
+	});
 	const [localPackages, setLocalPackages] = useState<CreditPackageEditItem[]>([]);
 	const [hasChanges, setHasChanges] = useState(false);
 

@@ -2,7 +2,10 @@ export interface MultiplayerErrorMessage {
 	message: string;
 }
 
-export interface MultiplayerEventListener {
-	event: string;
-	callback: (data: unknown) => void;
+export type MultiplayerEventCallback = (data: unknown) => void;
+
+export type MultiplayerUnsubscribe = () => void;
+
+export interface MultiplayerEventStream {
+	subscribe(callback: MultiplayerEventCallback): MultiplayerUnsubscribe;
 }

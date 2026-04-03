@@ -19,7 +19,7 @@ import type {
 	RoomConfig,
 	RoomStateResponse,
 } from '@shared/types';
-import { getCorrectAnswerIndex } from '@shared/utils';
+import { getCorrectAnswerIndex, getErrorMessage } from '@shared/utils';
 
 import { serverLogger as logger } from '@internal/services';
 
@@ -64,6 +64,10 @@ export class MultiplayerService {
 		return room;
 	}
 
+	async disconnectPlayer(roomId: string, userId: string): Promise<MultiplayerRoom | null> {
+		return this.roomService.disconnectPlayer(roomId, userId);
+	}
+
 	async startGame(roomId: string, hostId: string): Promise<MultiplayerRoom> {
 		const room = await this.roomService.getRoom(roomId);
 		if (!room) {
@@ -88,24 +92,35 @@ export class MultiplayerService {
 		const creditsToDeduct = questionsPerRequest * room.players.length;
 		await this.creditsService.deductCredits(hostId, creditsToDeduct, GameMode.MULTIPLAYER, 'multiplayer_host_start');
 
-		const triviaResult = await this.gameService.getTriviaQuestion({
-			topic: room.config.topic,
-			difficulty: room.config.difficulty,
-			questionsPerRequest: room.config.questionsPerRequest,
-			userId: hostId,
-			answerCount: room.config.answerCount,
-		});
+		try {
+			const triviaResult = await this.gameService.getTriviaQuestion({
+				topic: room.config.topic,
+				difficulty: room.config.difficulty,
+				questionsPerRequest: room.config.questionsPerRequest,
+				userId: hostId,
+				answerCount: room.config.answerCount,
+			});
 
-		const initializedRoom = await this.gameStateService.initializeGame(room, triviaResult.questions);
+			const initializedRoom = await this.gameStateService.initializeGame(room, triviaResult.questions);
 
-		logger.gameInfo('Multiplayer game started', {
-			roomId,
-			hostId,
-			gameQuestionCount: triviaResult.questions.length,
-			playerCount: initializedRoom.players.length,
-		});
+			logger.gameInfo('Multiplayer game started', {
+				roomId,
+				hostId,
+				gameQuestionCount: triviaResult.questions.length,
+				playerCount: initializedRoom.players.length,
+			});
 
-		return initializedRoom;
+			return initializedRoom;
+		} catch (error) {
+			await this.creditsService.addCredits(null, hostId, creditsToDeduct, `multiplayer_refund:${roomId}:${Date.now()}`);
+			logger.gameError('Failed to start multiplayer game, credits refunded', {
+				errorInfo: { message: getErrorMessage(error) },
+				roomId,
+				hostId,
+				credits: creditsToDeduct,
+			});
+			throw error;
+		}
 	}
 
 	async getGameState(roomId: string): Promise<GameState> {
@@ -155,7 +170,7 @@ export class MultiplayerService {
 			throw new BadRequestException(ErrorCode.GAME_NOT_IN_PLAYING_STATE);
 		}
 
-		return await this.gameStateService.nextQuestion(room);
+		return this.gameStateService.nextQuestion(room);
 	}
 
 	async startQuestion(roomId: string): Promise<QuestionStartResponse | null> {

@@ -19,8 +19,14 @@ import {
 import { EMPTY_VALUE } from '@shared/constants';
 import { formatDate, formatNumericValue, formatTitle } from '@shared/utils';
 
-import { AdminKey, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, StatCardVariant } from '@/constants';
-import { UserAnalysisAccordion } from '@/constants';
+import {
+	AdminKey,
+	SEMANTIC_ICON_TEXT,
+	SKELETON_PLACEHOLDER_COUNTS,
+	SkeletonVariant,
+	StatCardVariant,
+	UserAnalysisAccordion,
+} from '@/constants';
 import type { UserAnalysisExpandedPanelProps } from '@/types';
 import { cn } from '@/utils';
 import { StatCard } from '@/components/statistics/StatCard';
@@ -116,14 +122,14 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 								icon={GamepadIcon}
 								label={t(AdminKey.USERS_LABEL_TOTAL_GAMES)}
 								value={formatNumericValue(summaryData.highlights.totalGames, 0)}
-								color={Colors.BLUE_500.text}
+								color={SEMANTIC_ICON_TEXT.primary}
 							/>
 							<StatCard
 								variant={StatCardVariant.CENTERED}
 								icon={Medal}
 								label={t(AdminKey.USERS_LABEL_BEST_SCORE)}
 								value={formatNumericValue(summaryData.highlights.bestScore, 0)}
-								color={Colors.GREEN_500.text}
+								color={SEMANTIC_ICON_TEXT.success}
 							/>
 							{performanceData != null ? (
 								<StatCard
@@ -131,7 +137,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 									icon={TrendingUp}
 									label={t(AdminKey.USERS_LABEL_STREAK_DAYS)}
 									value={formatNumericValue(performanceData.streakDays, 0)}
-									color={Colors.PURPLE_500.text}
+									color={SEMANTIC_ICON_TEXT.secondary}
 								/>
 							) : null}
 						</div>
@@ -148,21 +154,21 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 									icon={BarChart3}
 									label={t(AdminKey.USERS_LABEL_SUCCESS_RATE)}
 									value={formatNumericValue(statisticsData.successRate, 1, '%')}
-									color={Colors.BLUE_500.text}
+									color={SEMANTIC_ICON_TEXT.primary}
 								/>
 								<StatCard
 									variant={StatCardVariant.CENTERED}
 									icon={HelpCircle}
 									label={t(AdminKey.USERS_LABEL_QUESTIONS_ANSWERED)}
 									value={formatNumericValue(statisticsData.totalQuestionsAnswered, 0)}
-									color={Colors.GREEN_500.text}
+									color={SEMANTIC_ICON_TEXT.success}
 								/>
 								<StatCard
 									variant={StatCardVariant.CENTERED}
 									icon={Target}
 									label={t(AdminKey.USERS_LABEL_AVERAGE_SCORE)}
 									value={formatNumericValue(statisticsData.averageScore, 0)}
-									color={Colors.AMBER_600.text}
+									color={SEMANTIC_ICON_TEXT.warning}
 								/>
 								<StatCard
 									variant={StatCardVariant.CENTERED}
@@ -170,7 +176,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 									label={t(AdminKey.USERS_LABEL_TOTAL_PLAY_TIME)}
 									value={formatNumericValue(statisticsData.totalPlayTime, 0)}
 									suffix=' s'
-									color={Colors.PURPLE_500.text}
+									color={SEMANTIC_ICON_TEXT.secondary}
 								/>
 							</div>
 						</AccordionContent>
@@ -187,28 +193,28 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 									icon={BookOpen}
 									label={t(AdminKey.USERS_LABEL_STRONGEST_TOPIC)}
 									value={formatTitle(performanceData.strongestTopic || EMPTY_VALUE)}
-									color={Colors.GREEN_500.text}
+									color={SEMANTIC_ICON_TEXT.success}
 								/>
 								<StatCard
 									variant={StatCardVariant.CENTERED}
 									icon={AlertCircle}
 									label={t(AdminKey.USERS_LABEL_WEAKEST_TOPIC)}
 									value={formatTitle(performanceData.weakestTopic || EMPTY_VALUE)}
-									color={Colors.AMBER_600.text}
+									color={SEMANTIC_ICON_TEXT.warning}
 								/>
 								<StatCard
 									variant={StatCardVariant.CENTERED}
 									icon={TrendingUp}
 									label={t(AdminKey.USERS_LABEL_IMPROVEMENT_RATE)}
 									value={formatNumericValue(performanceData.improvementRate, 2, '%')}
-									color={Colors.BLUE_500.text}
+									color={SEMANTIC_ICON_TEXT.primary}
 								/>
 								<StatCard
 									variant={StatCardVariant.CENTERED}
 									icon={Calendar}
 									label={t(AdminKey.USERS_LABEL_LAST_PLAYED)}
 									value={formatDate(performanceData.lastPlayed)}
-									color={Colors.PURPLE_500.text}
+									color={SEMANTIC_ICON_TEXT.secondary}
 								/>
 							</div>
 						</AccordionContent>
@@ -223,7 +229,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 								{summaryData.highlights.topTopics != null && summaryData.highlights.topTopics.length > 0 ? (
 									<div className='rounded-lg bg-muted/50 p-4 transition-colors hover-row'>
 										<div className='mb-2 flex items-center gap-2'>
-											<Tag className={cn('h-5 w-5 flex-shrink-0', Colors.BLUE_500.text)} strokeWidth={2.25} />
+											<Tag className={cn('h-5 w-5 flex-shrink-0', SEMANTIC_ICON_TEXT.primary)} strokeWidth={2.25} />
 											<span className='font-medium text-muted-foreground'>{t(AdminKey.TOP_TOPICS)}</span>
 										</div>
 										<div className='flex flex-wrap gap-1.5'>
@@ -241,7 +247,7 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 								{insightsData.strengths != null && insightsData.strengths.length > 0 ? (
 									<div className='rounded-lg bg-muted/50 p-4 transition-colors hover-row'>
 										<div className='mb-2 flex items-center gap-2'>
-											<Award className={cn('h-5 w-5 flex-shrink-0', Colors.GREEN_500.text)} strokeWidth={2.25} />
+											<Award className={cn('h-5 w-5 flex-shrink-0', SEMANTIC_ICON_TEXT.success)} strokeWidth={2.25} />
 											<span className='font-medium text-green-600 dark:text-green-400'>{t(AdminKey.STRENGTHS)}</span>
 										</div>
 										<ul className='list-inside list-disc space-y-0.5'>
@@ -254,7 +260,10 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 								{insightsData.improvements != null && insightsData.improvements.length > 0 ? (
 									<div className='rounded-lg bg-muted/50 p-4 transition-colors hover-row'>
 										<div className='mb-2 flex items-center gap-2'>
-											<TrendingUp className={cn('h-5 w-5 flex-shrink-0', Colors.AMBER_600.text)} strokeWidth={2.25} />
+											<TrendingUp
+												className={cn('h-5 w-5 flex-shrink-0', SEMANTIC_ICON_TEXT.warning)}
+												strokeWidth={2.25}
+											/>
 											<span className='font-medium text-amber-600 dark:text-amber-400'>{t(AdminKey.IMPROVEMENTS)}</span>
 										</div>
 										<ul className='list-inside list-disc space-y-0.5'>
@@ -267,7 +276,10 @@ export const UserAnalysisExpandedPanel = memo(function UserAnalysisExpandedPanel
 								{insightsData.recentHighlights != null && insightsData.recentHighlights.length > 0 ? (
 									<div className='rounded-lg bg-muted/50 p-4 transition-colors hover-row'>
 										<div className='mb-2 flex items-center gap-2'>
-											<CircleStar className={cn('h-5 w-5 flex-shrink-0', Colors.PURPLE_500.text)} strokeWidth={2.25} />
+											<CircleStar
+												className={cn('h-5 w-5 flex-shrink-0', SEMANTIC_ICON_TEXT.secondary)}
+												strokeWidth={2.25}
+											/>
 											<span className='font-medium text-muted-foreground'>{t(AdminKey.RECENT_HIGHLIGHTS)}</span>
 										</div>
 										<ul className='list-inside list-disc space-y-0.5'>

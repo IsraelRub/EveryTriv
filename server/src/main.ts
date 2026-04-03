@@ -1,8 +1,7 @@
-// eslint-disable-next-line simple-import-sort/imports
 // prettier-ignore
 import 'tsconfig-paths/register';
 
-import './load-env';
+import './loadEnv';
 
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
@@ -26,7 +25,7 @@ import dataSource from "./config/dataSource";
 import { RedisIoAdapter } from "@internal/modules";
 
 // Environment configuration
-const environment = process.env.NODE_ENV || "production";
+const environment = process.env.NODE_ENV ?? "production";
 
 async function bootstrap() {
   const startTime = Date.now();

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { cva } from 'class-variance-authority';
 import { Coins } from 'lucide-react';
 
-import { Colors, GameKey, GameSessionHudCounterLayout, QUESTION_COUNTER_NUM_CLASS } from '@/constants';
+import { GameKey, GameSessionHudCounterLayout, QUESTION_COUNTER_NUM_CLASS, SEMANTIC_ICON_TEXT } from '@/constants';
 import type { GameSessionHudProps } from '@/types';
 import { cn } from '@/utils';
 import { GameTimer } from './GameTimer';
@@ -58,7 +58,7 @@ export const GameSessionHud = memo(function GameSessionHud({
 					{showCreditBadge ? (
 						<div className='flex flex-col items-center gap-0.5 text-sm text-muted-foreground'>
 							<div className='flex items-center gap-1.5'>
-								<Coins className={cn('h-3.5 w-3.5', Colors.YELLOW_500.text)} />
+								<Coins className={cn('h-3.5 w-3.5', SEMANTIC_ICON_TEXT.warning)} />
 								<span className='text-xs tabular-nums'>{totalCredits}</span>
 							</div>
 						</div>

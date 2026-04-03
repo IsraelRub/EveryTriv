@@ -37,9 +37,16 @@ import {
 } from '@/components';
 import { useSetAvatar, useUploadAvatar } from '@/hooks';
 
-export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAvatarUrl, onAvatarSaved }: AvatarSelectorProps) {
+export function AvatarSelector({
+	open,
+	onOpenChange,
+	currentAvatarId,
+	currentAvatarUrl,
+	onAvatarSaved,
+}: AvatarSelectorProps) {
 	const { t } = useTranslation(['auth', 'loading', 'common']);
 	const [selectedAvatarId, setSelectedAvatarId] = useState<number>(currentAvatarId ?? AVATAR_ID_CLEAR);
+	const [localAvatarUrl, setLocalAvatarUrl] = useState<string | undefined>(currentAvatarUrl ?? undefined);
 	const setAvatar = useSetAvatar();
 	const uploadAvatar = useUploadAvatar();
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,8 +54,11 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAva
 	useEffect(() => {
 		if (open) {
 			setSelectedAvatarId(currentAvatarId ?? AVATAR_ID_CLEAR);
+			setLocalAvatarUrl(currentAvatarUrl ?? undefined);
 		}
-	}, [open, currentAvatarId]);
+	}, [open, currentAvatarId, currentAvatarUrl]);
+
+	const displayCustomPhotoUrl = localAvatarUrl ?? currentAvatarUrl;
 
 	const handleSave = async () => {
 		if (!isAvatarIdOrClear(selectedAvatarId)) {
@@ -84,18 +94,28 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAva
 				});
 				return;
 			}
+			const objectUrl = URL.createObjectURL(file);
+			setLocalAvatarUrl(objectUrl);
 			try {
-				await uploadAvatar.mutateAsync(file);
+				const result = await uploadAvatar.mutateAsync(file);
 				logger.userSuccess('Avatar uploaded successfully');
+				const nextUrl = result.profile.avatarUrl;
+				if (nextUrl != null && nextUrl !== '') {
+					setLocalAvatarUrl(nextUrl);
+					URL.revokeObjectURL(objectUrl);
+				}
 				onAvatarSaved?.();
 				onOpenChange(false);
 			} catch (error) {
+				setLocalAvatarUrl(currentAvatarUrl ?? undefined);
+				URL.revokeObjectURL(objectUrl);
 				const errorMessage = getErrorMessage(error) || t(AuthKey.AVATAR_UPLOAD_FAILED);
 				logger.userError(errorMessage, { errorInfo: { message: errorMessage } });
+			} finally {
+				e.target.value = '';
 			}
-			e.target.value = '';
 		},
-		[uploadAvatar, onOpenChange, onAvatarSaved, t]
+		[uploadAvatar, onOpenChange, onAvatarSaved, currentAvatarUrl, t]
 	);
 
 	const handleRemoveCustom = useCallback(async () => {
@@ -129,11 +149,11 @@ export function AvatarSelector({ open, onOpenChange, currentAvatarId, currentAva
 				<div className='space-y-4 py-4 view-scroll-inline'>
 					<Card className='bg-muted/30 p-4 space-y-3'>
 						<h3 className='text-sm font-semibold text-foreground'>{t(AuthKey.YOUR_PHOTO)}</h3>
-						{currentAvatarUrl ? (
+						{displayCustomPhotoUrl ? (
 							<div className='flex flex-wrap items-center gap-3'>
 								<Avatar size={AvatarSize.XL} variant={AvatarVariant.RING}>
 									<AvatarImage
-										src={toAbsoluteAvatarUrl(currentAvatarUrl, ApiConfig.getBaseUrl()) ?? currentAvatarUrl}
+										src={toAbsoluteAvatarUrl(displayCustomPhotoUrl, ApiConfig.baseUrl) ?? displayCustomPhotoUrl}
 										alt={t(AuthKey.YOUR_PHOTO)}
 									/>
 								</Avatar>

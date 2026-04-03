@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
 	AnalyticsAction,
@@ -8,6 +8,7 @@ import {
 	AnalyticsPageName,
 	DEFAULT_GAME_CONFIG,
 	GameMode,
+	RETRY_LIMITS,
 	TIME_PERIODS_MS,
 } from '@shared/constants';
 import type { CompleteUserAnalytics } from '@shared/types';
@@ -15,7 +16,7 @@ import { getErrorMessage } from '@shared/utils';
 
 import { AudioKey, QUERY_KEYS, ROUTES } from '@/constants';
 import type { FinalizeGameOptions } from '@/types';
-import { audioService, clientLogger as logger, queryInvalidationService } from '@/services';
+import { audioService, gameHistoryService, clientLogger as logger, queryInvalidationService } from '@/services';
 import {
 	selectCorrectAnswers,
 	selectCurrentDifficulty,
@@ -28,12 +29,22 @@ import {
 } from '@/redux/selectors';
 import { useTrackAnalyticsEvent } from '../useAnalyticsDashboard';
 import { useAppSelector } from '../useRedux';
-import { useFinalizeGameSession } from './useTrivia';
 
 export const useGameFinalization = () => {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const finalizeGameSessionMutation = useFinalizeGameSession();
+	const finalizeGameSessionMutation = useMutation({
+		mutationFn: (sessionGameId: string) => gameHistoryService.finalizeGameSession(sessionGameId),
+		onSuccess: () => {
+			void queryInvalidationService.invalidateGameQueries(queryClient);
+		},
+		onError: (error: unknown) => {
+			const message = getErrorMessage(error);
+			logger.gameError('Failed to finalize game session', {
+				message,
+			});
+		},
+	});
 	const trackAnalyticsEvent = useTrackAnalyticsEvent();
 
 	// Get game state from Redux
@@ -77,8 +88,6 @@ export const useGameFinalization = () => {
 				});
 			}
 
-			const MAX_RETRIES = 3;
-
 			const attemptFinalization = (attempt: number = 0): void => {
 				// Cancel any outgoing refetches to avoid overwriting optimistic update
 				queryClient.cancelQueries({ queryKey: QUERY_KEYS.analytics.user('current') });
@@ -105,7 +114,7 @@ export const useGameFinalization = () => {
 				}
 
 				finalizeGameSessionMutation.mutate(sessionGameId, {
-					onSuccess: savedHistory => {
+					onSuccess: async savedHistory => {
 						const logMessage = options.logContext
 							? `Game session finalized - ${options.logContext}`
 							: 'Game session finalized';
@@ -138,11 +147,13 @@ export const useGameFinalization = () => {
 						// This ensures fresh data on next view, especially important for StatisticsView
 						const userId = savedHistory?.userId;
 						if (userId) {
-							queryInvalidationService.invalidateAfterGameComplete(queryClient, userId);
+							await queryInvalidationService.invalidateAfterGameComplete(queryClient, userId);
 						} else {
-							queryInvalidationService.invalidateGameQueries(queryClient);
-							queryInvalidationService.invalidateAnalyticsQueries(queryClient);
-							queryInvalidationService.invalidateLeaderboardQueries(queryClient);
+							await Promise.all([
+								queryInvalidationService.invalidateGameQueries(queryClient),
+								queryInvalidationService.invalidateAnalyticsQueries(queryClient),
+								queryInvalidationService.invalidateLeaderboardQueries(queryClient),
+							]);
 						}
 
 						// Navigate to summary if requested (URL includes gameId for consistency with multiplayer)
@@ -166,7 +177,7 @@ export const useGameFinalization = () => {
 							message.includes('Network') ||
 							error instanceof TypeError; // Network errors
 
-						if (isRetryable && attempt < MAX_RETRIES) {
+						if (isRetryable && attempt < RETRY_LIMITS.gameSessionFinalization) {
 							// Retry after exponential backoff
 							const delay = 2 ** attempt * TIME_PERIODS_MS.SECOND; // 1s, 2s, 4s
 							setTimeout(() => {

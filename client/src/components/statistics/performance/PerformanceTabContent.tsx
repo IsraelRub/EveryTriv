@@ -19,10 +19,10 @@ import { VALIDATORS } from '@shared/validation';
 
 import {
 	CHART_HEIGHTS,
-	Colors,
 	CommonKey,
 	PlayTimeUnit,
 	QUERY_KEYS,
+	SEMANTIC_ICON_TEXT,
 	StatisticsPerformanceKey,
 	StatusDirection,
 	TrendTarget,
@@ -125,28 +125,28 @@ export function PerformanceTabContent() {
 						icon={GamepadIcon}
 						label={t(StatisticsPerformanceKey.TOTAL_GAMES)}
 						value={gameStats?.totalGames ?? 0}
-						color={Colors.BLUE_500.text}
+						color={SEMANTIC_ICON_TEXT.primary}
 						isLoading={analyticsLoading}
 					/>
 					<StatCard
 						icon={Medal}
 						label={t(StatisticsPerformanceKey.BEST_SCORE)}
 						value={gameStats?.bestScore ?? 0}
-						color={Colors.YELLOW_500.text}
+						color={SEMANTIC_ICON_TEXT.warning}
 						isLoading={analyticsLoading}
 					/>
 					<StatCard
 						icon={Timer}
 						label={t(StatisticsPerformanceKey.TOTAL_PLAY_TIME)}
 						value={formatPlayTime(gameStats?.totalPlayTime ?? 0, PlayTimeUnit.SECONDS)}
-						color={Colors.PURPLE_500.text}
+						color={SEMANTIC_ICON_TEXT.secondary}
 						isLoading={analyticsLoading}
 					/>
 					<StatCard
 						icon={CalendarDays}
 						label={t(StatisticsPerformanceKey.CURRENT_STREAK)}
 						value={formatNumericValue(performanceStats?.streakDays, 0, ` ${t(CommonKey.DAYS)}`)}
-						color={Colors.GREEN_500.text}
+						color={SEMANTIC_ICON_TEXT.success}
 						isLoading={analyticsLoading}
 					/>
 				</div>
@@ -164,13 +164,13 @@ export function PerformanceTabContent() {
 								{t(StatisticsPerformanceKey.SUCCESS_RATE)}
 							</h4>
 							<div className='space-y-3'>
-								<div className='flex justify-between items-center p-3 rounded-lg bg-primary/5'>
+								<div className='comparison-metric-row-user'>
 									<span>{t(StatisticsPerformanceKey.YOUR_AVERAGE)}</span>
 									<span className='font-bold'>
 										{formatNumericValue(processedComparison.userMetrics?.successRate, 1, '%')}
 									</span>
 								</div>
-								<div className='flex justify-between items-center p-3 rounded-lg bg-muted/50'>
+								<div className='comparison-metric-row-baseline'>
 									<span>{t(StatisticsPerformanceKey.GLOBAL_AVERAGE)}</span>
 									<span className='font-bold'>
 										{formatNumericValue(processedComparison.targetMetrics?.successRate, 1, '%')}
@@ -214,18 +214,18 @@ export function PerformanceTabContent() {
 								{t(StatisticsPerformanceKey.AVERAGE_SCORE)}
 							</h4>
 							<div className='space-y-3'>
-								<Card className='flex justify-between items-center p-3 bg-primary/5'>
+								<div className='comparison-metric-row-user'>
 									<span>{t(StatisticsPerformanceKey.YOUR_AVERAGE)}</span>
 									<span className='font-bold'>
 										{formatNumericValue(processedComparison.userMetrics?.averageScore, 0)}
 									</span>
-								</Card>
-								<Card className='flex justify-between items-center p-3 bg-muted/50'>
+								</div>
+								<div className='comparison-metric-row-baseline'>
 									<span>{t(StatisticsPerformanceKey.GLOBAL_AVERAGE)}</span>
 									<span className='font-bold'>
 										{formatNumericValue(processedComparison.targetMetrics?.averageScore, 0)}
 									</span>
-								</Card>
+								</div>
 								{(() => {
 									const scoreDirection =
 										(processedComparison.differences?.averageScore ?? 0) > 0
@@ -269,7 +269,7 @@ export function PerformanceTabContent() {
 										icon={Hash}
 										label={t(StatisticsPerformanceKey.YOUR_RANK)}
 										value={`#${processedComparison.userMetrics.rank}`}
-										color={Colors.BLUE_500.text}
+										color={SEMANTIC_ICON_TEXT.primary}
 										isLoading={analyticsLoading}
 									/>
 									<StatCard
@@ -279,7 +279,7 @@ export function PerformanceTabContent() {
 										subtext={t(StatisticsPerformanceKey.BETTER_THAN_PLAYERS, {
 											percent: formatNumericValue(processedComparison.userMetrics?.percentile, 1, '%'),
 										})}
-										color={Colors.PURPLE_500.text}
+										color={SEMANTIC_ICON_TEXT.secondary}
 										isLoading={analyticsLoading}
 									/>
 								</div>

@@ -5,8 +5,9 @@ import { RotateCcw } from 'lucide-react';
 
 import { ButtonSize, CommonKey, VariantBase } from '@/constants';
 import type { SummaryActionButtonsProps } from '@/types';
+import { HomeButton } from '../navigation/HomeButton';
 import { SocialShare } from '../social/SocialShare';
-import { Button, HomeButton } from '../ui/button';
+import { Button } from '../ui/button';
 
 export const SummaryActionButtons = memo(function SummaryActionButtons({
 	playAgainTo,

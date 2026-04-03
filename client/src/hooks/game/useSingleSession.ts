@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
 	AnalyticsAction,
@@ -12,10 +13,11 @@ import {
 	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
 } from '@shared/constants';
-import type { TriviaQuestion } from '@shared/types';
+import type { StartGameSessionParams, SubmitAnswerToSessionParams, TriviaQuestion } from '@shared/types';
 import {
 	calculateElapsedSeconds,
 	createAnswerHistory,
+	extractValidationErrors,
 	getErrorMessage,
 	hasProperty,
 	isNonEmptyString,
@@ -23,9 +25,9 @@ import {
 	shouldChargeAfterGame,
 } from '@shared/utils';
 
-import { AudioKey, ExitReason, LoadingMessages, ROUTES } from '@/constants';
-import type { UseSingleSessionReturn } from '@/types';
-import { audioService, clientLogger as logger } from '@/services';
+import { AudioKey, ExitReason, LoadingMessages, QUERY_KEYS, ROUTES } from '@/constants';
+import type { TriviaRequestWithSignal, UseSingleSessionReturn } from '@/types';
+import { audioService, gameHistoryService, gameService, clientLogger as logger } from '@/services';
 import {
 	getSingleSessionCompletionState,
 	getSingleSessionCreditDeductionValue,
@@ -41,7 +43,6 @@ import {
 	useDeductCredits,
 	useGameFinalization,
 	useTrackAnalyticsEvent,
-	useTriviaQuestionMutation,
 	useUserRole,
 } from '@/hooks';
 import { useNavigationClose } from '@/hooks/ui/useNavigationClose';
@@ -88,7 +89,6 @@ import {
 	updateScore,
 	updateTimeSpent,
 } from '@/redux/slices';
-import { useStartGameSession, useSubmitAnswerToSession } from './useTrivia';
 
 export function useSingleSession(): UseSingleSessionReturn {
 	const { gameId: urlGameId } = useParams<{ gameId: string }>();
@@ -165,6 +165,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const loadInProgressRef = useRef(false);
 	const serverSessionGameIdRef = useRef<string | null>(null);
 	const loadGenerationRef = useRef(0);
+	const creditsDeductionFailedRef = useRef(false);
 
 	const prevSettingsRef = useRef<{ topic: string; difficulty: string; mode: GameMode }>({
 		topic: '',
@@ -181,10 +182,82 @@ export function useSingleSession(): UseSingleSessionReturn {
 	} | null>(null);
 
 	const { data: creditBalance } = useCreditBalance();
+	const queryClient = useQueryClient();
 
-	const triviaMutation = useTriviaQuestionMutation();
-	const startGameSessionMutation = useStartGameSession();
-	const submitAnswerToSessionMutation = useSubmitAnswerToSession();
+	const triviaMutation = useMutation({
+		mutationFn: (request: TriviaRequestWithSignal) => gameService.getTrivia(request),
+		onSuccess: (data, request) => {
+			const cacheRequest: TriviaRequestWithSignal = { ...request };
+			Reflect.deleteProperty(cacheRequest, 'signal');
+			queryClient.setQueryData(QUERY_KEYS.trivia.question(cacheRequest), data);
+		},
+		onError: (error: unknown) => {
+			const message = getErrorMessage(error);
+
+			const isAbortError =
+				message === 'Request was cancelled' ||
+				message.includes('aborted') ||
+				message === 'signal is aborted without reason' ||
+				(isRecord(error) &&
+					'statusCode' in error &&
+					error.statusCode === 0 &&
+					hasProperty(error, 'details') &&
+					isRecord(error.details) &&
+					error.details.error === 'Request was cancelled');
+
+			if (isAbortError) {
+				return;
+			}
+
+			const validationErrors = extractValidationErrors(error);
+
+			let statusCode: number | undefined;
+			if (
+				isRecord(error) &&
+				'statusCode' in error &&
+				typeof error.statusCode === 'number' &&
+				Number.isFinite(error.statusCode)
+			) {
+				statusCode = error.statusCode;
+			}
+
+			logger.apiError('Trivia request failed', {
+				message,
+				httpStatus: { code: statusCode },
+				errorInfo: {
+					messages: validationErrors.length > 0 ? validationErrors : undefined,
+				},
+			});
+		},
+	});
+
+	const startGameSessionMutation = useMutation({
+		mutationFn: (params: StartGameSessionParams) =>
+			gameHistoryService.startGameSession(
+				params.gameId,
+				params.topic,
+				params.difficulty,
+				params.gameMode,
+				params.outputLanguage
+			),
+		onError: (error: unknown) => {
+			const message = getErrorMessage(error);
+			logger.gameError('Failed to start game session', {
+				message,
+			});
+		},
+	});
+
+	const submitAnswerToSessionMutation = useMutation({
+		mutationFn: (params: SubmitAnswerToSessionParams) =>
+			gameHistoryService.submitAnswerToSession(params.gameId, params.questionId, params.answer, params.timeSpent),
+		onError: (error: unknown) => {
+			const message = getErrorMessage(error);
+			logger.gameError('Failed to submit answer to session', {
+				message,
+			});
+		},
+	});
 	const { finalizeGameSession, isFinalizing } = useGameFinalization();
 	const [showSummaryLoading, setShowSummaryLoading] = useState(false);
 	const [exitReason, setExitReason] = useState<ExitReason | null>(null);
@@ -207,7 +280,26 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const isChargeAfterGame = shouldChargeAfterGame(currentGameMode);
 
 	useEffect(() => {
-		if (isAdmin || isChargeAfterGame || creditsDeducted || questions.length === 0 || deductCredits.isPending) {
+		if (questions.length === 0) {
+			creditsDeductionFailedRef.current = false;
+		}
+	}, [questions.length]);
+
+	useEffect(() => {
+		if (!gameId) {
+			creditsDeductionFailedRef.current = false;
+		}
+	}, [gameId]);
+
+	useEffect(() => {
+		if (
+			isAdmin ||
+			isChargeAfterGame ||
+			creditsDeducted ||
+			questions.length === 0 ||
+			deductCredits.isPending ||
+			creditsDeductionFailedRef.current
+		) {
 			if (isChargeAfterGame && !creditsDeducted && questions.length > 0) {
 				dispatch(setCreditsDeducted(true));
 			}
@@ -226,7 +318,6 @@ export function useSingleSession(): UseSingleSessionReturn {
 			gameMode,
 		});
 
-		dispatch(setCreditsDeducted(true));
 		deductCredits.mutate(
 			{
 				questionsPerRequest: valueForDeduction,
@@ -234,9 +325,12 @@ export function useSingleSession(): UseSingleSessionReturn {
 			},
 			{
 				onSuccess: () => {
+					dispatch(setCreditsDeducted(true));
 					logger.gameInfo('Credits deducted successfully');
 				},
 				onError: error => {
+					creditsDeductionFailedRef.current = true;
+					dispatch(setCreditsDeducted(false));
 					const message = getErrorMessage(error);
 					logger.gameError('Failed to deduct credits', { errorInfo: { message } });
 					audioService.play(AudioKey.ERROR);
@@ -258,6 +352,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		deductCredits.isPending,
 		deductCredits,
 		dispatch,
+		gameId,
 	]);
 
 	useEffect(() => {
@@ -942,7 +1037,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 						})
 					);
 
-					audioService.playAnswerFeedback(isCorrect);
+					audioService.play(isCorrect ? AudioKey.CORRECT_ANSWER : AudioKey.WRONG_ANSWER);
 
 					logger.gameInfo(isCorrect ? 'Correct answer' : 'Incorrect answer', {
 						questionId: submittingQuestionId,

@@ -6,7 +6,7 @@ export interface CreditBalance {
 	totalCredits: number;
 	credits: number;
 	purchasedCredits: number;
-	/** ISO time when granted `credits` refill to cap is next available (rolling 24h); null when at cap or admin. */
+
 	nextGrantedCreditsRefillAt: string | null;
 	userId: string;
 }

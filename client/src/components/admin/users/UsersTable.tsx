@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { AtSign, BookUser, Calendar, Clock, ShieldUser } from 'lucide-react';
 
 import { EMPTY_VALUE, TIME_PERIODS_MS } from '@shared/constants';
@@ -11,6 +12,7 @@ import {
 	CommonKey,
 	DataTableColumnType,
 	DEFAULT_ITEMS_PER_PAGE,
+	QUERY_KEYS,
 	ROLE_BADGE_CLASSES,
 	SortDirection,
 	USER_SORT_FIELDS_SET,
@@ -18,17 +20,10 @@ import {
 	VariantBase,
 } from '@/constants';
 import type { DataTableColumn, UserTableRow } from '@/types';
+import { adminService, apiService } from '@/services';
 import { calculateTotalPages } from '@/utils';
 import { Button, Card, CardContent, CardDescription, CardTitle, DataTableCard, Input, Label } from '@/components';
-import {
-	useAllUsers,
-	useUserInsightsById,
-	useUserPerformanceById,
-	useUserRecommendationsById,
-	useUserSearch,
-	useUserStatisticsById,
-	useUserSummaryById,
-} from '@/hooks';
+import { useAdminUserPanelQueries } from './useAdminUserPanelQueries';
 import { UserAnalysisExpandedPanel } from './UserAnalysisExpandedPanel';
 
 const USERS_TABLE_HEADER_KEYS: Record<string, string> = {
@@ -88,31 +83,36 @@ export function UsersTable() {
 	const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
 	const isSearchMode = !!searchSubmitted.trim();
+	const trimmedSearch = searchSubmitted.trim();
 
-	const { data, isLoading, error } = useAllUsers(limit, offset);
-	const { data: searchData, isLoading: searchLoading } = useUserSearch(searchSubmitted, limit);
+	const { data, isLoading, error } = useQuery({
+		queryKey: QUERY_KEYS.admin.users(limit, offset),
+		queryFn: () => adminService.getAllUsers(limit, offset),
+		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
+		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
+	});
+
+	const { data: searchData, isLoading: searchLoading } = useQuery({
+		queryKey: QUERY_KEYS.admin.userSearch(trimmedSearch, limit),
+		queryFn: () => apiService.searchUsers(trimmedSearch, limit),
+		enabled: !!trimmedSearch,
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
+	});
 
 	const {
-		data: userSummary,
-		isLoading: summaryLoading,
-		isError: summaryError,
-	} = useUserSummaryById(selectedUserId ?? '', false, !!selectedUserId);
-	const { data: userStatistics, isLoading: statisticsLoading } = useUserStatisticsById(
-		selectedUserId ?? '',
-		!!selectedUserId
-	);
-	const { data: userPerformance, isLoading: performanceLoading } = useUserPerformanceById(
-		selectedUserId ?? '',
-		!!selectedUserId
-	);
-	const { data: userInsights, isLoading: insightsLoading } = useUserInsightsById(
-		selectedUserId ?? '',
-		!!selectedUserId
-	);
-	const { data: userRecommendations, isLoading: recommendationsLoading } = useUserRecommendationsById(
-		selectedUserId ?? '',
-		!!selectedUserId
-	);
+		userSummary,
+		summaryLoading,
+		summaryError,
+		userStatistics,
+		statisticsLoading,
+		userPerformance,
+		performanceLoading,
+		userInsights,
+		insightsLoading,
+		userRecommendations,
+		recommendationsLoading,
+	} = useAdminUserPanelQueries(selectedUserId);
 
 	useEffect(() => {
 		const trimmedQuery = searchQuery.trim();

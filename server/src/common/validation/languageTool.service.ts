@@ -9,6 +9,7 @@ import {
 	LANGUAGE_TOOL_CONSTANTS,
 	LANGUAGE_VALIDATION_THRESHOLDS,
 	Locale,
+	RETRY_LIMITS,
 	TIME_PERIODS_MS,
 } from '@shared/constants';
 import type { LanguageValidationResult } from '@shared/types';
@@ -41,7 +42,7 @@ export class LanguageToolService {
 	constructor() {
 		this.baseUrl = LANGUAGE_TOOL_CONSTANTS.BASE_URL;
 		this.timeout = LANGUAGE_TOOL_CONSTANTS.TIMEOUT;
-		this.maxRetries = LANGUAGE_TOOL_CONSTANTS.MAX_RETRIES;
+		this.maxRetries = RETRY_LIMITS.languageToolHttp;
 	}
 
 	private getAvailabilityCacheTtl(isAvailable: boolean): number {
@@ -89,12 +90,12 @@ export class LanguageToolService {
 	): Promise<LanguageValidationResult> {
 		const trimmed = text.trim();
 		if (trimmed.length === 0) {
-			return Promise.resolve({
+			return {
 				isValid: true,
 				errors: [],
 				suggestions: [],
 				confidence: LANGUAGE_TOOL_CONSTANTS.CONFIDENCE.HIGH,
-			});
+			};
 		}
 
 		const base = {

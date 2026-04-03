@@ -3,7 +3,7 @@ import { BaseLoggerService } from '@shared/services';
 import type { LogMessageFn, LogMeta } from '@shared/types';
 import { getErrorMessage, sanitizeLogMessage } from '@shared/utils';
 
-import { AudioKey, LOGGER_CSS_COLORS, ToastType, TOAST_ENABLED_METHODS } from '@/constants';
+import { AudioKey, LOGGER_CSS_COLORS, TOAST_ENABLED_METHODS, ToastType } from '@/constants';
 import type {
 	LogComponentErrorFn,
 	LogPaymentErrorFn,

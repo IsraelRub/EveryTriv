@@ -7,7 +7,7 @@ import { getErrorMessage } from '@shared/utils';
 import { serverLogger as logger } from '@internal/services';
 import type { UserData } from '@internal/types';
 
-import { JwtTokenService } from './jwt-token.service';
+import { JwtTokenService } from './jwtToken.service';
 import { PasswordService } from './password.service';
 
 @Injectable()

@@ -45,4 +45,3 @@ export interface SingleSessionTimerConfig {
 	label: string;
 	showProgressBar: boolean;
 }
-

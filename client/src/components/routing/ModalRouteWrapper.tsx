@@ -35,10 +35,7 @@ export function ModalRouteWrapper({ children, modalSize = ComponentSize.LG }: Mo
 
 	if (isModal) {
 		return (
-			<div
-				className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50'
-				onClick={closeModal}
-			>
+			<div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50' onClick={closeModal}>
 				<div className={modalContentVariants({ size: modalSize })} onClick={e => e.stopPropagation()}>
 					{children}
 				</div>

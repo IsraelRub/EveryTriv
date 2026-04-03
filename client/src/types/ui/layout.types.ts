@@ -1,18 +1,15 @@
 import type { FooterKey, NavKey, TabsListVariant } from '@/constants';
 
-
-
 export interface TabsBarProps {
 	items: ReadonlyArray<TabsBarItem>;
 	variant: TabsBarVariant;
-	/** Only for variant SECONDARY: grid with this many columns. */
+
 	columns?: 2 | 3;
 }
 
-
 export interface SecondaryTabsBarProps {
 	items: ReadonlyArray<SecondaryTabsBarItem>;
-	/** When set, the bar uses a grid with this many columns and centered layout. */
+
 	columns?: 2 | 3;
 }
 
@@ -31,4 +28,3 @@ export interface SecondaryTabsBarItem {
 	value: string;
 	label: string;
 }
-

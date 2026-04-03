@@ -4,20 +4,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BarChart3, Play } from 'lucide-react';
 
-import {
-	ANIMATION_DELAYS,
-	AuthKey,
-	ButtonSize,
-	ErrorsKey,
-	HomeKey,
-	NavKey,
-	ROUTES,
-	VariantBase,
-} from '@/constants';
+import { ANIMATION_DELAYS, AuthKey, ButtonSize, ErrorsKey, HomeKey, NavKey, ROUTES, VariantBase } from '@/constants';
 import { cn } from '@/utils';
 import { Button, HomeHeader, HomeStats, LeaderboardPreview, PopularTopicsSection, RecentGames } from '@/components';
-import { useCurrentUserData, useIsAuthenticated, useUserProfile } from '@/hooks';
-import { toast } from '@/hooks/ui/useToast';
+import { toast, useCurrentUserData, useIsAuthenticated, useUserProfile } from '@/hooks';
 
 export function HomeView() {
 	const { t } = useTranslation();

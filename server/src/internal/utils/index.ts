@@ -1,5 +1,5 @@
-export * from './avatar.util';
-export * from './entityGuards';
+export * from './avatar.utils';
+export * from './entityGuards.utils';
 export * from './error.utils';
 export * from './gameStats.utils';
 export * from './guards.utils';

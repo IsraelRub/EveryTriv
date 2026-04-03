@@ -28,7 +28,7 @@ export class PerformanceInterceptor implements NestInterceptor {
 		request.traceId = traceId;
 
 		return next.handle().pipe(
-			tap(_data => {
+			tap(() => {
 				const duration = calculateDuration(startTime);
 
 				this.systemAnalyticsService.trackPerformanceEvent(duration, true);

@@ -2,13 +2,11 @@ import type { DifficultyStats, UserTrendPoint } from '@shared/types';
 
 import type { TopicData } from './stats.types';
 
-
 export interface ChartDataPoint {
 	name: string;
 	value: number;
 	count?: number;
 }
-
 
 export interface DifficultyTooltipPoint {
 	name: string;
@@ -65,4 +63,3 @@ export interface DistributionTooltipPoint {
 	count: number;
 	comparisonValue?: number;
 }
-

@@ -1,7 +1,11 @@
-import { DIFFICULTY_CONFIG, SurpriseScope } from '@shared/constants';
+import { SurpriseScope } from '@shared/constants';
 import { extractCustomDifficultyText } from '@shared/validation';
 
-import { SURPRISE_PICK_SYSTEM_PROMPT, TRIVIA_GENERATION_SYSTEM_PROMPT } from '@internal/constants';
+import {
+	DIFFICULTY_PROMPT_GUIDANCE,
+	SURPRISE_PICK_SYSTEM_PROMPT,
+	TRIVIA_GENERATION_SYSTEM_PROMPT,
+} from '@internal/constants';
 import type { PromptParams } from '@internal/types';
 
 export { SURPRISE_PICK_SYSTEM_PROMPT, TRIVIA_GENERATION_SYSTEM_PROMPT };
@@ -52,7 +56,7 @@ export function buildTriviaPrompt(params: PromptParams): string {
 
 	const difficultyDescription = isCustomDifficulty ? extractCustomDifficultyText(difficulty) : difficulty;
 	const key = difficultyDescription.toLowerCase().trim();
-	const difficultyGuidance = DIFFICULTY_CONFIG[key]?.promptGuidance;
+	const difficultyGuidance = DIFFICULTY_PROMPT_GUIDANCE[key];
 	const excludeSection =
 		excludeQuestions && excludeQuestions.length > 0
 			? `\n- Exclude these questions (do not generate similar or identical questions):\n${excludeQuestions

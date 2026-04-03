@@ -1,18 +1,18 @@
 // Shared types for logging system across client and server.
 import type { GameData } from '..';
-import {
+import type {
+	GameMode,
 	LogContext,
-	type GameMode,
-	type LogLevel,
-	type PaymentMethod,
-	type PlanType,
-	type UserRole,
-	type UserStatus,
-	type ValidateTextContext,
+	LogLevel,
+	PaymentMethod,
+	PlanType,
+	UserRole,
+	UserStatus,
+	ValidateTextContext,
 } from '../../constants';
 import type { BasicValue } from '../core';
 import type { GameDifficulty } from '../domain/game/trivia.types';
-import { User, UserPreferences } from '../domain/user/user.types';
+import type { User, UserPreferences } from '../domain/user/user.types';
 
 export interface LogEntry {
 	timestamp: string;
@@ -32,8 +32,8 @@ export interface HttpLogData {
 
 export interface BaseLogger {
 	// Session and trace management
-	getSessionId(): string;
-	getTraceId(): string;
+	readonly sessionId: string;
+	readonly traceId: string;
 	newTrace(): string;
 }
 
@@ -438,7 +438,6 @@ export interface LogMeta {
 	page?: string;
 	packageId?: string;
 	params?: Record<string, string>;
-	password?: string;
 	path?: string;
 	pattern?: string;
 	paymentId?: string;
@@ -481,6 +480,7 @@ export interface LogMeta {
 	recommendationsCount?: number;
 	recentGames?: Array<{ topic?: string; difficulty?: string; score?: number; correctAnswers?: number }>;
 	redirectTo?: string;
+	redisPasswordConfigured?: boolean;
 	referrer?: string;
 	remaining?: number;
 	remainingCredits?: number;
@@ -616,5 +616,3 @@ export interface LoggerConfigUpdate {
 export type LogMessageFn = (message: string, meta?: LogMeta) => void;
 
 export type LogErrorFn = (messageOrError: string | Error, meta?: LogMeta) => void;
-
-export { LogContext };

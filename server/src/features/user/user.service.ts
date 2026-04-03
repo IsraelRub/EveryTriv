@@ -9,7 +9,6 @@ import {
 	ErrorCode,
 	LogContext,
 	TIME_DURATIONS_SECONDS,
-	UserRole,
 	UserStatus,
 	VALIDATION_COUNT,
 } from '@shared/constants';
@@ -30,15 +29,12 @@ import {
 } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { AppConfig } from '@config';
 import { SERVER_CACHE_KEYS, WildcardPattern } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
-import type { UserFieldConfig } from '@internal/types';
 import {
 	addSearchConditions,
-	buildAvatarUrl,
 	createNotFoundError,
 	createValidationError,
 	getAvatarUrlForUser,
@@ -61,9 +57,6 @@ export class UserService {
 				throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
-			const avatar = user.preferences?.avatar;
-			const avatarUrl = getAvatarUrlForUser(user, AppConfig.apiPublicBaseUrl);
-
 			return {
 				profile: {
 					id: user.id,
@@ -71,8 +64,8 @@ export class UserService {
 					role: user.role,
 					firstName: user.firstName,
 					lastName: user.lastName,
-					avatar,
-					avatarUrl,
+					avatar: user.preferences?.avatar,
+					avatarUrl: getAvatarUrlForUser(user),
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt,
 				},
@@ -110,7 +103,7 @@ export class UserService {
 			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
 			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
 
-			const avatarUrl = getAvatarUrlForUser(updatedUser, AppConfig.apiPublicBaseUrl);
+			const avatarUrl = getAvatarUrlForUser(updatedUser);
 
 			return {
 				profile: {
@@ -159,7 +152,7 @@ export class UserService {
 			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
 			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
 
-			const avatarUrl = getAvatarUrlForUser(updatedUser, AppConfig.apiPublicBaseUrl);
+			const avatarUrl = getAvatarUrlForUser(updatedUser);
 
 			return {
 				profile: {
@@ -253,7 +246,7 @@ export class UserService {
 		await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
 		await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
 
-		const avatarUrl = buildAvatarUrl(updatedUser.id, AppConfig.apiPublicBaseUrl);
+		const avatarUrl = getAvatarUrlForUser(updatedUser);
 
 		return {
 			profile: {
@@ -305,6 +298,7 @@ export class UserService {
 							'user.customAvatar',
 							'user.role',
 							'user.createdAt',
+							'user.updatedAt',
 							'user.lastLogin',
 						])
 						.limit(limit);
@@ -319,7 +313,7 @@ export class UserService {
 							firstName: u.firstName ?? null,
 							lastName: u.lastName ?? null,
 							avatar: u.preferences?.avatar ?? null,
-							avatarUrl: getAvatarUrlForUser(u, AppConfig.apiPublicBaseUrl),
+							avatarUrl: getAvatarUrlForUser(u),
 							displayName: getDisplayNameFromUserFields(u),
 							role: u.role,
 							createdAt: u.createdAt ? u.createdAt.toISOString() : undefined,
@@ -404,47 +398,23 @@ export class UserService {
 				throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
-			// Field type mapping for validation
-			const fieldTypeMap: Record<string, UserFieldConfig> = {
-				email: { type: 'string' },
-				firstName: { type: 'string' },
-				lastName: { type: 'string' },
-				avatar: { type: 'number' },
-				isActive: { type: 'boolean' },
-				credits: { type: 'number' },
-				purchasedCredits: { type: 'number' },
-			};
-
-			// Handle special fields
 			switch (field) {
-				case 'role': {
-					const role = Object.values(UserRole).find(r => r === value);
-					if (role !== undefined) {
-						user.role = role;
-					} else {
-						throw createValidationError('role', 'string');
+				case 'firstName': {
+					if (!VALIDATORS.string(value)) {
+						throw createValidationError('firstName', 'string');
 					}
+					user.firstName = sanitizeInput(value, 50) || undefined;
 					break;
 				}
-				case 'status': {
-					const status = Object.values(UserStatus).find(s => s === value);
-					if (status !== undefined) {
-						user.isActive = status === UserStatus.ACTIVE;
-					} else {
-						throw createValidationError('status', 'string');
+				case 'lastName': {
+					if (!VALIDATORS.string(value)) {
+						throw createValidationError('lastName', 'string');
 					}
+					user.lastName = sanitizeInput(value, 50) || undefined;
 					break;
 				}
-				default: {
-					// Use field type mapping for standard fields
-					if (fieldTypeMap[field]) {
-						const fieldConfig = fieldTypeMap[field];
-						const targetField = fieldConfig.fieldName ?? field;
-						this.validateAndSetField(user, targetField, value, fieldConfig);
-					} else {
-						throw createValidationError(field, 'string');
-					}
-				}
+				default:
+					throw createValidationError(field, 'string');
 			}
 			const updatedUser = await this.userRepository.save(user);
 
@@ -595,31 +565,5 @@ export class UserService {
 			});
 			throw error;
 		}
-	}
-
-	private validateAndSetField(user: UserEntity, fieldName: string, value: BasicValue, config: UserFieldConfig): void {
-		const { type, minLength, maxLength } = config;
-		switch (type) {
-			case 'string': {
-				if (
-					!VALIDATORS.string(value) ||
-					(minLength !== undefined && value.length < minLength) ||
-					(maxLength !== undefined && value.length > maxLength)
-				)
-					throw createValidationError(fieldName, type);
-				break;
-			}
-			case 'number': {
-				if (!VALIDATORS.number(value)) throw createValidationError(fieldName, type);
-				break;
-			}
-			case 'boolean': {
-				if (!VALIDATORS.boolean(value)) throw createValidationError(fieldName, type);
-				break;
-			}
-			default:
-				throw createValidationError(fieldName, type);
-		}
-		Object.assign(user, { [fieldName]: value });
 	}
 }

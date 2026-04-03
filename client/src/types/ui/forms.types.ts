@@ -6,7 +6,6 @@ import { ClientValidationType } from '@shared/constants';
 import { FormFieldType } from '@/constants';
 import type { LanguageValidationOptions, ValidationHookOptions } from '../core';
 
-
 export interface FormField {
 	name: string;
 	label: string;
@@ -17,8 +16,6 @@ export interface FormField {
 	options?: SelectOption[];
 	validationOptions?: ValidationHookOptions;
 }
-
-
 
 export type FormFieldContextValue<
 	TFieldValues extends FieldValues = FieldValues,
@@ -38,8 +35,6 @@ export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' |
 	label?: string;
 	labelIcon?: ReactElement | null;
 }
-
-
 
 export interface RegistrationFieldErrors extends BaseFormFieldErrors {
 	email?: string;
@@ -99,4 +94,3 @@ export interface PasswordFieldErrors extends BaseFormFieldErrors {
 	newPassword?: string;
 	confirmPassword?: string;
 }
-

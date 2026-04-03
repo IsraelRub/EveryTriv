@@ -14,10 +14,10 @@ import { CacheModule, StorageModule } from '@internal/modules';
 
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { GameModule } from '../game/game.module';
-import { DataMaintenanceService } from './data-maintenance.service';
+import { DataMaintenanceService } from './dataMaintenance.service';
 import { MaintenanceController } from './maintenance.controller';
 import { GameSessionScheduler, ScoreResetScheduler } from './schedulers';
-import { UserStatsMaintenanceService } from './user-stats-maintenance.service';
+import { UserStatsMaintenanceService } from './userStatsMaintenance.service';
 
 @Module({
 	imports: [

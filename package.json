@@ -9,6 +9,8 @@
     "format:check": "prettier --config tools/.prettierrc --ignore-path tools/.prettierignore --check \"client/src/**/*.{ts,tsx,js,jsx}\" \"server/src/**/*.{ts,tsx,js,jsx}\" \"shared/**/*.{ts,tsx,js,jsx}\"",
     "lint": "eslint . --config tools/eslint.config.js",
     "lint:fix": "eslint . --fix --config tools/eslint.config.js",
+    "lint:css": "stylelint \"client/src/**/*.css\" --config tools/stylelint.config.cjs",
+    "lint:css:fix": "stylelint \"client/src/**/*.css\" --config tools/stylelint.config.cjs --fix",
     "lint:imports": "pnpm run lint:imports:server && pnpm run lint:imports:client && pnpm run lint:imports:shared",
     "lint:imports:server": "npx eslint \"server/src/**/*.{ts,tsx}\" --config tools/eslint.config.js --rule \"import/no-relative-parent-imports: error\" --fix",
     "lint:imports:client": "npx eslint \"client/src/**/*.{ts,tsx}\" --config tools/eslint.config.js --rule \"import/no-relative-parent-imports: error\" --fix",
@@ -32,7 +34,10 @@
     "start:prod": "scripts\\docker\\start-docker-with-info.bat",
     "start:prod:local": "cd server && pnpm run start",
     "start:docker": "docker compose up -d",
+    "start:docker:demo": "docker compose --profile demo-tunnel up -d",
     "start:docker:dev": "docker compose --profile dev up -d",
+    "tunnel:cloudflared": "cloudflared tunnel --no-autoupdate --url http://127.0.0.1:3000",
+    "tunnel:cloudflared:logs": "docker compose logs -f cloudflared",
     "stop:docker": "docker compose down -v",
     "build:docker": "docker compose build",
     "docker:logs": "docker compose logs -f",
@@ -72,6 +77,8 @@
     "knip": "^5.63.0",
     "newman": "^6.2.1",
     "prettier": "^3.6.2",
+    "stylelint": "^17.6.0",
+    "stylelint-config-standard": "^40.0.0",
     "tsc-alias": "^1.8.16"
   }
 }

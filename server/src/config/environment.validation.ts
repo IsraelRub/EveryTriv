@@ -56,9 +56,7 @@ export function validateEnvironmentVariables(): void {
 				? ERROR_MESSAGES.config.MISSING_ENVIRONMENT_VARIABLES(missingVariables.join(', '))
 				: '';
 		const invalidMessage =
-			invalidVariables.length > 0
-				? `Invalid environment placeholders detected: ${invalidVariables.join(', ')}.`
-				: '';
+			invalidVariables.length > 0 ? `Invalid environment placeholders detected: ${invalidVariables.join(', ')}.` : '';
 		const errorMessage = [missingMessage, invalidMessage].filter(Boolean).join(' ');
 		// eslint-disable-next-line no-console
 		console.error('\n❌ Environment Validation Failed:');

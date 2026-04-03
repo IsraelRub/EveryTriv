@@ -2,10 +2,8 @@ import { memo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Copy } from 'lucide-react';
 
-import { Colors, SPRING_CONFIGS } from '@/constants';
-import { AnimatedCopyFeedbackIconVariant } from '@/constants';
+import { AnimatedCopyFeedbackIconVariant, SEMANTIC_ICON_TEXT, SPRING_CONFIGS } from '@/constants';
 import { cn } from '@/utils';
-
 
 export const AnimatedCopyFeedbackIcon = memo(function AnimatedCopyFeedbackIcon({
 	success,
@@ -16,7 +14,7 @@ export const AnimatedCopyFeedbackIcon = memo(function AnimatedCopyFeedbackIcon({
 }) {
 	const onPrimary = variant === AnimatedCopyFeedbackIconVariant.ON_PRIMARY;
 	const copyIconClass = cn('h-4 w-4', onPrimary && 'text-primary-foreground');
-	const checkIconClass = cn('h-4 w-4', onPrimary ? 'text-primary-foreground' : Colors.GREEN_500.text);
+	const checkIconClass = cn('h-4 w-4', onPrimary ? 'text-primary-foreground' : SEMANTIC_ICON_TEXT.success);
 
 	return (
 		<span className='relative inline-flex h-4 w-4 shrink-0 items-center justify-center'>
@@ -48,4 +46,3 @@ export const AnimatedCopyFeedbackIcon = memo(function AnimatedCopyFeedbackIcon({
 		</span>
 	);
 });
-

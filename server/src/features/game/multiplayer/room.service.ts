@@ -7,6 +7,7 @@ import {
 	ErrorCode,
 	PlayerStatus,
 	QuestionState,
+	RETRY_LIMITS,
 	RoomStatus,
 	TIME_DURATIONS_SECONDS,
 	TIME_PERIODS_MS,
@@ -16,7 +17,6 @@ import {
 import type { MultiplayerRoom, Player, RoomConfig } from '@shared/types';
 import { delay, getDisplayNameFromUserFields, getErrorMessage, isMultiplayerRoom } from '@shared/utils';
 
-import { AppConfig } from '@config';
 import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { StorageService } from '@internal/modules';
@@ -37,7 +37,7 @@ export class RoomService {
 	) {}
 
 	private async generateUniqueRoomId(): Promise<string> {
-		for (let attempt = 0; attempt < VALIDATION_COUNT.ROOM_GENERATION_ATTEMPTS.MAX; attempt++) {
+		for (let attempt = 0; attempt < RETRY_LIMITS.roomCodeGeneration; attempt++) {
 			const roomId = this.generateRandomRoomId();
 			const existingRoom = this.getCachedRoom(roomId);
 			if (!existingRoom) {
@@ -86,7 +86,7 @@ export class RoomService {
 			// Create unique short room ID
 			const roomId = await this.generateUniqueRoomId();
 
-			const hostAvatarUrl = getAvatarUrlForUser(host, AppConfig.apiPublicBaseUrl);
+			const hostAvatarUrl = getAvatarUrlForUser(host);
 			const hostPlayer: Player = {
 				userId: hostId,
 				email: host.email,
@@ -181,7 +181,14 @@ export class RoomService {
 			// Check if user is already in room first - before checking room status
 			// This allows rejoin even if game has started (PLAYING status)
 			// This prevents ROOM_FULL and ROOM_NOT_ACCEPTING_PLAYERS errors when user reconnects
-			if (room.players.some(p => p.userId === userId)) {
+			const existingPlayer = room.players.find(p => p.userId === userId);
+			if (existingPlayer) {
+				if (existingPlayer.status === PlayerStatus.DISCONNECTED) {
+					existingPlayer.status = room.status === RoomStatus.PLAYING ? PlayerStatus.PLAYING : PlayerStatus.WAITING;
+					existingPlayer.lastActivity = new Date();
+					room.updatedAt = new Date();
+					await this.persistRoomSnapshot(room);
+				}
 				return room;
 			}
 
@@ -200,7 +207,7 @@ export class RoomService {
 				throw new NotFoundException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
 			}
 
-			const playerAvatarUrl = getAvatarUrlForUser(user, AppConfig.apiPublicBaseUrl);
+			const playerAvatarUrl = getAvatarUrlForUser(user);
 			const player: Player = {
 				userId,
 				email: user.email,
@@ -284,6 +291,39 @@ export class RoomService {
 			return room;
 		} catch (error) {
 			logger.gameError('Failed to leave multiplayer room', {
+				errorInfo: { message: getErrorMessage(error) },
+				roomId,
+				userId,
+			});
+			throw error;
+		}
+	}
+
+	async disconnectPlayer(roomId: string, userId: string): Promise<MultiplayerRoom | null> {
+		try {
+			const room = await this.getRoom(roomId);
+			if (!room) {
+				return null;
+			}
+
+			const player = room.players.find(p => p.userId === userId);
+			if (!player) {
+				return room;
+			}
+
+			player.status = PlayerStatus.DISCONNECTED;
+			player.lastActivity = new Date();
+			room.updatedAt = new Date();
+			await this.persistRoomSnapshot(room);
+
+			logger.gameInfo('Player disconnected from multiplayer room', {
+				roomId,
+				userId,
+			});
+
+			return room;
+		} catch (error) {
+			logger.gameError('Failed to mark player as disconnected', {
 				errorInfo: { message: getErrorMessage(error) },
 				roomId,
 				userId,
@@ -447,33 +487,62 @@ export class RoomService {
 		this.inMemoryRooms.delete(roomId);
 	}
 
-	private static toDate(value: unknown): Date {
-		if (value instanceof Date) return value;
-		if (typeof value === 'string') return new Date(value);
-		return new Date();
+	private static toDate(value: unknown, fieldName: string): Date {
+		if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+		if (typeof value === 'string') {
+			const parsed = new Date(value);
+			if (!Number.isNaN(parsed.getTime())) {
+				return parsed;
+			}
+		}
+		throw new BadRequestException(`Invalid date for ${fieldName}`);
 	}
 
 	private applyRoomUpdates(room: MultiplayerRoom, updates: Partial<MultiplayerRoom>): void {
 		const { players: incomingPlayers, ...rest } = updates;
-		Object.assign(room, rest);
+		const assignDefinedFields = <TTarget extends object>(target: TTarget, patch: Partial<TTarget>): void => {
+			for (const [key, value] of Object.entries(patch)) {
+				if (value !== undefined) {
+					Reflect.set(target, key, value);
+				}
+			}
+		};
+
+		assignDefinedFields(room, {
+			hostId: rest.hostId,
+			config: rest.config,
+			status: rest.status,
+			currentQuestionIndex: rest.currentQuestionIndex,
+			questions: rest.questions,
+			version: rest.version,
+		});
+		if ('currentQuestionStartTime' in rest) room.currentQuestionStartTime = rest.currentQuestionStartTime;
+		if ('questionState' in rest) room.questionState = rest.questionState;
+		if ('startTime' in rest) room.startTime = rest.startTime;
+		if ('endTime' in rest) room.endTime = rest.endTime;
 		if (Array.isArray(incomingPlayers)) {
 			for (const incoming of incomingPlayers) {
 				const existing = room.players.find(p => p.userId === incoming.userId);
 				if (existing) {
-					if (incoming.userId !== undefined) existing.userId = incoming.userId;
-					if (incoming.email !== undefined) existing.email = incoming.email;
-					if (incoming.firstName !== undefined) existing.firstName = incoming.firstName;
-					if (incoming.lastName !== undefined) existing.lastName = incoming.lastName;
-					if (incoming.displayName !== undefined) existing.displayName = incoming.displayName;
-					if (incoming.score !== undefined) existing.score = incoming.score;
-					if (incoming.status !== undefined) existing.status = incoming.status;
-					if (incoming.joinedAt !== undefined) existing.joinedAt = RoomService.toDate(incoming.joinedAt);
-					if (incoming.lastActivity !== undefined) existing.lastActivity = RoomService.toDate(incoming.lastActivity);
-					if (incoming.isHost !== undefined) existing.isHost = incoming.isHost;
+					assignDefinedFields(existing, {
+						userId: incoming.userId,
+						email: incoming.email,
+						firstName: incoming.firstName,
+						lastName: incoming.lastName,
+						displayName: incoming.displayName,
+						score: incoming.score,
+						status: incoming.status,
+						joinedAt: incoming.joinedAt !== undefined ? RoomService.toDate(incoming.joinedAt, 'joinedAt') : undefined,
+						lastActivity:
+							incoming.lastActivity !== undefined
+								? RoomService.toDate(incoming.lastActivity, 'lastActivity')
+								: undefined,
+						isHost: incoming.isHost,
+						answersSubmitted: incoming.answersSubmitted,
+						correctAnswers: incoming.correctAnswers,
+					});
 					if ('currentAnswer' in incoming) existing.currentAnswer = incoming.currentAnswer;
 					if ('timeSpent' in incoming) existing.timeSpent = incoming.timeSpent;
-					if (incoming.answersSubmitted !== undefined) existing.answersSubmitted = incoming.answersSubmitted;
-					if (incoming.correctAnswers !== undefined) existing.correctAnswers = incoming.correctAnswers;
 				} else {
 					const newPlayer: Player = {
 						userId: incoming.userId,
@@ -483,8 +552,11 @@ export class RoomService {
 						displayName: incoming.displayName,
 						score: incoming.score ?? 0,
 						status: incoming.status ?? PlayerStatus.WAITING,
-						joinedAt: RoomService.toDate(incoming.joinedAt),
-						lastActivity: incoming.lastActivity !== undefined ? RoomService.toDate(incoming.lastActivity) : undefined,
+						joinedAt: RoomService.toDate(incoming.joinedAt, 'joinedAt'),
+						lastActivity:
+							incoming.lastActivity !== undefined
+								? RoomService.toDate(incoming.lastActivity, 'lastActivity')
+								: undefined,
 						isHost: incoming.isHost ?? false,
 						currentAnswer: incoming.currentAnswer,
 						timeSpent: incoming.timeSpent,

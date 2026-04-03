@@ -6,4 +6,3 @@ export * from './question.utils';
 export * from './score.utils';
 export * from './user.utils';
 export * from './multiplayerGuards';
-export * from './socialGuards';

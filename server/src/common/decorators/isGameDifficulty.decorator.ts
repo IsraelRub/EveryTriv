@@ -10,7 +10,7 @@ export function IsGameDifficulty(validationOptions?: ValidationOptions) {
 			propertyName: propertyName,
 			options: validationOptions,
 			validator: {
-				validate(value: unknown, _args: ValidationArguments) {
+				validate(value: unknown) {
 					return isGameDifficulty(value);
 				},
 				defaultMessage(args: ValidationArguments) {

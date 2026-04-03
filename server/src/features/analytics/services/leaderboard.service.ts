@@ -74,6 +74,31 @@ export class LeaderboardAnalyticsService {
 		}
 	}
 
+	async getGlobalLeaderboardTotalCount(): Promise<number> {
+		try {
+			const cacheKey = SERVER_CACHE_KEYS.LEADERBOARD.GLOBAL(0, 0) + ':total';
+			return await this.cacheService.getOrSet<number>(
+				cacheKey,
+				async () => {
+					const total = await this.userStatsRepository
+						.createQueryBuilder('userStats')
+						.innerJoin('userStats.user', 'user')
+						.where('user.isActive = :isActive', { isActive: true })
+						.select('COUNT(DISTINCT userStats.userId)', 'value')
+						.getRawOne<NumericQueryResult>();
+					return total?.value ?? 0;
+				},
+				TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES,
+				(data): data is number => typeof data === 'number' && Number.isFinite(data)
+			);
+		} catch (error) {
+			logger.analyticsError('getGlobalLeaderboardTotalCount', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw error;
+		}
+	}
+
 	async getLeaderboardByPeriod(params: LeaderboardPeriodParams): Promise<UserStatsEntity[]> {
 		const { period, limit = VALIDATION_COUNT.LEADERBOARD.MAX } = params;
 		try {

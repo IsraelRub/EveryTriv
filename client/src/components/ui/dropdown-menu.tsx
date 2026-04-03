@@ -50,4 +50,3 @@ export const DropdownMenuSeparator = forwardRef<
 	<DropdownMenuPrimitive.Separator ref={ref} className={cn('-mx-1 my-1 h-px bg-muted', className)} {...props} />
 ));
 DropdownMenuSeparator.displayName = 'DropdownMenuSeparator';
-

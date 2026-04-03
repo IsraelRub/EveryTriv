@@ -76,7 +76,9 @@ export function buildTermsOfServiceSections(t: TFunction<'legal'>): LegalDocumen
 						<p>{t(LegalKey.TERMS_ACCOUNT_SECURITY_BODY)}</p>
 					</div>
 					<div>
-						<h3 className='mb-2 text-xl font-semibold text-foreground'>{t(LegalKey.TERMS_ACCOUNT_TERMINATION_TITLE)}</h3>
+						<h3 className='mb-2 text-xl font-semibold text-foreground'>
+							{t(LegalKey.TERMS_ACCOUNT_TERMINATION_TITLE)}
+						</h3>
 						<p>{t(LegalKey.TERMS_ACCOUNT_TERMINATION_BODY)}</p>
 					</div>
 				</div>

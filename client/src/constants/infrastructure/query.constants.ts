@@ -1,4 +1,4 @@
-import { CACHE_KEYS, toReactQueryKey, type GameMode } from '@shared/constants';
+import { CACHE_KEYS, TIME_PERIODS_MS, toReactQueryKey, type GameMode } from '@shared/constants';
 import type { TopicAnalyticsQuery, UserTrendQuery } from '@shared/types';
 
 export const QUERY_KEYS = {
@@ -121,5 +121,28 @@ export const QUERY_KEYS = {
 		allUsersConsistency: () => [...QUERY_KEYS.admin.all, 'allUsersConsistency'] as const,
 		userStatsConsistency: (userId: string) => [...QUERY_KEYS.admin.all, 'userStatsConsistency', userId] as const,
 		pricing: () => [...QUERY_KEYS.admin.all, 'pricing'] as const,
+	},
+} as const;
+
+export const QUERY_CACHE_PRESETS = {
+	staleFifteenGcThirty: {
+		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
+		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
+	},
+	staleOneHourGcTwoHours: {
+		staleTime: TIME_PERIODS_MS.HOUR,
+		gcTime: TIME_PERIODS_MS.TWO_HOURS,
+	},
+	staleThirtyGcOneHour: {
+		staleTime: TIME_PERIODS_MS.THIRTY_MINUTES,
+		gcTime: TIME_PERIODS_MS.HOUR,
+	},
+	staleThirtySecGcTwoMin: {
+		staleTime: TIME_PERIODS_MS.THIRTY_SECONDS,
+		gcTime: TIME_PERIODS_MS.TWO_MINUTES,
+	},
+	staleTenGcThirty: {
+		staleTime: TIME_PERIODS_MS.TEN_MINUTES,
+		gcTime: TIME_PERIODS_MS.THIRTY_MINUTES,
 	},
 } as const;

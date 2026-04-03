@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Brain, Calendar, CircleUser, ClipboardClock, Gauge, ListOrdered, Tag, Timer, Trash2 } from 'lucide-react';
 
 import { DIFFICULTY_CONFIG, EMPTY_VALUE, GameMode } from '@shared/constants';
@@ -25,7 +26,7 @@ import {
 	VariantBase,
 } from '@/constants';
 import type { DataTableColumn } from '@/types';
-import { clientLogger as logger } from '@/services';
+import { gameHistoryService, clientLogger as logger, queryInvalidationService } from '@/services';
 import { formatPlayTime, getDifficultyDisplayLabel } from '@/utils';
 import {
 	AlertDialog,
@@ -54,7 +55,7 @@ import {
 	SelectValue,
 	Spinner,
 } from '@/components';
-import { useClearGameHistory, useClientTableState, useDeleteGameHistory, useGameHistory } from '@/hooks';
+import { useClientTableState, useGameHistory } from '@/hooks';
 
 function getGameModeHistoryLabelKey(gameMode: GameMode): StatisticsHistoryKey {
 	return gameMode === GameMode.MULTIPLAYER ? StatisticsHistoryKey.MODE_MULTIPLAYER : StatisticsHistoryKey.MODE_SINGLE;
@@ -66,10 +67,23 @@ export function HistoryTabContent() {
 	const [filterTopic, setFilterTopic] = useState<string | null>(null);
 	const [showClearDialog, setShowClearDialog] = useState(false);
 	const [deleteId, setDeleteId] = useState<string | null>(null);
+	const queryClient = useQueryClient();
 
 	const { data: historyData, isLoading: historyLoading, error: historyError } = useGameHistory(1000, 0);
-	const deleteHistory = useDeleteGameHistory();
-	const clearHistory = useClearGameHistory();
+
+	const deleteHistory = useMutation({
+		mutationFn: (gameId: string) => gameHistoryService.deleteGameHistory(gameId),
+		onSuccess: () => {
+			void queryInvalidationService.invalidateGameQueries(queryClient);
+		},
+	});
+
+	const clearHistory = useMutation({
+		mutationFn: () => gameHistoryService.clearGameHistory(),
+		onSuccess: () => {
+			void queryInvalidationService.invalidateGameQueries(queryClient);
+		},
+	});
 
 	const records = useMemo(() => (Array.isArray(historyData) ? historyData : []), [historyData]);
 
@@ -149,7 +163,7 @@ export function HistoryTabContent() {
 				headerLabel: t(StatisticsHistoryKey.COLUMN_DIFFICULTY),
 				type: DataTableColumnType.BADGE_DIFFICULTY,
 				getValue: row => row.difficulty,
-				format: (v, _row) => getDifficultyDisplayLabel(v == null ? v : typeof v === 'string' ? v : String(v), t),
+				format: v => getDifficultyDisplayLabel(v == null ? v : typeof v === 'string' ? v : String(v), t),
 				sortField: SortField.DIFFICULTY,
 				headerIcon: <Gauge />,
 			},
@@ -183,7 +197,8 @@ export function HistoryTabContent() {
 				headerLabel: t(StatisticsHistoryKey.COLUMN_DURATION),
 				type: DataTableColumnType.TEXT,
 				getValue: row => row.timeSpent,
-				format: (_, row) => ((row.timeSpent ?? 0) > 0 ? formatPlayTime(row.timeSpent ?? 0, PlayTimeUnit.SECONDS) : EMPTY_VALUE),
+				format: (_, row) =>
+					(row.timeSpent ?? 0) > 0 ? formatPlayTime(row.timeSpent ?? 0, PlayTimeUnit.SECONDS) : EMPTY_VALUE,
 				headerIcon: <Timer />,
 			},
 			{

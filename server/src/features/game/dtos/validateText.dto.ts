@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
-import { Locale, VALIDATION_LENGTH, ValidateTextContext } from '@shared/constants';
+import { Locale, ValidateTextContext, VALIDATION_LENGTH } from '@shared/constants';
 
 export class ValidateTextDto {
 	@ApiProperty({ description: 'Text to validate (topic or custom difficulty description)' })

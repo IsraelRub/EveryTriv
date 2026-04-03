@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
-import { ErrorCode } from '@shared/constants';
+import { ErrorCode, LengthKey } from '@shared/constants';
 import type { UpdateUserProfileData } from '@shared/types';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
-import { LengthKey, validateStringLength } from '@shared/validation';
+import { validateStringLength } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 

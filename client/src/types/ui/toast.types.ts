@@ -7,7 +7,6 @@ export type ToastProps = ComponentPropsWithoutRef<typeof ToastPrimitive.Root> & 
 	variant?: ToastVariant;
 };
 
-
 export type ToasterToast = ToastProps & {
 	id: string;
 	title?: string | ReactElement;
@@ -39,4 +38,3 @@ export type AddToastOptions = Omit<ToasterToast, 'id'> & {
 
 export type ToastHelperProps = Omit<AddToastOptions, 'variant'>;
 export type ToastActionElement = ReactElement<typeof ToastPrimitive.Action>;
-

@@ -1,6 +1,6 @@
 import { cva } from 'class-variance-authority';
 
-import { Colors } from './color.constants';
+import { SEMANTIC_ICON_TEXT, SEMANTIC_SURFACE } from './color.constants';
 import { RESULT_ICON_SIZE_CLASSES } from './size.constants';
 
 export enum StatusDirection {
@@ -30,12 +30,20 @@ export const resultVariants = cva('', {
 		},
 	},
 	compoundVariants: [
-		{ direction: StatusDirection.POSITIVE, target: ResultTarget.CARD, class: 'bg-green-500/25 border-green-500/50' },
-		{ direction: StatusDirection.NEGATIVE, target: ResultTarget.CARD, class: 'bg-red-500/25 border-red-500/50' },
-		{ direction: StatusDirection.POSITIVE, target: ResultTarget.ICON_SM, class: Colors.GREEN_500.text },
-		{ direction: StatusDirection.NEGATIVE, target: ResultTarget.ICON_SM, class: Colors.RED_500.text },
-		{ direction: StatusDirection.POSITIVE, target: ResultTarget.ICON_MD, class: Colors.GREEN_500.text },
-		{ direction: StatusDirection.NEGATIVE, target: ResultTarget.ICON_MD, class: Colors.RED_500.text },
+		{
+			direction: StatusDirection.POSITIVE,
+			target: ResultTarget.CARD,
+			class: SEMANTIC_SURFACE.resultPositiveCard,
+		},
+		{
+			direction: StatusDirection.NEGATIVE,
+			target: ResultTarget.CARD,
+			class: SEMANTIC_SURFACE.resultNegativeCard,
+		},
+		{ direction: StatusDirection.POSITIVE, target: ResultTarget.ICON_SM, class: SEMANTIC_ICON_TEXT.success },
+		{ direction: StatusDirection.NEGATIVE, target: ResultTarget.ICON_SM, class: SEMANTIC_ICON_TEXT.destructive },
+		{ direction: StatusDirection.POSITIVE, target: ResultTarget.ICON_MD, class: SEMANTIC_ICON_TEXT.success },
+		{ direction: StatusDirection.NEGATIVE, target: ResultTarget.ICON_MD, class: SEMANTIC_ICON_TEXT.destructive },
 	],
 	defaultVariants: { direction: StatusDirection.NEGATIVE, target: ResultTarget.CARD },
 });
@@ -53,17 +61,17 @@ export const trendVariants = cva('', {
 		{
 			direction: StatusDirection.POSITIVE,
 			target: TrendTarget.CARD,
-			class: `${Colors.GREEN_500.bg}/10 ${Colors.GREEN_500.border}/30`,
+			class: SEMANTIC_SURFACE.trendPositiveCard,
 		},
 		{
 			direction: StatusDirection.NEGATIVE,
 			target: TrendTarget.CARD,
-			class: `${Colors.RED_500.bg}/10 ${Colors.RED_500.border}/30`,
+			class: SEMANTIC_SURFACE.trendNegativeCard,
 		},
-		{ direction: StatusDirection.POSITIVE, target: TrendTarget.ICON, class: Colors.GREEN_500.text },
-		{ direction: StatusDirection.NEGATIVE, target: TrendTarget.ICON, class: Colors.RED_500.text },
-		{ direction: StatusDirection.POSITIVE, target: TrendTarget.TEXT, class: Colors.GREEN_500.text },
-		{ direction: StatusDirection.NEGATIVE, target: TrendTarget.TEXT, class: Colors.RED_500.text },
+		{ direction: StatusDirection.POSITIVE, target: TrendTarget.ICON, class: SEMANTIC_ICON_TEXT.success },
+		{ direction: StatusDirection.NEGATIVE, target: TrendTarget.ICON, class: SEMANTIC_ICON_TEXT.destructive },
+		{ direction: StatusDirection.POSITIVE, target: TrendTarget.TEXT, class: SEMANTIC_ICON_TEXT.success },
+		{ direction: StatusDirection.NEGATIVE, target: TrendTarget.TEXT, class: SEMANTIC_ICON_TEXT.destructive },
 	],
 	defaultVariants: { direction: StatusDirection.NEGATIVE, target: TrendTarget.CARD },
 });

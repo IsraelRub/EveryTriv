@@ -49,4 +49,3 @@ export const selectAudioInitialized = (state: RootState) => state.audioSettings.
 
 export const selectLeaderboardPeriod = (state: RootState) => state.uiPreferences.leaderboardPeriod;
 export const selectLocale = (state: RootState) => state.uiPreferences.locale;
-

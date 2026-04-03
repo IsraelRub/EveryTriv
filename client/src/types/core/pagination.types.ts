@@ -5,7 +5,6 @@ export interface UsePaginationOptions {
 	onPageChange?: (page: number) => void;
 }
 
-
 export interface UsePaginationReturn extends PaginationDisplayState {
 	currentPage: number;
 	itemsPerPage: number;
@@ -23,4 +22,3 @@ export interface PaginationDisplayState {
 	hasNextPage: boolean;
 	hasPreviousPage: boolean;
 }
-

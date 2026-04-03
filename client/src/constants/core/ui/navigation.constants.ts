@@ -35,7 +35,6 @@ export const ROUTES = {
 	UNAUTHORIZED: '/unauthorized',
 } as const;
 
-/** Query on `/register` when the user may pick an optional avatar after sign-up (authenticated). */
 export const REGISTER_POST_STEP_QUERY_KEY = 'postStep';
 export const REGISTER_POST_STEP_AVATAR = 'avatar';
 

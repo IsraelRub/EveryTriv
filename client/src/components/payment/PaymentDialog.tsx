@@ -10,11 +10,11 @@ import { isPaymentMethod } from '@shared/validation';
 import {
 	AlertVariant,
 	ButtonSize,
-	Colors,
 	CommonKey,
 	ComponentSize,
 	LoadingKey,
 	PaymentKey,
+	SEMANTIC_ICON_TEXT,
 	VariantBase,
 } from '@/constants';
 import type { CreditsPurchaseResponse, PaymentDialogProps, PayPalButtonInstance } from '@/types';
@@ -98,7 +98,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 		}
 
 		const button = window.paypal.Buttons({
-			createOrder: async (_data, actions) => {
+			createOrder: async (_paypalData, actions) => {
 				try {
 					return actions.order.create({
 						purchase_units: [
@@ -353,7 +353,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 								</span>
 							</div>
 							{pkg.bonus && pkg.bonus > 0 && (
-								<div className={cn('flex justify-between', Colors.GREEN_500.text)}>
+								<div className={cn('flex justify-between', SEMANTIC_ICON_TEXT.success)}>
 									<span>{t(PaymentKey.BONUS_LABEL)}</span>
 									<span className='font-medium'>+{pkg.bonus} credits</span>
 								</div>

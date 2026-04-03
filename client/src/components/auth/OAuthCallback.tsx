@@ -9,19 +9,17 @@ import { getErrorMessage } from '@shared/utils';
 import {
 	AlertIconSize,
 	AlertVariant,
-	AUTH_TOKEN_CHANGED_EVENT,
 	AuthKey,
 	ButtonSize,
-	Colors,
 	ComponentSize,
 	getRegisterOptionalAvatarSearch,
-	QUERY_KEYS,
 	ROUTES,
+	SEMANTIC_ICON_TEXT,
 	STORAGE_KEYS,
 	VariantBase,
 } from '@/constants';
 import { authService, clientLogger as logger, queryClient, queryInvalidationService, storageService } from '@/services';
-import { cn } from '@/utils';
+import { cn, getAuthCurrentUserQueryKey, readAuthTokenSnapshotForQueryKey } from '@/utils';
 import { Alert, AlertDescription, AlertIcon, Button, Card, HomeButton, Spinner } from '@/components';
 
 export function OAuthCallback() {
@@ -45,7 +43,7 @@ export function OAuthCallback() {
 				}
 				logger.authDebug('OAuth callback search params', { params });
 
-				// Get parameters from URL (auth is via cookie; no token in URL)
+				// Callback may include tokens in query (server redirect) or error params
 				const success = searchParams.get('success');
 				const error = searchParams.get('error');
 				const errorDescription = searchParams.get('error_description');
@@ -102,12 +100,11 @@ export function OAuthCallback() {
 						throw new Error(ERROR_MESSAGES.user.FAILED_TO_RETRIEVE_USER_DATA);
 					}
 
-					await storageService.set(STORAGE_KEYS.AUTH_TOKEN, accessToken);
+					await storageService.setString(STORAGE_KEYS.AUTH_TOKEN, accessToken);
 					if (refreshToken) {
-						await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
-						await storageService.set(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, refreshToken);
+						await storageService.setString(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+						await storageService.setString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, refreshToken);
 					}
-					window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
 
 					logger.authDebug('Attempting to get current user');
 					const user = await authService.getCurrentUser();
@@ -122,15 +119,14 @@ export function OAuthCallback() {
 					}
 
 					logger.authDebug('Setting user in React Query cache');
-					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), user);
-					queryInvalidationService.invalidateAuthQueries(queryClient);
+					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), user);
+					await queryInvalidationService.invalidateAuthQueries(queryClient);
 
 					logger.authLogin('User authenticated successfully', { userId: user.id });
 
 					let oauthFromRegistration = false;
 					try {
-						oauthFromRegistration =
-							sessionStorage.getItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION) === '1';
+						oauthFromRegistration = sessionStorage.getItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION) === '1';
 						sessionStorage.removeItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION);
 					} catch {
 						// sessionStorage unavailable
@@ -149,10 +145,7 @@ export function OAuthCallback() {
 							}
 							navigate(ROUTES.COMPLETE_PROFILE, { replace: true });
 						} else {
-							navigate(
-								{ pathname: ROUTES.REGISTER, search: getRegisterOptionalAvatarSearch() },
-								{ replace: true }
-							);
+							navigate({ pathname: ROUTES.REGISTER, search: getRegisterOptionalAvatarSearch() }, { replace: true });
 						}
 					} else if (needsProfile) {
 						navigate(ROUTES.COMPLETE_PROFILE, { replace: true });
@@ -235,12 +228,9 @@ export function OAuthCallback() {
 
 						<div className='text-center space-y-4'>
 							<div
-								className={cn(
-									'w-16 h-16 rounded-full flex items-center justify-center mx-auto',
-									`${Colors.RED_500.bg}/10`
-								)}
+								className={cn('w-16 h-16 rounded-full flex items-center justify-center mx-auto', 'bg-destructive/10')}
 							>
-								<AlertIcon size={AlertIconSize.XL} className={Colors.RED_500.text} />
+								<AlertIcon size={AlertIconSize.XL} className={SEMANTIC_ICON_TEXT.destructive} />
 							</div>
 							<div>
 								<h2 className='text-xl font-semibold mb-2'>{t(AuthKey.AUTHENTICATION_FAILED)}</h2>

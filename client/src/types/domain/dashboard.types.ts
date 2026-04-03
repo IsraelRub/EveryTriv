@@ -9,7 +9,6 @@ export interface TabSpec {
 	componentName: string;
 }
 
-
 export interface NormalizedDashboardTab {
 	label: string;
 	value: string;
@@ -32,4 +31,3 @@ export interface DashboardTabEntry {
 	label: string;
 	loader: () => Promise<{ default: ComponentType<object> }>;
 }
-

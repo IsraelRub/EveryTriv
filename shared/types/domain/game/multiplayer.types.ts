@@ -27,7 +27,7 @@ export interface CreateRoomConfig extends BaseTriviaConfig {
 	questionsPerRequest: number;
 	maxPlayers: number;
 	answerCount?: number;
-	/** Sent to server for LanguageTool alignment with UI language */
+
 	outputLanguage?: Locale;
 }
 

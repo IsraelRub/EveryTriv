@@ -1357,31 +1357,6 @@
           "description": "Admin user management (status, list). Delete User (Admin) moved to Cleanup so it runs after Multiplayer and can delete the second player (200).",
           "item": [
         {
-          "name": "Update User Status (Admin)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{adminAccessToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"status\": \"active\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/users/{{userId}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", "{{userId}}", "status"]
-            }
-          }
-        },
-        {
           "name": "Get All Users (Admin)",
           "request": {
             "method": "GET",

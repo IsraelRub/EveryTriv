@@ -69,6 +69,8 @@ const reducer = (state: ToasterToast[], action: ToastAction): ToasterToast[] => 
 				return [];
 			}
 			return state.filter(t => t.id !== action.toastId);
+		default:
+			return state;
 	}
 };
 
@@ -95,8 +97,9 @@ export function toast({ duration = DEFAULT_TOAST_DURATION, ...props }: AddToastO
 		});
 	const dismiss = () => {
 		// Clear auto-dismiss timeout if exists
-		if (autoDismissTimeouts.has(id)) {
-			clearTimeout(autoDismissTimeouts.get(id));
+		const timeout = autoDismissTimeouts.get(id);
+		if (timeout !== undefined) {
+			clearTimeout(timeout);
 			autoDismissTimeouts.delete(id);
 		}
 		dispatch({ type: ToastActionType.DISMISS_TOAST, toastId: id });
@@ -135,13 +138,14 @@ export function useToast() {
 
 	useEffect(() => {
 		listeners.push(setState);
+		setState(memoryState);
 		return () => {
 			const index = listeners.indexOf(setState);
 			if (index > -1) {
 				listeners.splice(index, 1);
 			}
 		};
-	}, [state]);
+	}, []);
 
 	return {
 		toasts: state,

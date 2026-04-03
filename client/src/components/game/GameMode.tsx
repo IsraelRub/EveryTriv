@@ -4,7 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CreditCard, Crown, Infinity, ListOrdered, LucideIcon, Play, Timer, Users } from 'lucide-react';
 
-import { DEFAULT_GAME_CONFIG, GAME_MODES_CONFIG, GameMode as GameModeEnum, VALIDATION_COUNT } from '@shared/constants';
+import {
+	DEFAULT_GAME_CONFIG,
+	GAME_MODES,
+	GAME_MODES_CONFIG,
+	GameMode as GameModeEnum,
+	VALIDATION_COUNT,
+} from '@shared/constants';
 import type { GameConfig } from '@shared/types';
 import { calculateRequiredCredits } from '@shared/utils';
 
@@ -12,8 +18,7 @@ import {
 	AlertIconSize,
 	AlertVariant,
 	ANIMATION_DELAYS,
-	Colors,
-	GAME_MODES_SET,
+	GAME_MODES_UI_CONFIG,
 	GameKey,
 	ROUTES,
 	VariantBase,
@@ -62,18 +67,16 @@ const GAME_MODE_DESC_KEYS: Record<GameModeEnum, string> = {
 const GAME_MODES_OPTIONS: [GameModeEnum, GameModeOption & { nameKey: string; descKey: string }][] = Object.keys(
 	GAME_MODES_CONFIG
 )
-	.filter((key: string): key is GameModeEnum => GAME_MODES_SET.has(key))
+	.filter((key: string): key is GameModeEnum => GAME_MODES.has(key))
 	.filter(mode => mode !== GameModeEnum.MULTIPLAYER)
 	.map(mode => [
 		mode,
 		{
-			name: GAME_MODES_CONFIG[mode].name,
-			description: GAME_MODES_CONFIG[mode].description,
 			nameKey: GAME_MODE_NAME_KEYS[mode],
 			descKey: GAME_MODE_DESC_KEYS[mode],
 			icon: GAME_MODE_ICONS[mode],
-			showQuestionLimit: GAME_MODES_CONFIG[mode].showQuestionLimit,
-			showTimeLimit: GAME_MODES_CONFIG[mode].showTimeLimit,
+			showQuestionLimit: GAME_MODES_UI_CONFIG[mode].showQuestionLimit,
+			showTimeLimit: GAME_MODES_UI_CONFIG[mode].showTimeLimit,
 		},
 	]);
 
@@ -194,12 +197,13 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 		if (!canSubmitLanguage) return;
 
 		const modeConfig = GAME_MODES_CONFIG[selectedMode];
+		const modeUi = GAME_MODES_UI_CONFIG[selectedMode];
 		const settings: GameConfig = {
 			mode: selectedMode,
 			difficulty: finalDifficulty,
 			topic: topic.trim() || DEFAULT_GAME_CONFIG.defaultTopic,
-			maxQuestionsPerGame: modeConfig.showQuestionLimit ? maxQuestionsPerGame : modeConfig.defaults.maxQuestionsPerGame,
-			timeLimit: modeConfig.showTimeLimit ? timeLimit : undefined,
+			maxQuestionsPerGame: modeUi.showQuestionLimit ? maxQuestionsPerGame : modeConfig.defaults.maxQuestionsPerGame,
+			timeLimit: modeUi.showTimeLimit ? timeLimit : undefined,
 			answerCount,
 		};
 
@@ -256,12 +260,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 							{isAdmin && (
 								<Badge
 									variant={VariantBase.SECONDARY}
-									className={cn(
-										'ms-2',
-										`${Colors.AMBER_600.border}/30`,
-										`${Colors.AMBER_600.bg}/10`,
-										Colors.AMBER_600.text
-									)}
+									className={cn('ms-2', 'border-warning/30', 'bg-warning/10', 'text-warning')}
 								>
 									<Crown className='w-3 h-3 me-1' />
 									{t(GameKey.FREE_PLAY)}

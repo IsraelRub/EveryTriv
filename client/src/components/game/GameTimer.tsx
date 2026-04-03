@@ -7,8 +7,8 @@ import { calculateDuration, calculateElapsedSeconds, calculatePercentage } from 
 
 import {
 	AudioKey,
-	Colors,
 	GameKey,
+	TIMER_PHASE_CLASS,
 	TIMER_WARNING_RATIO,
 	TimerColorPrefix,
 	TimerMode,
@@ -144,9 +144,13 @@ export function GameTimer({
 	}, [mode, startTime]);
 
 	const getColorByPercentage = useCallback((percentage: number, prefix: TimerColorPrefix): string => {
-		if (percentage > 35) return prefix === TimerColorPrefix.TEXT ? Colors.GREEN_500.text : Colors.GREEN_500.bg;
-		if (percentage > 15) return prefix === TimerColorPrefix.TEXT ? Colors.YELLOW_500.text : Colors.YELLOW_500.bg;
-		return prefix === TimerColorPrefix.TEXT ? Colors.RED_500.text : Colors.RED_500.bg;
+		if (percentage > 35) {
+			return prefix === TimerColorPrefix.TEXT ? TIMER_PHASE_CLASS.safeText : TIMER_PHASE_CLASS.safeBg;
+		}
+		if (percentage > 15) {
+			return prefix === TimerColorPrefix.TEXT ? TIMER_PHASE_CLASS.warnText : TIMER_PHASE_CLASS.warnBg;
+		}
+		return prefix === TimerColorPrefix.TEXT ? TIMER_PHASE_CLASS.criticalText : TIMER_PHASE_CLASS.criticalBg;
 	}, []);
 
 	const countdownPercentage =

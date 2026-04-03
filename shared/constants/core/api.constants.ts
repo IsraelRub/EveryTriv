@@ -10,7 +10,6 @@ export const API_ENDPOINTS = {
 		REFRESH: '/auth/refresh',
 		GOOGLE: '/auth/google',
 		GOOGLE_CALLBACK: '/auth/google/callback',
-		ADMIN_USERS: '/auth/admin/users',
 		REQUEST_VERIFICATION_EMAIL: '/auth/request-verification-email',
 		VERIFY_EMAIL: '/auth/verify-email',
 	},
@@ -125,6 +124,8 @@ export const API_ENDPOINTS = {
 } as const;
 
 export const API_VERSION = 'v1';
+
+export const VITE_API_BUNDLE_USE_ORIGIN_PREFIX = 'USE_ORIGIN_API_PREFIX';
 
 export const RATE_LIMIT_DEFAULTS = {
 	WINDOW_MS: TIME_PERIODS_MS.MINUTE,

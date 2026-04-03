@@ -172,13 +172,6 @@ export const VALIDATION_COUNT = {
 		MIN: 1,
 		MAX: 15,
 	},
-	RETRY_ATTEMPTS: {
-		QUESTION_GENERATION: 3,
-		ADMIN_BOOTSTRAP: 5,
-	},
-	ROOM_GENERATION_ATTEMPTS: {
-		MAX: 10,
-	},
 
 	LIST_QUERY: {
 		LIMIT_MIN: 1,
@@ -214,13 +207,11 @@ export const LANGUAGE_TOOL_CONSTANTS = {
 		LOW: 0.5,
 	},
 	TIMEOUT: TIME_PERIODS_MS.TEN_SECONDS,
-	MAX_RETRIES: 3,
 	AVAILABILITY_CACHE_TTL_MS: {
 		SUCCESS: TIME_PERIODS_MS.FIVE_MINUTES,
 		FAILURE: TIME_PERIODS_MS.THIRTY_SECONDS,
 	},
 
-	/** Minimum trimmed length to prefer LanguageTool HTTP API over local heuristics (single chars still checked locally if API is down). */
 	MIN_TEXT_LENGTH_FOR_API: 1,
 } as const;
 

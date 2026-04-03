@@ -2,10 +2,8 @@ import { useMemo, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Share2 } from 'lucide-react';
 
-import { isSocialLinkItem } from '@shared/utils';
-
 import { FOOTER_SECTIONS, FooterSectionType, SOCIAL_DATA } from '@/constants';
-import { cn } from '@/utils';
+import { cn, isSocialLinkItem } from '@/utils';
 import { NavLink } from '@/components';
 
 export default function Footer() {

@@ -3,13 +3,13 @@ import type { Logger, LoggerConfig, LoggerConfigUpdate, LogMeta } from '@shared/
 import { generateSessionId, generateTraceId, getErrorMessage } from '@shared/utils';
 
 export abstract class BaseLoggerService implements Logger {
-	protected sessionId: string;
-	protected traceId: string;
+	protected _sessionId: string;
+	protected _traceId: string;
 	protected config: LoggerConfig;
 
 	constructor(config: LoggerConfigUpdate = {}) {
-		this.sessionId = generateSessionId();
-		this.traceId = generateTraceId();
+		this._sessionId = generateSessionId();
+		this._traceId = generateTraceId();
 		this.config = {
 			level: LogLevel.INFO,
 			enableConsole: true,
@@ -38,17 +38,17 @@ export abstract class BaseLoggerService implements Logger {
 		});
 	}
 
-	public getSessionId(): string {
-		return this.sessionId;
+	public get sessionId(): string {
+		return this._sessionId;
 	}
 
-	public getTraceId(): string {
-		return this.traceId;
+	public get traceId(): string {
+		return this._traceId;
 	}
 
 	public newTrace(): string {
-		this.traceId = generateTraceId();
-		return this.traceId;
+		this._traceId = generateTraceId();
+		return this._traceId;
 	}
 
 	// UserLogger implementation

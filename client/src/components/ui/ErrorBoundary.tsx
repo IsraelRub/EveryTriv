@@ -1,10 +1,11 @@
 import { Component, ErrorInfo } from 'react';
 import i18n from 'i18next';
 
+import { RETRY_LIMITS } from '@shared/constants';
 import { getErrorMessage, getErrorStack, getErrorType, isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { AlertVariant, ButtonSize, ErrorsKey, getErrorLogStorageKey, MAX_RETRIES, VariantBase } from '@/constants';
+import { AlertVariant, ButtonSize, ErrorsKey, getErrorLogStorageKey, VariantBase } from '@/constants';
 import type { ErrorBoundaryProps, ErrorState } from '@/types';
 import { clientLogger as logger, storageService } from '@/services';
 import { Alert, AlertDescription, AlertTitle, Button } from '@/components';
@@ -73,7 +74,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorState> {
 		// Store error in storage for debugging
 		try {
 			const errorLogKey = getErrorLogStorageKey(featureName);
-			await storageService.set(errorLogKey, errorDetails);
+			await storageService.setString(errorLogKey, JSON.stringify(errorDetails));
 			logger.systemInfo('Error log stored for debugging', {
 				feature: featureName,
 				key: errorLogKey,
@@ -100,11 +101,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorState> {
 	handleRetry = () => {
 		const newRetryCount = this.state.retryCount + 1;
 
-		if (newRetryCount <= MAX_RETRIES) {
+		if (newRetryCount <= RETRY_LIMITS.errorBoundaryUserRetries) {
 			logger.userInfo('User attempting retry', {
 				feature: this.props.featureName ?? 'Unknown',
 				retryCount: newRetryCount,
-				maxRetries: MAX_RETRIES,
+				maxRetries: RETRY_LIMITS.errorBoundaryUserRetries,
 			});
 
 			this.setState({
@@ -131,8 +132,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorState> {
 				return this.props.fallback;
 			}
 
-			const canRetry = this.state.retryCount < MAX_RETRIES;
-			const retriesRemaining = MAX_RETRIES - this.state.retryCount;
+			const canRetry = this.state.retryCount < RETRY_LIMITS.errorBoundaryUserRetries;
+			const retriesRemaining = RETRY_LIMITS.errorBoundaryUserRetries - this.state.retryCount;
 
 			return (
 				<Alert variant={AlertVariant.DESTRUCTIVE} className='my-4'>

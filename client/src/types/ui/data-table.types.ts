@@ -50,6 +50,6 @@ export interface DataTableCardProps<T> extends DataTableProps<T> {
 	header: DataTableCardHeaderProps;
 	filters?: ReactElement | string | null;
 	useCard?: boolean;
-	/** When true, table/filters render without the card title row (e.g. title lives in a parent Accordion). */
+
 	hideHeader?: boolean;
 }

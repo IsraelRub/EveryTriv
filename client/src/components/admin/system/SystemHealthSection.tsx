@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
 	Activity,
 	AlertTriangle,
@@ -21,22 +22,27 @@ import {
 } from 'lucide-react';
 
 import {
+	ERROR_MESSAGES,
 	RecommendationPriority,
 	SYSTEM_HEALTH_THRESHOLDS,
 	SystemInsightStatus,
 	TIME_DURATIONS_SECONDS,
+	TIME_PERIODS_MS,
 } from '@shared/constants';
+import type { SecurityMetrics, SystemInsights, SystemPerformanceMetrics, SystemRecommendation } from '@shared/types';
 import { formatNumericValue } from '@shared/utils';
 
 import {
 	AdminKey,
-	Colors,
+	QUERY_KEYS,
+	SEMANTIC_ICON_TEXT,
 	SKELETON_PLACEHOLDER_COUNTS,
 	SkeletonVariant,
 	SystemInsightAccordion,
 	SystemSecurityAccordion,
 	VariantBase,
 } from '@/constants';
+import { analyticsService } from '@/services';
 import { formatDateTime } from '@/utils';
 import {
 	Accordion,
@@ -53,19 +59,65 @@ import {
 	Skeleton,
 	StatCard,
 } from '@/components';
-import {
-	useSystemInsights,
-	useSystemPerformanceMetrics,
-	useSystemRecommendations,
-	useSystemSecurityMetrics,
-} from '@/hooks';
+import { useUserRole } from '@/hooks';
 
 export function SystemHealthSection() {
 	const { t } = useTranslation();
-	const { data: systemPerformance, isLoading: systemPerformanceLoading } = useSystemPerformanceMetrics();
-	const { data: systemSecurity, isLoading: systemSecurityLoading } = useSystemSecurityMetrics();
-	const { data: systemRecommendations, isLoading: systemRecommendationsLoading } = useSystemRecommendations();
-	const { data: systemInsights, isLoading: systemInsightsLoading } = useSystemInsights();
+	const { isAdmin } = useUserRole();
+
+	const { data: systemPerformance, isLoading: systemPerformanceLoading } = useQuery<SystemPerformanceMetrics>({
+		queryKey: QUERY_KEYS.admin.systemPerformance(),
+		queryFn: async () => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.getSystemPerformanceMetrics();
+		},
+		enabled: isAdmin,
+		staleTime: TIME_PERIODS_MS.TWO_MINUTES,
+		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		refetchInterval: TIME_PERIODS_MS.FIVE_MINUTES,
+	});
+
+	const { data: systemSecurity, isLoading: systemSecurityLoading } = useQuery<SecurityMetrics>({
+		queryKey: QUERY_KEYS.admin.systemSecurity(),
+		queryFn: async () => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.getSystemSecurityMetrics();
+		},
+		enabled: isAdmin,
+		staleTime: TIME_PERIODS_MS.TWO_MINUTES,
+		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		refetchInterval: TIME_PERIODS_MS.FIVE_MINUTES,
+	});
+
+	const { data: systemRecommendations, isLoading: systemRecommendationsLoading } = useQuery<SystemRecommendation[]>({
+		queryKey: QUERY_KEYS.admin.systemRecommendations(),
+		queryFn: async () => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.getSystemRecommendations();
+		},
+		enabled: isAdmin,
+		staleTime: TIME_PERIODS_MS.TWO_MINUTES,
+		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
+	});
+
+	const { data: systemInsights, isLoading: systemInsightsLoading } = useQuery<SystemInsights>({
+		queryKey: QUERY_KEYS.admin.systemInsights(),
+		queryFn: async () => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.getSystemInsights();
+		},
+		enabled: isAdmin,
+		staleTime: TIME_PERIODS_MS.TWO_MINUTES,
+		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
+	});
 
 	const systemInsightsAccordionDefault = useMemo((): SystemInsightAccordion[] => {
 		if (systemInsights == null) return [];
@@ -96,25 +148,25 @@ export function SystemHealthSection() {
 							icon={Zap}
 							label={t(AdminKey.RESPONSE_TIME)}
 							value={formatNumericValue(systemPerformance.responseTime, 2, 'ms')}
-							color={Colors.BLUE_500.text}
+							color={SEMANTIC_ICON_TEXT.primary}
 						/>
 						<StatCard
 							icon={HardDrive}
 							label={t(AdminKey.MEMORY_USAGE)}
 							value={formatNumericValue(systemPerformance.memoryUsage / 1024 / 1024, 2, ' MB')}
-							color={Colors.PURPLE_500.text}
+							color={SEMANTIC_ICON_TEXT.secondary}
 						/>
 						<StatCard
 							icon={Cpu}
 							label={t(AdminKey.CPU_USAGE)}
 							value={formatNumericValue(systemPerformance.cpuUsage, 2, '%')}
-							color={Colors.YELLOW_500.text}
+							color={SEMANTIC_ICON_TEXT.warning}
 						/>
 						<StatCard
 							icon={CircleGauge}
 							label={t(AdminKey.THROUGHPUT)}
 							value={formatNumericValue(systemPerformance.throughput, 2, ' req/s')}
-							color={Colors.GREEN_500.text}
+							color={SEMANTIC_ICON_TEXT.success}
 						/>
 						<StatCard
 							icon={AlertTriangle}
@@ -122,15 +174,15 @@ export function SystemHealthSection() {
 							value={formatNumericValue(systemPerformance.errorRate, 2, '%')}
 							color={
 								systemPerformance.errorRate > SYSTEM_HEALTH_THRESHOLDS.ERROR_RATE_ATTENTION_PERCENT
-									? Colors.RED_500.text
-									: Colors.GREEN_500.text
+									? SEMANTIC_ICON_TEXT.destructive
+									: SEMANTIC_ICON_TEXT.success
 							}
 						/>
 						<StatCard
 							icon={Clock}
 							label={t(AdminKey.UPTIME)}
 							value={formatNumericValue(systemPerformance.uptime / TIME_DURATIONS_SECONDS.HOUR, 2, 'h')}
-							color={Colors.BLUE_500.text}
+							color={SEMANTIC_ICON_TEXT.primary}
 						/>
 					</div>
 				) : (
@@ -166,19 +218,19 @@ export function SystemHealthSection() {
 										icon={AlertTriangle}
 										label={t(AdminKey.FAILED_LOGINS)}
 										value={systemSecurity.authentication.failedLogins.toLocaleString()}
-										color={Colors.RED_500.text}
+										color={SEMANTIC_ICON_TEXT.destructive}
 									/>
 									<StatCard
 										icon={CheckCircle}
 										label={t(AdminKey.SUCCESSFUL_LOGINS)}
 										value={systemSecurity.authentication.successfulLogins.toLocaleString()}
-										color={Colors.GREEN_500.text}
+										color={SEMANTIC_ICON_TEXT.success}
 									/>
 									<StatCard
 										icon={Shield}
 										label={t(AdminKey.ACCOUNT_LOCKOUTS)}
 										value={systemSecurity.authentication.accountLockouts.toLocaleString()}
-										color={Colors.YELLOW_500.text}
+										color={SEMANTIC_ICON_TEXT.warning}
 									/>
 								</div>
 							</AccordionContent>
@@ -196,13 +248,13 @@ export function SystemHealthSection() {
 										icon={AlertTriangle}
 										label={t(AdminKey.UNAUTHORIZED_ATTEMPTS)}
 										value={systemSecurity.authorization.unauthorizedAttempts.toLocaleString()}
-										color={Colors.RED_500.text}
+										color={SEMANTIC_ICON_TEXT.destructive}
 									/>
 									<StatCard
 										icon={Shield}
 										label={t(AdminKey.PERMISSION_VIOLATIONS)}
 										value={systemSecurity.authorization.permissionViolations.toLocaleString()}
-										color={Colors.ORANGE_500.text}
+										color={SEMANTIC_ICON_TEXT.orange}
 									/>
 								</div>
 							</AccordionContent>
@@ -220,19 +272,23 @@ export function SystemHealthSection() {
 										icon={AlertTriangle}
 										label={t(AdminKey.DATA_BREACHES)}
 										value={systemSecurity.dataSecurity.dataBreaches.toLocaleString()}
-										color={systemSecurity.dataSecurity.dataBreaches > 0 ? Colors.RED_500.text : Colors.GREEN_500.text}
+										color={
+											systemSecurity.dataSecurity.dataBreaches > 0
+												? SEMANTIC_ICON_TEXT.destructive
+												: SEMANTIC_ICON_TEXT.success
+										}
 									/>
 									<StatCard
 										icon={Shield}
 										label={t(AdminKey.ENCRYPTION_COVERAGE)}
 										value={formatNumericValue(systemSecurity.dataSecurity.encryptionCoverage, 2, '%')}
-										color={Colors.BLUE_500.text}
+										color={SEMANTIC_ICON_TEXT.primary}
 									/>
 									<StatCard
 										icon={CheckCircle}
 										label={t(AdminKey.BACKUP_SUCCESS_RATE)}
 										value={formatNumericValue(systemSecurity.dataSecurity.backupSuccessRate, 2, '%')}
-										color={Colors.GREEN_500.text}
+										color={SEMANTIC_ICON_TEXT.success}
 									/>
 								</div>
 							</AccordionContent>

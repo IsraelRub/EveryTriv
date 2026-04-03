@@ -247,7 +247,7 @@ export class PayPalWebhookService {
 	}
 
 	private async findPaymentByPayPalId(paypalId: string): Promise<PaymentHistoryEntity | null> {
-		return await this.paymentHistoryRepository
+		return this.paymentHistoryRepository
 			.createQueryBuilder('payment')
 			.where("payment.metadata->>'paypalOrderId' = :paypalId", { paypalId })
 			.orWhere("payment.metadata->>'paypalTransactionId' = :paypalId", {

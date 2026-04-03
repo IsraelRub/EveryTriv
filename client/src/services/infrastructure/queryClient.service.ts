@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 
-import { TIME_PERIODS_MS } from '@shared/constants';
+import { RETRY_LIMITS, TIME_PERIODS_MS } from '@shared/constants';
 import { calculateRetryDelay, getErrorMessage, isClientError } from '@shared/utils';
 
 import { QUERY_KEYS, ROUTES } from '@/constants';
@@ -91,7 +91,7 @@ export const queryClient = new QueryClient({
 			staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
 			gcTime: TIME_PERIODS_MS.TEN_MINUTES,
 			retry: (failureCount, error: Error & { status?: number }) => {
-				return shouldRetry(failureCount, error, 3);
+				return shouldRetry(failureCount, error, RETRY_LIMITS.reactQueryQueries);
 			},
 			retryDelay: attemptIndex => {
 				return calculateRetryDelay(TIME_PERIODS_MS.SECOND, attemptIndex, {
@@ -106,7 +106,7 @@ export const queryClient = new QueryClient({
 		},
 		mutations: {
 			retry: (failureCount, error: Error & { status?: number }) => {
-				return shouldRetry(failureCount, error, 2);
+				return shouldRetry(failureCount, error, RETRY_LIMITS.reactQueryMutations);
 			},
 			networkMode: 'online',
 		},

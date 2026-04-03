@@ -5,7 +5,7 @@ import { ChartNoAxesCombined } from 'lucide-react';
 import { CHART_HEIGHTS, StatisticsPerformanceKey } from '@/constants';
 import type { PerformanceAnalysisProps } from '@/types';
 import { SectionCard } from '@/components';
-import { PerformanceSkeleton } from '../skeleton';
+import { PerformanceSkeleton } from '../StatisticSkeletons';
 import { DifficultyOverviewChart } from './DifficultyOverviewChart';
 
 export const PerformanceAnalysis = memo(function PerformanceAnalysis({

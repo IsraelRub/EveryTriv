@@ -48,8 +48,8 @@ import {
 	isCompleteUserAnalyticsData,
 } from '@internal/utils';
 
-import { AnalyticsCommonService } from './common-analytics.service';
-import { SystemAnalyticsService } from './system-analytics.service';
+import { AnalyticsCommonService } from './commonAnalytics.service';
+import { SystemAnalyticsService } from './systemAnalytics.service';
 import { buildUnifiedQuerySignature } from './unifiedAnalyticsCache.utils';
 
 @Injectable()

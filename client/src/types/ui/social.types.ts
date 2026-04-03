@@ -2,8 +2,6 @@ import type { IconType } from 'react-icons';
 
 import { SocialShareMode } from '@/constants';
 
-
-
 export interface SocialPlatformData {
 	name: string;
 	url: string;
@@ -36,4 +34,3 @@ export interface SocialSharePlatform {
 	icon?: IconType;
 	getShareUrl: (text: string, url: string) => string;
 }
-

@@ -22,6 +22,7 @@ import {
 import { VALIDATORS } from '@shared/validation';
 
 import { getMultiplayerSummaryStorageKey, LoadingMessages, STORAGE_KEYS } from '@/constants';
+import type { MultiplayerUnsubscribe } from '@/types';
 import { clientLogger as logger, multiplayerService, storageService } from '@/services';
 import {
 	selectIsConnected,
@@ -53,9 +54,9 @@ export const useMultiplayer = (roomId?: string) => {
 	const error = useAppSelector(selectMultiplayerError);
 	const isLoading = useAppSelector(selectMultiplayerLoading);
 	const leaderboard = gameState?.leaderboard ?? [];
-	const tokenRef = useRef<string | null>(null);
 	const isConnectingRef = useRef(false);
 	const isLoadingRef = useRef(false);
+	const listenerCleanupRef = useRef<(() => void) | null>(null);
 	const currentUserIdRef = useRef<string | undefined>(undefined);
 	const lastSubmittedAnswerRef = useRef<{ questionId: string; answerIndex: number } | null>(null);
 
@@ -63,319 +64,295 @@ export const useMultiplayer = (roomId?: string) => {
 	currentUserIdRef.current = currentUser?.id;
 
 	const setupEventListeners = useCallback(() => {
+		listenerCleanupRef.current?.();
 		// Drop previous app handlers so remounts / repeated connect() do not stack duplicate socket listeners
 		// (e.g. React Strict Mode double mount → duplicate QUESTION_ENDED → duplicate breakdown rows).
 		multiplayerService.clearAppListeners();
+		const subscriptions: MultiplayerUnsubscribe[] = [];
+		const registerListener = (event: MultiplayerEvent, callback: (data: unknown) => void): void => {
+			const unsubscribe = multiplayerService.stream(event).subscribe(callback);
+			subscriptions.push(unsubscribe);
+		};
 
 		// Room events
-		multiplayerService.on({
-			event: MultiplayerEvent.ROOM_CREATED,
-			callback: (data: unknown) => {
-				if (isCreateRoomResponse(data)) {
-					dispatch(setRoom(data.room));
-					dispatch(setError(null));
-				}
-			},
+		registerListener(MultiplayerEvent.ROOM_CREATED, (data: unknown) => {
+			if (isCreateRoomResponse(data)) {
+				dispatch(setRoom(data.room));
+				dispatch(setError(null));
+			}
 		});
 
-		multiplayerService.on({
-			event: MultiplayerEvent.ROOM_JOINED,
-			callback: (data: unknown) => {
-				if (isRoomStateResponse(data)) {
-					dispatch(setRoom(data.room));
-					dispatch(updateGameState(data.gameState));
-				}
-			},
+		registerListener(MultiplayerEvent.ROOM_JOINED, (data: unknown) => {
+			if (isRoomStateResponse(data)) {
+				dispatch(setRoom(data.room));
+				dispatch(updateGameState(data.gameState));
+			}
 		});
 
-		multiplayerService.on({
-			event: MultiplayerEvent.ROOM_LEFT,
-			callback: (data: unknown) => {
-				if (isRecord(data) && 'roomId' in data && VALIDATORS.string(data.roomId)) {
-					dispatch(setRoom(null));
-					dispatch(updateGameState(null));
-				}
-			},
+		registerListener(MultiplayerEvent.ROOM_LEFT, (data: unknown) => {
+			if (isRecord(data) && 'roomId' in data && VALIDATORS.string(data.roomId)) {
+				dispatch(setRoom(null));
+				dispatch(updateGameState(null));
+			}
 		});
 
 		// Player events
-		multiplayerService.on({
-			event: MultiplayerEvent.PLAYER_JOINED,
-			callback: (event: unknown) => {
-				if (isPlayerJoinedEvent(event)) {
-					const currentRoom = selectMultiplayerRoom(store.getState());
-					if (!currentRoom || currentRoom.roomId !== event.roomId) return;
-					const updatedRoom = {
-						...currentRoom,
-						players: event.data.players,
-					};
-					dispatch(setRoom(updatedRoom));
-				}
-			},
+		registerListener(MultiplayerEvent.PLAYER_JOINED, (event: unknown) => {
+			if (isPlayerJoinedEvent(event)) {
+				const currentRoom = selectMultiplayerRoom(store.getState());
+				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
+				const updatedRoom = {
+					...currentRoom,
+					players: event.data.players,
+				};
+				dispatch(setRoom(updatedRoom));
+			}
 		});
 
-		multiplayerService.on({
-			event: MultiplayerEvent.PLAYER_LEFT,
-			callback: (event: unknown) => {
-				if (isPlayerLeftEvent(event)) {
-					const currentRoom = selectMultiplayerRoom(store.getState());
-					if (!currentRoom || currentRoom.roomId !== event.roomId) return;
-					const updatedRoom = {
-						...currentRoom,
-						players: event.data.players,
-					};
-					dispatch(setRoom(updatedRoom));
-				}
-			},
+		registerListener(MultiplayerEvent.PLAYER_LEFT, (event: unknown) => {
+			if (isPlayerLeftEvent(event)) {
+				const currentRoom = selectMultiplayerRoom(store.getState());
+				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
+				const updatedRoom = {
+					...currentRoom,
+					players: event.data.players,
+				};
+				dispatch(setRoom(updatedRoom));
+			}
 		});
 
 		// Game events
-		multiplayerService.on({
-			event: MultiplayerEvent.GAME_STARTED,
-			callback: (event: unknown) => {
-				if (isGameStartedEvent(event)) {
-					const currentRoom = selectMultiplayerRoom(store.getState());
-					if (!currentRoom || currentRoom.roomId !== event.roomId) return;
-					dispatch(clearPersonalAnswerHistory());
-					const updatedRoom: MultiplayerRoom = {
+		registerListener(MultiplayerEvent.GAME_STARTED, (event: unknown) => {
+			if (isGameStartedEvent(event)) {
+				const currentRoom = selectMultiplayerRoom(store.getState());
+				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
+				dispatch(clearPersonalAnswerHistory());
+				const updatedRoom: MultiplayerRoom = {
+					...currentRoom,
+					questions: event.data.questions,
+					status: RoomStatus.PLAYING,
+					startTime: new Date(),
+				};
+				dispatch(setRoom(updatedRoom));
+			}
+		});
+
+		registerListener(MultiplayerEvent.QUESTION_STARTED, (event: unknown) => {
+			if (isQuestionStartedEvent(event)) {
+				const state = store.getState();
+				const currentGameState = selectMultiplayerGameState(state);
+				const currentRoom = selectMultiplayerRoom(state);
+				const gameQuestionCount = currentRoom?.questions?.length ?? currentGameState?.gameQuestionCount ?? 0;
+
+				// Clock sync check - use room.currentQuestionStartTime if available
+				// The server sets currentQuestionStartTime in the room when starting a question
+				if (currentRoom?.currentQuestionStartTime) {
+					const serverTimestamp = new Date(currentRoom.currentQuestionStartTime).getTime();
+					const offset = calculateClockOffset(serverTimestamp);
+					if (!validateClockOffset(offset)) {
+						logger.systemError('Significant clock offset detected', {
+							duration: offset,
+							roomId: event.roomId,
+						});
+					}
+				}
+
+				// Update gameState with currentQuestionStartTime from room if available
+				// Convert Date to ISO string for GameState (API response type expects string)
+				const rawQuestionStartTime = currentRoom?.currentQuestionStartTime;
+				const questionStartTime =
+					rawQuestionStartTime && VALIDATORS.date(rawQuestionStartTime)
+						? rawQuestionStartTime instanceof Date
+							? rawQuestionStartTime.toISOString()
+							: rawQuestionStartTime
+						: undefined;
+
+				const serverStartTimestamp = event.data.serverStartTimestamp;
+				const serverEndTimestamp = event.data.serverEndTimestamp;
+
+				dispatch(setRevealPhase(false));
+				dispatch(
+					updateGameState(
+						!currentGameState || currentGameState.roomId !== event.roomId
+							? {
+									roomId: event.roomId,
+									currentQuestion: event.data.question,
+									currentQuestionIndex: event.data.questionIndex,
+									gameQuestionCount,
+									timeRemaining: event.data.timeLimit,
+									playersAnswers: {},
+									playersScores: {},
+									leaderboard: [],
+									answerCounts: {},
+									...(questionStartTime && { currentQuestionStartTime: questionStartTime }),
+									...(serverStartTimestamp !== undefined && { serverStartTimestamp }),
+									...(serverEndTimestamp !== undefined && { serverEndTimestamp }),
+								}
+							: {
+									...currentGameState,
+									currentQuestion: event.data.question,
+									currentQuestionIndex: event.data.questionIndex,
+									gameQuestionCount,
+									timeRemaining: event.data.timeLimit,
+									playersAnswers: {},
+									answerCounts: {},
+									...(questionStartTime && { currentQuestionStartTime: questionStartTime }),
+									...(serverStartTimestamp !== undefined && { serverStartTimestamp }),
+									...(serverEndTimestamp !== undefined && { serverEndTimestamp }),
+								}
+					)
+				);
+			}
+		});
+
+		registerListener(MultiplayerEvent.ANSWER_RECEIVED, (event: unknown) => {
+			if (isAnswerReceivedEvent(event)) {
+				const currentGameState = selectMultiplayerGameState(store.getState());
+				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
+				// Only apply when the answer belongs to the current question; otherwise we'd merge
+				// previous question's data and show stale bars.
+				const currentQuestionId = currentGameState.currentQuestion?.id;
+				if (currentQuestionId != null && event.data.questionId !== currentQuestionId) return;
+				// Use server counts only; avoid carrying over stale counts from previous question.
+				const nextAnswerCounts = event.data.answerCounts ?? {};
+				dispatch(
+					updateGameState({
+						...currentGameState,
+						playersAnswers: {
+							...currentGameState.playersAnswers,
+							[event.data.userId]: event.data.answerIndex,
+						},
+						playersScores: {
+							...currentGameState.playersScores,
+							[event.data.userId]: event.data.scoreEarned,
+						},
+						leaderboard: event.data.leaderboard ?? currentGameState.leaderboard,
+						answerCounts: nextAnswerCounts,
+					})
+				);
+			}
+		});
+
+		registerListener(MultiplayerEvent.QUESTION_ENDED, (event: unknown) => {
+			if (isQuestionEndedEvent(event)) {
+				const currentGameState = selectMultiplayerGameState(store.getState());
+				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
+				const userId = currentUserIdRef.current;
+				const questionText = currentGameState.currentQuestion?.question;
+				const results = event.data.results;
+				if (userId && typeof questionText === 'string' && Array.isArray(results)) {
+					const myResult = results.find(r => r.userId === userId);
+					if (myResult !== undefined) {
+						const currentQuestion = currentGameState.currentQuestion;
+						const answers = currentQuestion?.answers ?? [];
+						const correctIdx = currentQuestion ? getCorrectAnswerIndex(currentQuestion) : -1;
+						const lastSubmitted = lastSubmittedAnswerRef.current;
+						const isSameQuestion = lastSubmitted && currentQuestion?.id === lastSubmitted.questionId;
+						const correctAnswerText =
+							correctIdx >= 0 && correctIdx < answers.length ? answers[correctIdx]?.text : undefined;
+						const userAnswerText =
+							isSameQuestion && lastSubmitted.answerIndex >= 0 && lastSubmitted.answerIndex < answers.length
+								? answers[lastSubmitted.answerIndex]?.text
+								: undefined;
+						dispatch(
+							pushPersonalAnswerEntry({
+								question: questionText,
+								questionId: event.data.questionId,
+								isCorrect: myResult.isCorrect,
+								...(correctAnswerText !== undefined && { correctAnswerText }),
+								...(userAnswerText !== undefined && { userAnswerText }),
+							})
+						);
+						lastSubmittedAnswerRef.current = null;
+					}
+				}
+				dispatch(setRevealPhase(true));
+				// Only apply answerCounts when they belong to the current question; otherwise a late
+				// QUESTION_ENDED (e.g. after QUESTION_STARTED for next question) would overwrite and show stale bars.
+				const countsForCurrentQuestion =
+					event.data.answerCounts !== undefined && currentGameState.currentQuestion?.id === event.data.questionId;
+				dispatch(
+					updateGameState({
+						...currentGameState,
+						leaderboard: event.data.leaderboard,
+						...(countsForCurrentQuestion && { answerCounts: event.data.answerCounts }),
+					})
+				);
+			}
+		});
+
+		registerListener(MultiplayerEvent.GAME_ENDED, (event: unknown) => {
+			if (isGameEndedEvent(event)) {
+				const currentGameState = selectMultiplayerGameState(store.getState());
+				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
+				const finalLeaderboard = event.data.finalLeaderboard;
+				dispatch(
+					updateGameState({
+						...currentGameState,
+						leaderboard: finalLeaderboard,
+					})
+				);
+				const currentRoom = selectMultiplayerRoom(store.getState());
+				const personalAnswerHistory = selectMultiplayerPersonalAnswerHistory(store.getState());
+				try {
+					const key = getMultiplayerSummaryStorageKey(event.roomId);
+					const questionCount = currentRoom?.questions?.length ?? 0;
+					const payload =
+						questionCount > 0 || personalAnswerHistory.length > 0
+							? {
+									leaderboard: finalLeaderboard,
+									...(questionCount > 0 && { questionCount }),
+									...(personalAnswerHistory.length > 0 && { personalAnswerHistory }),
+								}
+							: finalLeaderboard;
+					sessionStorage.setItem(key, JSON.stringify(payload));
+				} catch {
+					// Ignore sessionStorage errors (private mode, quota, etc.)
+				}
+				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
+				dispatch(
+					setRoom({
 						...currentRoom,
-						questions: event.data.questions,
-						status: RoomStatus.PLAYING,
-						startTime: new Date(),
-					};
-					dispatch(setRoom(updatedRoom));
-				}
-			},
+						status: RoomStatus.FINISHED,
+						endTime: new Date(),
+					})
+				);
+			}
 		});
 
-		multiplayerService.on({
-			event: MultiplayerEvent.QUESTION_STARTED,
-			callback: (event: unknown) => {
-				if (isQuestionStartedEvent(event)) {
+		registerListener(MultiplayerEvent.ROOM_UPDATED, (event: unknown) => {
+			if (isRoomUpdatedEvent(event)) {
+				dispatch(setRoom(event.data.room));
+			}
+		});
+
+		registerListener(MultiplayerEvent.ERROR, (error: unknown) => {
+			if (isRecord(error) && 'message' in error && VALIDATORS.string(error.message)) {
+				const errorCode = 'code' in error && VALIDATORS.string(error.code) ? error.code : undefined;
+				if (errorCode === ErrorCode.NEED_AT_LEAST_2_PLAYERS) {
+					return;
+				}
+				dispatch(setError(getErrorMessage(error)));
+
+				if (errorCode === ErrorCode.GAME_CANCELLED || errorCode === ErrorCode.ROOM_NOT_FOUND) {
 					const state = store.getState();
-					const currentGameState = selectMultiplayerGameState(state);
 					const currentRoom = selectMultiplayerRoom(state);
-					const gameQuestionCount = currentRoom?.questions?.length ?? currentGameState?.gameQuestionCount ?? 0;
-
-					// Clock sync check - use room.currentQuestionStartTime if available
-					// The server sets currentQuestionStartTime in the room when starting a question
-					if (currentRoom?.currentQuestionStartTime) {
-						const serverTimestamp = new Date(currentRoom.currentQuestionStartTime).getTime();
-						const offset = calculateClockOffset(serverTimestamp);
-						if (!validateClockOffset(offset)) {
-							logger.systemError('Significant clock offset detected', {
-								duration: offset,
-								roomId: event.roomId,
-							});
-						}
-					}
-
-					// Update gameState with currentQuestionStartTime from room if available
-					// Convert Date to ISO string for GameState (API response type expects string)
-					const rawQuestionStartTime = currentRoom?.currentQuestionStartTime;
-					const questionStartTime =
-						rawQuestionStartTime && VALIDATORS.date(rawQuestionStartTime)
-							? rawQuestionStartTime instanceof Date
-								? rawQuestionStartTime.toISOString()
-								: rawQuestionStartTime
-							: undefined;
-
-					const serverStartTimestamp = event.data.serverStartTimestamp;
-					const serverEndTimestamp = event.data.serverEndTimestamp;
-
-					dispatch(setRevealPhase(false));
-					dispatch(
-						updateGameState(
-							!currentGameState || currentGameState.roomId !== event.roomId
-								? {
-										roomId: event.roomId,
-										currentQuestion: event.data.question,
-										currentQuestionIndex: event.data.questionIndex,
-										gameQuestionCount,
-										timeRemaining: event.data.timeLimit,
-										playersAnswers: {},
-										playersScores: {},
-										leaderboard: [],
-										answerCounts: {},
-										...(questionStartTime && { currentQuestionStartTime: questionStartTime }),
-										...(serverStartTimestamp !== undefined && { serverStartTimestamp }),
-										...(serverEndTimestamp !== undefined && { serverEndTimestamp }),
-									}
-								: {
-										...currentGameState,
-										currentQuestion: event.data.question,
-										currentQuestionIndex: event.data.questionIndex,
-										gameQuestionCount,
-										timeRemaining: event.data.timeLimit,
-										playersAnswers: {},
-										answerCounts: {},
-										...(questionStartTime && { currentQuestionStartTime: questionStartTime }),
-										...(serverStartTimestamp !== undefined && { serverStartTimestamp }),
-										...(serverEndTimestamp !== undefined && { serverEndTimestamp }),
-									}
-						)
-					);
-				}
-			},
-		});
-
-		multiplayerService.on({
-			event: MultiplayerEvent.ANSWER_RECEIVED,
-			callback: (event: unknown) => {
-				if (isAnswerReceivedEvent(event)) {
-					const currentGameState = selectMultiplayerGameState(store.getState());
-					if (!currentGameState || currentGameState.roomId !== event.roomId) return;
-					// Only apply when the answer belongs to the current question; otherwise we'd merge
-					// previous question's data and show stale bars.
-					const currentQuestionId = currentGameState.currentQuestion?.id;
-					if (currentQuestionId != null && event.data.questionId !== currentQuestionId) return;
-					// Use server counts only; avoid carrying over stale counts from previous question.
-					const nextAnswerCounts = event.data.answerCounts ?? {};
-					dispatch(
-						updateGameState({
-							...currentGameState,
-							playersAnswers: {
-								...currentGameState.playersAnswers,
-								[event.data.userId]: event.data.answerIndex,
-							},
-							playersScores: {
-								...currentGameState.playersScores,
-								[event.data.userId]: event.data.scoreEarned,
-							},
-							leaderboard: event.data.leaderboard ?? currentGameState.leaderboard,
-							answerCounts: nextAnswerCounts,
-						})
-					);
-				}
-			},
-		});
-
-		multiplayerService.on({
-			event: MultiplayerEvent.QUESTION_ENDED,
-			callback: (event: unknown) => {
-				if (isQuestionEndedEvent(event)) {
-					const currentGameState = selectMultiplayerGameState(store.getState());
-					if (!currentGameState || currentGameState.roomId !== event.roomId) return;
-					const userId = currentUserIdRef.current;
-					const questionText = currentGameState.currentQuestion?.question;
-					const results = event.data.results;
-					if (userId && typeof questionText === 'string' && Array.isArray(results)) {
-						const myResult = results.find(r => r.userId === userId);
-						if (myResult !== undefined) {
-							const currentQuestion = currentGameState.currentQuestion;
-							const answers = currentQuestion?.answers ?? [];
-							const correctIdx = currentQuestion ? getCorrectAnswerIndex(currentQuestion) : -1;
-							const lastSubmitted = lastSubmittedAnswerRef.current;
-							const isSameQuestion = lastSubmitted && currentQuestion?.id === lastSubmitted.questionId;
-							const correctAnswerText =
-								correctIdx >= 0 && correctIdx < answers.length ? answers[correctIdx]?.text : undefined;
-							const userAnswerText =
-								isSameQuestion && lastSubmitted.answerIndex >= 0 && lastSubmitted.answerIndex < answers.length
-									? answers[lastSubmitted.answerIndex]?.text
-									: undefined;
-							dispatch(
-								pushPersonalAnswerEntry({
-									question: questionText,
-									questionId: event.data.questionId,
-									isCorrect: myResult.isCorrect,
-									...(correctAnswerText !== undefined && { correctAnswerText }),
-									...(userAnswerText !== undefined && { userAnswerText }),
-								})
-							);
-							lastSubmittedAnswerRef.current = null;
-						}
-					}
-					dispatch(setRevealPhase(true));
-					// Only apply answerCounts when they belong to the current question; otherwise a late
-					// QUESTION_ENDED (e.g. after QUESTION_STARTED for next question) would overwrite and show stale bars.
-					const countsForCurrentQuestion =
-						event.data.answerCounts !== undefined && currentGameState.currentQuestion?.id === event.data.questionId;
-					dispatch(
-						updateGameState({
-							...currentGameState,
-							leaderboard: event.data.leaderboard,
-							...(countsForCurrentQuestion && { answerCounts: event.data.answerCounts }),
-						})
-					);
-				}
-			},
-		});
-
-		multiplayerService.on({
-			event: MultiplayerEvent.GAME_ENDED,
-			callback: (event: unknown) => {
-				if (isGameEndedEvent(event)) {
-					const currentGameState = selectMultiplayerGameState(store.getState());
-					if (!currentGameState || currentGameState.roomId !== event.roomId) return;
-					const finalLeaderboard = event.data.finalLeaderboard;
-					dispatch(
-						updateGameState({
-							...currentGameState,
-							leaderboard: finalLeaderboard,
-						})
-					);
-					const currentRoom = selectMultiplayerRoom(store.getState());
-					const personalAnswerHistory = selectMultiplayerPersonalAnswerHistory(store.getState());
-					try {
-						const key = getMultiplayerSummaryStorageKey(event.roomId);
-						const questionCount = currentRoom?.questions?.length ?? 0;
-						const payload =
-							questionCount > 0 || personalAnswerHistory.length > 0
-								? {
-										leaderboard: finalLeaderboard,
-										...(questionCount > 0 && { questionCount }),
-										...(personalAnswerHistory.length > 0 && { personalAnswerHistory }),
-									}
-								: finalLeaderboard;
-						sessionStorage.setItem(key, JSON.stringify(payload));
-					} catch {
-						// Ignore sessionStorage errors (private mode, quota, etc.)
-					}
-					if (!currentRoom || currentRoom.roomId !== event.roomId) return;
-					dispatch(
-						setRoom({
-							...currentRoom,
-							status: RoomStatus.FINISHED,
-							endTime: new Date(),
-						})
-					);
-				}
-			},
-		});
-
-		multiplayerService.on({
-			event: MultiplayerEvent.ROOM_UPDATED,
-			callback: (event: unknown) => {
-				if (isRoomUpdatedEvent(event)) {
-					dispatch(setRoom(event.data.room));
-				}
-			},
-		});
-
-		multiplayerService.on({
-			event: MultiplayerEvent.ERROR,
-			callback: (error: unknown) => {
-				if (isRecord(error) && 'message' in error && VALIDATORS.string(error.message)) {
-					const errorCode = 'code' in error && VALIDATORS.string(error.code) ? error.code : undefined;
-					if (errorCode === ErrorCode.NEED_AT_LEAST_2_PLAYERS) {
-						return;
-					}
-					dispatch(setError(getErrorMessage(error)));
-
-					if (errorCode === ErrorCode.GAME_CANCELLED || errorCode === ErrorCode.ROOM_NOT_FOUND) {
-						const state = store.getState();
-						const currentRoom = selectMultiplayerRoom(state);
-						const currentGameState = selectMultiplayerGameState(state);
-						const hasFinishedGameWithResults =
-							currentRoom?.status === RoomStatus.FINISHED && (currentGameState?.leaderboard?.length ?? 0) > 0;
-						if (!hasFinishedGameWithResults) {
-							dispatch(setRoom(null));
-							dispatch(updateGameState(null));
-						}
+					const currentGameState = selectMultiplayerGameState(state);
+					const hasFinishedGameWithResults =
+						currentRoom?.status === RoomStatus.FINISHED && (currentGameState?.leaderboard?.length ?? 0) > 0;
+					if (!hasFinishedGameWithResults) {
+						dispatch(setRoom(null));
+						dispatch(updateGameState(null));
 					}
 				}
-			},
+			}
 		});
+		listenerCleanupRef.current = () => {
+			subscriptions.forEach(unsubscribe => {
+				unsubscribe();
+			});
+			listenerCleanupRef.current = null;
+		};
 	}, [dispatch]);
 
 	const connect = useCallback(async () => {
@@ -385,7 +362,7 @@ export const useMultiplayer = (roomId?: string) => {
 		}
 
 		// Check if already connected
-		if (multiplayerService.isConnected()) {
+		if (multiplayerService.isConnected) {
 			dispatch(setConnectionStatus(true));
 			// Ensure event listeners are set up even if already connected
 			setupEventListeners();
@@ -402,8 +379,6 @@ export const useMultiplayer = (roomId?: string) => {
 				isConnectingRef.current = false;
 				return;
 			}
-
-			tokenRef.current = token;
 
 			const socket = multiplayerService.connect(token);
 
@@ -450,7 +425,7 @@ export const useMultiplayer = (roomId?: string) => {
 		(config: CreateRoomConfig) => {
 			dispatch(setMultiplayerLoading(true));
 			isLoadingRef.current = true;
-			multiplayerService.createRoom(config);
+			multiplayerService.emit(MultiplayerEvent.CREATE_ROOM, config);
 		},
 		[dispatch]
 	);
@@ -459,7 +434,7 @@ export const useMultiplayer = (roomId?: string) => {
 		(targetRoomId: string) => {
 			dispatch(setMultiplayerLoading(true));
 			isLoadingRef.current = true;
-			multiplayerService.joinRoom(targetRoomId);
+			multiplayerService.emit(MultiplayerEvent.JOIN_ROOM, { roomId: targetRoomId });
 		},
 		[dispatch]
 	);
@@ -467,7 +442,7 @@ export const useMultiplayer = (roomId?: string) => {
 	const leaveRoom = useCallback(() => {
 		const roomIdToLeave = room?.roomId;
 		if (roomIdToLeave) {
-			multiplayerService.leaveRoom(roomIdToLeave);
+			multiplayerService.emit(MultiplayerEvent.LEAVE_ROOM, { roomId: roomIdToLeave });
 		}
 	}, [room]);
 
@@ -476,13 +451,18 @@ export const useMultiplayer = (roomId?: string) => {
 		if (roomIdToStart) {
 			dispatch(setMultiplayerLoading(true));
 			isLoadingRef.current = true;
-			multiplayerService.startGame(roomIdToStart);
+			multiplayerService.emit(MultiplayerEvent.START_GAME, { roomId: roomIdToStart });
 		}
 	}, [room, dispatch]);
 
 	const submitAnswer = useCallback((roomId: string, questionId: string, answer: number, timeSpent: number) => {
 		lastSubmittedAnswerRef.current = { questionId, answerIndex: answer };
-		multiplayerService.submitAnswer(roomId, questionId, answer, timeSpent);
+		multiplayerService.emit(MultiplayerEvent.SUBMIT_ANSWER, {
+			roomId,
+			questionId,
+			answer,
+			timeSpent,
+		});
 	}, []);
 
 	// Auto-connect on mount if user is authenticated

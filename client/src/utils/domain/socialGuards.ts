@@ -1,6 +1,5 @@
+import { isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
-
-import { isRecord } from '../core/data.utils';
 
 export function isSocialLinkItem(value: unknown): value is {
 	name: string;

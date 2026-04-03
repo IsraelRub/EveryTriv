@@ -8,7 +8,6 @@ export enum LogLevel {
 	DEBUG = 'debug',
 }
 
-/** Structured log `meta.context` — keep string values stable (observability / filters). */
 export enum LogContext {
 	API = 'API',
 	AUTH = 'AUTH',

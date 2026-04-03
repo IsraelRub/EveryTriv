@@ -135,18 +135,6 @@ export class StorageService implements IStorageService {
 		}
 	}
 
-	async getString(key: string): Promise<StorageOperationResult<string | null>> {
-		return this.get(key, VALIDATORS.string);
-	}
-
-	async getNumber(key: string): Promise<StorageOperationResult<number | null>> {
-		return this.get(key, VALIDATORS.number);
-	}
-
-	async getBoolean(key: string): Promise<StorageOperationResult<boolean | null>> {
-		return this.get(key, VALIDATORS.boolean);
-	}
-
 	async getDate(key: string): Promise<StorageOperationResult<Date | null>> {
 		const result = await this.get(key, VALIDATORS.date);
 		if (result.success && result.data) {

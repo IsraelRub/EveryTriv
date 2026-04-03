@@ -1,10 +1,5 @@
-import { DEFAULT_GAME_CONFIG, DIFFICULTY_CONFIG, ERROR_MESSAGES, GameMode } from '../../constants';
+import { DEFAULT_GAME_CONFIG, ERROR_MESSAGES, GameMode } from '../../constants';
 import type { GameData } from '../../types';
-
-export function getDifficultyBadgeClasses(difficulty: unknown): string {
-	const key = String(difficulty ?? '').toLowerCase();
-	return DIFFICULTY_CONFIG[key]?.badgeClasses ?? 'bg-muted/20 border-muted text-muted-foreground';
-}
 
 export function namesMatch(a: string, b: string): boolean {
 	return a.toLowerCase() === b.toLowerCase();

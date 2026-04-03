@@ -13,22 +13,12 @@ import {
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 
-import {
-	API_ENDPOINTS,
-	ErrorCode,
-	LOCALHOST_CONFIG,
-	TIME_DURATIONS_SECONDS,
-	UserRole,
-	VALIDATION_LENGTH,
-} from '@shared/constants';
-import type { AdminUserData, BasicUser } from '@shared/types';
+import { API_ENDPOINTS, ErrorCode, LOCALHOST_CONFIG, VALIDATION_LENGTH } from '@shared/constants';
+import type { BasicUser } from '@shared/types';
 import { getErrorMessage, isNonEmptyString, truncateWithEllipsis } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { AppConfig } from '@config';
-import { Cache, CurrentUser, CurrentUserId, NoCache, Public, Roles } from '@common/decorators';
-import { LocalAuthGuard, RolesGuard } from '@common/guards';
-import { UserCoreService } from '@internal/modules';
+import { CurrentUser, CurrentUserId, NoCache, Public } from '@common/decorators';
 import { serverLogger as logger } from '@internal/services';
 import type { GoogleAuthRequest, TokenPayload } from '@internal/types';
 import { getAvatarUrlForUser } from '@internal/utils';
@@ -38,10 +28,7 @@ import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, Re
 
 @Controller(API_ENDPOINTS.AUTH.BASE)
 export class AuthController {
-	constructor(
-		private readonly authService: AuthService,
-		private readonly userCoreService: UserCoreService
-	) {}
+	constructor(private readonly authService: AuthService) {}
 
 	@Post('register')
 	@Public()
@@ -159,29 +146,21 @@ export class AuthController {
 				userIdMatches: fullUser.id === user.sub,
 			});
 
+			const avatarUrl = getAvatarUrlForUser(fullUser);
 			const userData: BasicUser = {
 				id: fullUser.id,
 				email: fullUser.email,
 				role: fullUser.role,
+				...('firstName' in fullUser && isNonEmptyString(fullUser.firstName) ? { firstName: fullUser.firstName } : {}),
+				...('lastName' in fullUser && isNonEmptyString(fullUser.lastName) ? { lastName: fullUser.lastName } : {}),
+				...(fullUser.preferences?.avatar && VALIDATORS.number(fullUser.preferences.avatar)
+					? { avatar: fullUser.preferences.avatar }
+					: {}),
+				...(avatarUrl != null ? { avatarUrl } : {}),
+				...('emailVerified' in fullUser && typeof fullUser.emailVerified === 'boolean'
+					? { emailVerified: fullUser.emailVerified }
+					: {}),
 			};
-
-			if ('firstName' in fullUser && isNonEmptyString(fullUser.firstName)) {
-				userData.firstName = fullUser.firstName;
-			}
-			if ('lastName' in fullUser && isNonEmptyString(fullUser.lastName)) {
-				userData.lastName = fullUser.lastName;
-			}
-			if (fullUser.preferences?.avatar && VALIDATORS.number(fullUser.preferences.avatar)) {
-				userData.avatar = fullUser.preferences.avatar;
-			}
-			const avatarUrl = getAvatarUrlForUser(
-				fullUser as { id: string; customAvatar?: Buffer | null },
-				AppConfig.apiPublicBaseUrl
-			);
-			if (avatarUrl != null) userData.avatarUrl = avatarUrl;
-			if ('emailVerified' in fullUser && typeof fullUser.emailVerified === 'boolean') {
-				userData.emailVerified = fullUser.emailVerified;
-			}
 
 			logger.systemInfo('Returning user data', {
 				userId: userData.id,
@@ -327,54 +306,6 @@ export class AuthController {
 			});
 
 			return res.redirect(redirectUrl);
-		}
-	}
-
-	@Get('admin/users')
-	@UseGuards(LocalAuthGuard, RolesGuard)
-	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
-	async getAllUsers(
-		@CurrentUser() user: TokenPayload,
-		@Query('limit') limit?: number,
-		@Query('offset') offset?: number
-	) {
-		try {
-			logger.authInfo('Admin accessed all users', {
-				id: user.sub,
-				role: user.role,
-			});
-
-			const parsedLimit = VALIDATORS.string(limit) ? parseInt(limit, 10) : limit;
-			const parsedOffset = VALIDATORS.string(offset) ? parseInt(offset, 10) : offset;
-			const safeLimit = VALIDATORS.number(parsedLimit) ? parsedLimit : 50;
-			const safeOffset = VALIDATORS.number(parsedOffset) ? parsedOffset : 0;
-			const result = await this.userCoreService.getAllUsers(safeLimit, safeOffset);
-
-			const adminUser: AdminUserData = {
-				id: user.sub,
-				...user,
-				createdAt: new Date().toISOString(),
-				lastLogin: undefined,
-			};
-
-			const { users, ...paginationData } = result;
-
-			return {
-				success: true,
-				message: 'Users retrieved successfully',
-				adminUser,
-				users,
-				pagination: paginationData,
-				timestamp: new Date().toISOString(),
-			};
-		} catch (error) {
-			logger.authError('Failed to get all users', {
-				errorInfo: { message: getErrorMessage(error) },
-				id: user.sub,
-				role: user.role,
-			});
-			throw error;
 		}
 	}
 }

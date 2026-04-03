@@ -7,7 +7,7 @@ import { LeaderboardPeriod } from '@shared/constants';
 import { formatNumericValue } from '@shared/utils';
 import { isLeaderboardPeriod } from '@shared/validation';
 
-import { Colors, LEADERBOARD_PERIOD_PARAM, StatisticsLeaderboardKey } from '@/constants';
+import { LEADERBOARD_PERIOD_PARAM, SEMANTIC_ICON_TEXT, StatisticsLeaderboardKey } from '@/constants';
 import { Card, LeaderboardTable, SectionCard, StatCard, Tabs } from '@/components';
 import { SecondaryTabsBar } from '@/components/layout';
 import {
@@ -76,21 +76,21 @@ export function LeaderboardTabContent() {
 								icon={UserCheck}
 								label={t(StatisticsLeaderboardKey.ACTIVE_USERS)}
 								value={formatNumericValue(leaderboardStats?.activeUsers, 0)}
-								color={Colors.BLUE_500.text}
+								color={SEMANTIC_ICON_TEXT.primary}
 								isLoading={leaderboardStatsLoading}
 							/>
 							<StatCard
 								icon={PercentCircle}
 								label={t(StatisticsLeaderboardKey.AVERAGE_SCORE)}
 								value={formatNumericValue(leaderboardStats?.averageScore, 0)}
-								color={Colors.YELLOW_500.text}
+								color={SEMANTIC_ICON_TEXT.warning}
 								isLoading={leaderboardStatsLoading}
 							/>
 							<StatCard
 								icon={GamepadIcon}
 								label={t(StatisticsLeaderboardKey.AVERAGE_GAMES)}
 								value={formatNumericValue(leaderboardStats?.averageGames, 0)}
-								color={Colors.GREEN_500.text}
+								color={SEMANTIC_ICON_TEXT.success}
 								isLoading={leaderboardStatsLoading}
 							/>
 						</div>

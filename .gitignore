@@ -9,8 +9,9 @@ build/
 dist-temp/
 *.tsbuildinfo
 
-# Environment variables
+# Environment variables (keep `.env.example` tracked)
 .env*
+!.env.example
 
 # IDE and editor files
 .vscode/

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Shield } from 'lucide-react';
 
 import { LegalKey } from '@/constants';
-import { LegalDocumentPage, buildPrivacyPolicySections } from '@/components/legal';
+import { buildPrivacyPolicySections, LegalDocumentPage } from '@/components/legal';
 
 export function PrivacyPolicyView() {
 	const { t } = useTranslation('legal');

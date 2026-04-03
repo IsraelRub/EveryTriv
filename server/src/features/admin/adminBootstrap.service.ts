@@ -2,12 +2,12 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 
-import { TIME_PERIODS_MS, UserRole, VALIDATION_COUNT } from '@shared/constants';
+import { RETRY_LIMITS, TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import { delay, ensureErrorObject } from '@shared/utils';
 
 import { PasswordService } from '@common/auth';
-import { UserEntity } from '@internal/entities';
 import { ADMIN_CREDENTIALS_DEFAULTS } from '@internal/constants';
+import { UserEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class AdminBootstrapService implements OnModuleInit {
 	) {}
 
 	async onModuleInit(): Promise<void> {
-		const maxRetries = VALIDATION_COUNT.RETRY_ATTEMPTS.ADMIN_BOOTSTRAP;
+		const maxRetries = RETRY_LIMITS.adminBootstrap;
 		const retryDelay = TIME_PERIODS_MS.TWO_SECONDS;
 
 		for (let attempt = 1; attempt <= maxRetries; attempt++) {

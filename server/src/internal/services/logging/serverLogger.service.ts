@@ -107,8 +107,8 @@ class ServerLoggerService extends BaseLoggerService {
 			level,
 			message,
 			meta: meta ?? {},
-			sessionId: this.getSessionId(),
-			traceId: this.getTraceId(),
+			sessionId: this.sessionId,
+			traceId: this.traceId,
 		};
 		const logLine = `[${localTimestamp}] ${level}: ${message} | ${JSON.stringify(logEntry.meta)}\n`;
 		try {
@@ -124,9 +124,9 @@ class ServerLoggerService extends BaseLoggerService {
 		return traceId;
 	}
 
-	public override getTraceId(): string {
+	public override get traceId(): string {
 		const activeTraceId = this.traceStorage.getStore();
-		return isNonEmptyString(activeTraceId) ? activeTraceId : super.getTraceId();
+		return isNonEmptyString(activeTraceId) ? activeTraceId : super.traceId;
 	}
 
 	protected override buildMeta(meta?: LogMeta): LogMeta {
@@ -192,6 +192,5 @@ class ServerLoggerService extends BaseLoggerService {
 		};
 	}
 }
-
 
 export const serverLogger = new ServerLoggerService();

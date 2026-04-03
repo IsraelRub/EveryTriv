@@ -1,3 +1,14 @@
+import { DifficultyLevel } from '@shared/constants';
+
+export const DIFFICULTY_PROMPT_GUIDANCE: Record<string, string> = {
+	[DifficultyLevel.EASY]:
+		'Use well-known, commonly known facts that most people would know. Simple, straightforward questions.',
+	[DifficultyLevel.MEDIUM]:
+		'Use moderately known facts that require some knowledge of the topic. Balance between common and specialized knowledge.',
+	[DifficultyLevel.HARD]:
+		'Use specialized, less commonly known facts that require deeper knowledge or expertise in the topic.',
+};
+
 export const SURPRISE_PICK_SYSTEM_PROMPT =
 	'You respond only with valid JSON. No markdown, no code fences, no explanation.';
 

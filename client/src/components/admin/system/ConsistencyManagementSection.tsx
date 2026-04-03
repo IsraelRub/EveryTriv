@@ -1,24 +1,26 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cva } from 'class-variance-authority';
 import { CheckCircle2, Database, GamepadIcon, RefreshCw, Users as UsersIcon, XCircle } from 'lucide-react';
 
-import { VALIDATION_LENGTH } from '@shared/constants';
+import { ERROR_MESSAGES, TIME_PERIODS_MS, VALIDATION_LENGTH } from '@shared/constants';
 import { formatTitle, truncateWithEllipsis } from '@shared/utils';
 
 import {
 	AdminKey,
 	AlertIconSize,
 	ButtonSize,
-	Colors,
 	DataTableColumnType,
+	QUERY_KEYS,
+	SEMANTIC_ICON_TEXT,
 	SKELETON_PLACEHOLDER_COUNTS,
 	SkeletonVariant,
 	StatCardVariant,
 	VariantBase,
 } from '@/constants';
 import type { ConsistencyDiscrepancy, ConsistencyResultRow, DataTableColumn } from '@/types';
-import { cn } from '@/utils';
+import { analyticsService } from '@/services';
 import {
 	Accordion,
 	AccordionContent,
@@ -32,7 +34,7 @@ import {
 	Skeleton,
 	StatCard,
 } from '@/components';
-import { useCheckAllUsersConsistency, useCheckUserStatsConsistency, useFixUserStatsConsistency } from '@/hooks';
+import { useUserRole } from '@/hooks';
 
 const consistencyStatusVariants = cva('', {
 	variants: {
@@ -40,12 +42,12 @@ const consistencyStatusVariants = cva('', {
 		target: { icon: 'h-5 w-5', badge: '' },
 	},
 	compoundVariants: [
-		{ status: 'consistent', target: 'icon', class: Colors.GREEN_500.text },
+		{ status: 'consistent', target: 'icon', class: SEMANTIC_ICON_TEXT.success },
 		{ status: 'inconsistent', target: 'icon', class: 'text-destructive' },
 		{
 			status: 'consistent',
 			target: 'badge',
-			class: cn(`${Colors.GREEN_500.bg}/10`, Colors.GREEN_500.border, Colors.GREEN_500.text),
+			class: 'bg-success/10 border-success text-success',
 		},
 		{ status: 'inconsistent', target: 'badge', class: 'bg-destructive/10 text-destructive border-destructive' },
 	],
@@ -75,14 +77,57 @@ function DiscrepancyCell({ expected, actual }: ConsistencyDiscrepancy): JSX.Elem
 
 export function ConsistencyManagementSection() {
 	const { t } = useTranslation();
+	const queryClient = useQueryClient();
+	const { isAdmin } = useUserRole();
 	const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-	const { data: allConsistency, isLoading: allConsistencyLoading, refetch: refetchAll } = useCheckAllUsersConsistency();
+
+	const {
+		data: allConsistency,
+		isLoading: allConsistencyLoading,
+		refetch: refetchAll,
+	} = useQuery({
+		queryKey: QUERY_KEYS.admin.allUsersConsistency(),
+		queryFn: async () => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.checkAllUsersConsistency();
+		},
+		enabled: isAdmin,
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
+	});
+
 	const {
 		data: userConsistency,
 		isLoading: userConsistencyLoading,
 		refetch: refetchUser,
-	} = useCheckUserStatsConsistency(selectedUserId, !!selectedUserId);
-	const fixConsistency = useFixUserStatsConsistency();
+	} = useQuery({
+		queryKey: QUERY_KEYS.admin.userStatsConsistency(selectedUserId ?? ''),
+		queryFn: async () => {
+			if (!isAdmin || !selectedUserId) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.checkUserStatsConsistency(selectedUserId);
+		},
+		enabled: isAdmin && !!selectedUserId,
+		staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
+		gcTime: TIME_PERIODS_MS.TEN_MINUTES,
+	});
+
+	const fixConsistency = useMutation({
+		mutationFn: async (userId: string) => {
+			if (!isAdmin) {
+				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
+			}
+			return analyticsService.fixUserStatsConsistency(userId);
+		},
+		onSuccess: (_, userId) => {
+			void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userStatsConsistency(userId) });
+			void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.allUsersConsistency() });
+			void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.userAnalytics() });
+		},
+	});
 
 	const handleFixUser = useCallback(
 		async (userId: string) => {
@@ -99,7 +144,7 @@ export function ConsistencyManagementSection() {
 
 	const inconsistentRows = useMemo<ConsistencyResultRow[]>(() => {
 		if (!allConsistency?.results) return [];
-		return allConsistency.results.filter(r => !r.isConsistent).slice(0, 20);
+		return allConsistency.results.filter((row: ConsistencyResultRow) => !row.isConsistent).slice(0, 20);
 	}, [allConsistency?.results]);
 
 	const consistencyColumns = useMemo((): DataTableColumn<ConsistencyResultRow>[] => {
@@ -165,28 +210,28 @@ export function ConsistencyManagementSection() {
 							icon={UsersIcon}
 							label={t(AdminKey.TOTAL_USERS)}
 							value={allConsistency.totalUsers.toLocaleString()}
-							color={Colors.BLUE_500.text}
+							color={SEMANTIC_ICON_TEXT.primary}
 						/>
 						<StatCard
 							variant={StatCardVariant.CENTERED}
 							icon={GamepadIcon}
 							label={t(AdminKey.USERS_WITH_GAMES)}
 							value={allConsistency.usersWithGames.toLocaleString()}
-							color={Colors.GREEN_500.text}
+							color={SEMANTIC_ICON_TEXT.success}
 						/>
 						<StatCard
 							variant={StatCardVariant.CENTERED}
 							icon={CheckCircle2}
 							label={t(AdminKey.CONSISTENT_USERS)}
 							value={allConsistency.consistentUsers.toLocaleString()}
-							color={Colors.GREEN_500.text}
+							color={SEMANTIC_ICON_TEXT.success}
 						/>
 						<StatCard
 							variant={StatCardVariant.CENTERED}
 							icon={XCircle}
 							label={t(AdminKey.INCONSISTENT_USERS)}
 							value={allConsistency.inconsistentUsers.toLocaleString()}
-							color={Colors.RED_500.text}
+							color={SEMANTIC_ICON_TEXT.destructive}
 						/>
 					</div>
 				) : null}

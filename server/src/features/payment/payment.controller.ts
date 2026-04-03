@@ -42,13 +42,13 @@ export class PaymentController {
 			paypalOrderId: paymentData.paymentMethod === PaymentMethod.PAYPAL ? paymentData.paypalOrderId : undefined,
 			paypalPaymentId: paymentData.paymentMethod === PaymentMethod.PAYPAL ? paymentData.paypalPaymentId : undefined,
 		};
-		return await this.paymentService.processPayment(userId, paymentDataForService);
+		return this.paymentService.processPayment(userId, paymentDataForService);
 	}
 
 	@Get('history')
 	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
 	async getPaymentHistory(@CurrentUserId() userId: string) {
-		return await this.paymentService.getPaymentHistory(userId);
+		return this.paymentService.getPaymentHistory(userId);
 	}
 
 	@Post('purchase-credits')
@@ -91,11 +91,7 @@ export class PaymentController {
 					manualPayment,
 				};
 
-				const paymentResult = await this.paymentService.processPaymentWithTransaction(
-					transactionManager,
-					userId,
-					paymentData
-				);
+				const paymentResult = await this.paymentService.processPayment(userId, paymentData, transactionManager);
 
 				if (paymentResult.status !== PaymentStatus.COMPLETED) {
 					return paymentResult;

@@ -2,6 +2,8 @@ export * from './api.constants';
 
 export * from './avatar.constants';
 
+export * from './retryLimits.constants';
+
 export * from './validation.constants';
 
 export * from './error.constants';

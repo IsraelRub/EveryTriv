@@ -1,7 +1,7 @@
 import { Activity, Brain, CirclePercent, FileQuestion, GamepadIcon, Medal } from 'lucide-react';
 
 import type { AdminGameStatSpec, TabSpec } from '@/types';
-import { Colors } from '../core/ui/color.constants';
+import { SEMANTIC_ICON_TEXT } from '../core/ui/color.constants';
 
 export enum StatsSectionLayout {
 	SECTION = 'section',
@@ -60,42 +60,42 @@ export const ADMIN_GAME_STATS_SPEC: AdminGameStatSpec[] = [
 	{
 		icon: GamepadIcon,
 		label: 'Total Games',
-		color: Colors.BLUE_500.text,
+		color: SEMANTIC_ICON_TEXT.primary,
 		key: AdminGameStatKey.TOTAL_GAMES,
 		format: AdminGameStatFormat.INTEGER,
 	},
 	{
 		icon: Medal,
 		label: 'Best Score',
-		color: Colors.YELLOW_500.text,
+		color: SEMANTIC_ICON_TEXT.warning,
 		key: AdminGameStatKey.BEST_SCORE,
 		format: AdminGameStatFormat.INTEGER,
 	},
 	{
 		icon: CirclePercent,
 		label: 'Average Score',
-		color: Colors.GREEN_500.text,
+		color: SEMANTIC_ICON_TEXT.success,
 		key: AdminGameStatKey.AVERAGE_SCORE,
 		format: AdminGameStatFormat.DECIMAL,
 	},
 	{
 		icon: Brain,
 		label: 'Accuracy',
-		color: Colors.PURPLE_500.text,
+		color: SEMANTIC_ICON_TEXT.secondary,
 		key: AdminGameStatKey.ACCURACY,
 		format: AdminGameStatFormat.PERCENT,
 	},
 	{
 		icon: Activity,
 		label: 'Active Players (24h)',
-		color: Colors.ORANGE_500.text,
+		color: SEMANTIC_ICON_TEXT.orange,
 		key: AdminGameStatKey.ACTIVE_PLAYERS_24H,
 		format: AdminGameStatFormat.INTEGER,
 	},
 	{
 		icon: FileQuestion,
 		label: 'Questions Answered',
-		color: Colors.CYAN_500.text,
+		color: SEMANTIC_ICON_TEXT.cyan,
 		key: AdminGameStatKey.TOTAL_QUESTIONS_ANSWERED,
 		format: AdminGameStatFormat.INTEGER,
 	},

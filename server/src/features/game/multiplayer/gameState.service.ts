@@ -28,14 +28,12 @@ export class GameStateService {
 	constructor(private readonly roomService: RoomService) {}
 
 	async initializeGame(room: MultiplayerRoom, questions: TriviaQuestion[]): Promise<MultiplayerRoom> {
-		Object.assign(room, {
-			questions,
-			currentQuestionIndex: 0,
-			status: RoomStatus.PLAYING,
-			questionState: QuestionState.IDLE,
-			startTime: new Date(),
-			currentQuestionStartTime: new Date(),
-		});
+		room.questions = questions;
+		room.currentQuestionIndex = 0;
+		room.status = RoomStatus.PLAYING;
+		room.questionState = QuestionState.IDLE;
+		room.startTime = new Date();
+		room.currentQuestionStartTime = new Date();
 
 		// Reset all players to playing state
 		room.players.forEach(player => {
@@ -205,14 +203,6 @@ export class GameStateService {
 		return true;
 	}
 
-	private startQuestion(room: MultiplayerRoom): boolean {
-		return this.transitionQuestionState(room, QuestionState.STARTING);
-	}
-
-	private activateQuestion(room: MultiplayerRoom): boolean {
-		return this.transitionQuestionState(room, QuestionState.ACTIVE);
-	}
-
 	endQuestion(room: MultiplayerRoom): boolean {
 		const currentState = room.questionState ?? QuestionState.IDLE;
 		if (currentState !== QuestionState.ACTIVE) {
@@ -225,18 +215,14 @@ export class GameStateService {
 		return this.transitionQuestionState(room, QuestionState.ENDING);
 	}
 
-	private completeQuestion(room: MultiplayerRoom): boolean {
-		return this.transitionQuestionState(room, QuestionState.ENDED);
-	}
-
 	async startQuestionFlow(roomId: string, room: MultiplayerRoom): Promise<MultiplayerRoom | null> {
-		if (!this.startQuestion(room)) {
+		if (!this.transitionQuestionState(room, QuestionState.STARTING)) {
 			return null;
 		}
 
 		room.currentQuestionStartTime = new Date();
 
-		if (!this.activateQuestion(room)) {
+		if (!this.transitionQuestionState(room, QuestionState.ACTIVE)) {
 			return null;
 		}
 
@@ -282,7 +268,7 @@ export class GameStateService {
 		});
 
 		const gameState = this.getGameState(room);
-		this.completeQuestion(room);
+		this.transitionQuestionState(room, QuestionState.ENDED);
 
 		return {
 			results,
@@ -314,6 +300,7 @@ export class GameStateService {
 						player.status = PlayerStatus.PLAYING;
 						player.currentAnswer = undefined;
 						player.timeSpent = undefined;
+						player.answersSubmitted = 0;
 					}
 				});
 			}

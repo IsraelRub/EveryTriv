@@ -20,7 +20,6 @@
     "server/src/migrations/**",
     "server/src/config/dataSource.ts",
     "**/index.ts",
-    "shared/**/*.ts",
     "client/src/components/ui/index.ts",
     "client/src/components/index.ts",
     "client/src/hooks/index.ts",

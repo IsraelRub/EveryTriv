@@ -6,74 +6,78 @@
 	:root {
 		--background: 222 47% 11%;
 		--foreground: 210 40% 98%;
-
 		--card: 222 47% 14%;
 		--card-foreground: 210 40% 98%;
-
 		--popover: 222 47% 14%;
 		--popover-foreground: 210 40% 98%;
-
 		--primary: 217 91% 60%;
 		--primary-foreground: 222 47% 11%;
-
 		--secondary: 292 84% 61%;
 		--secondary-foreground: 210 40% 98%;
-
 		--muted: 217 33% 17%;
 		--muted-foreground: 215 20% 65%;
 
+		/* UI roles: highlights, hover states, subtle fills (not the same token as success). */
 		--accent: 160 84% 39%;
 		--accent-foreground: 210 40% 98%;
-
 		--destructive: 0 84% 60%;
 		--destructive-foreground: 210 40% 98%;
-
 		--border: 217 33% 25%;
 		--input: 217 33% 20%;
-		--ring: 217 91% 60%;
-
+		--ring: var(--primary);
 		--radius: 0.5rem;
 
-		--chart-1: 217 91% 60%;
-		--chart-2: 160 84% 39%;
-		--chart-3: 292 84% 61%;
-		--chart-4: 38 92% 50%;
-		--chart-5: 0 84% 60%;
-
+		/* Semantic status scales (independent from accent/destructive so they can diverge later). */
 		--color-success-100: 149 80% 90%;
 		--color-success-300: 156 72% 67%;
 		--color-success-500: 160 84% 39%;
 		--color-success-700: 163 94% 24%;
-
 		--color-warning-100: 48 96% 89%;
 		--color-warning-300: 46 97% 65%;
 		--color-warning-500: 38 92% 50%;
 		--color-warning-700: 26 91% 37%;
-
 		--color-error-100: 0 86% 94%;
 		--color-error-300: 0 94% 82%;
 		--color-error-500: 0 84% 60%;
 		--color-error-700: 0 74% 42%;
-
 		--color-neutral-100: 220 14% 96%;
 		--color-neutral-300: 213 27% 84%;
 		--color-neutral-500: 215 16% 47%;
 		--color-neutral-700: 215 25% 27%;
-
-		--glass-light: rgba(255, 255, 255, 0.08);
-		--glass-medium: rgba(255, 255, 255, 0.12);
-		--glass-strong: rgba(255, 255, 255, 0.18);
-		--glass-border: rgba(255, 255, 255, 0.15);
-		--glass-border-strong: rgba(255, 255, 255, 0.25);
-
-		--gradient-background: linear-gradient(135deg, hsl(222 47% 11%) 0%, hsl(222 47% 8%) 50%, hsl(230 50% 5%) 100%);
-
+		--chart-1: var(--primary);
+		--chart-2: var(--color-success-500);
+		--chart-3: var(--secondary);
+		--chart-4: var(--color-warning-500);
+		--chart-5: var(--color-error-500);
+		--glass-light: rgb(255 255 255 / 8%);
+		--glass-medium: rgb(255 255 255 / 12%);
+		--glass-border: rgb(255 255 255 / 15%);
+		--background-gradient-mid: 222 47% 8%;
+		--background-gradient-deep: 230 50% 5%;
+		--gradient-background: linear-gradient(
+			135deg,
+			hsl(var(--background)) 0%,
+			hsl(var(--background-gradient-mid)) 50%,
+			hsl(var(--background-gradient-deep)) 100%
+		);
 		--space-md: 1rem;
-
-		--font-family-sans: 'Inter', 'Segoe UI', Arial, sans-serif;
+		--font-family-sans: 'Inter', 'Segoe UI', arial, sans-serif;
 		--font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
-
 		--navigation-height: 4rem;
+		--scrollbar-radius: 0.25rem;
+
+		/* Motion: keep numeric tuples in sync with `constants/core/ui/animation.constants.ts` (ANIMATION_CONFIG.EASING). */
+		--ease-emphasized: cubic-bezier(0.4, 0, 0.2, 1);
+		--ease-pulse: cubic-bezier(0.4, 0, 0.6, 1);
+		--ease-default: ease;
+		--duration-link: 0.2s;
+		--animation-spin-duration: 1s;
+	}
+
+	@media (width >= 1280px) {
+		:root {
+			--navigation-height: 5rem;
+		}
 	}
 
 	* {
@@ -82,6 +86,7 @@
 
 	body {
 		@apply bg-background text-foreground;
+
 		background: var(--gradient-background);
 		font-family: var(--font-family-sans);
 		min-height: 100vh;
@@ -93,21 +98,12 @@
 	}
 
 	/* Undo browser autofill painting (bright background) so theme colors stay consistent */
-	input:-webkit-autofill,
-	input:-webkit-autofill:hover,
-	input:-webkit-autofill:focus,
-	input:-webkit-autofill:active,
-	textarea:-webkit-autofill,
-	textarea:-webkit-autofill:hover,
-	textarea:-webkit-autofill:focus,
-	textarea:-webkit-autofill:active,
-	select:-webkit-autofill,
-	select:-webkit-autofill:hover,
-	select:-webkit-autofill:focus,
-	select:-webkit-autofill:active {
+	:is(input, textarea, select):-webkit-autofill,
+	:is(input, textarea, select):-webkit-autofill:hover,
+	:is(input, textarea, select):-webkit-autofill:focus,
+	:is(input, textarea, select):-webkit-autofill:active {
 		-webkit-text-fill-color: hsl(var(--foreground));
 		caret-color: hsl(var(--foreground));
-		-webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset !important;
 		box-shadow: 0 0 0 1000px hsl(var(--background)) inset !important;
 	}
 
@@ -119,18 +115,23 @@
 	h1 {
 		font-size: 2.5rem;
 	}
+
 	h2 {
 		font-size: 2rem;
 	}
+
 	h3 {
 		font-size: 1.75rem;
 	}
+
 	h4 {
 		font-size: 1.5rem;
 	}
+
 	h5 {
 		font-size: 1.25rem;
 	}
+
 	h6 {
 		font-size: 1rem;
 	}
@@ -147,7 +148,7 @@
 	a {
 		color: inherit;
 		text-decoration: none;
-		transition: all 0.2s ease;
+		transition: all var(--duration-link) var(--ease-default);
 	}
 
 	::-webkit-scrollbar {
@@ -157,24 +158,16 @@
 
 	::-webkit-scrollbar-track {
 		background: var(--glass-light);
-		border-radius: 0.25rem;
+		border-radius: var(--scrollbar-radius);
 	}
 
 	::-webkit-scrollbar-thumb {
 		background: var(--glass-border);
-		border-radius: 0.25rem;
+		border-radius: var(--scrollbar-radius);
 	}
 
 	::-webkit-scrollbar-thumb:hover {
 		background: var(--glass-medium);
-	}
-}
-
-@layer base {
-	@media (min-width: 1280px) {
-		:root {
-			--navigation-height: 5rem;
-		}
 	}
 }
 
@@ -206,26 +199,6 @@
 		@apply container mx-auto px-4 pt-0 pb-4 md:pb-6 min-h-0 flex-1 flex flex-col;
 	}
 
-	.view-content-4xl {
-		@apply max-w-4xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 lg:space-y-8;
-	}
-
-	.view-content-2xl-scroll {
-		@apply max-w-2xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 overflow-y-auto;
-	}
-
-	.view-content-6xl-fill {
-		@apply max-w-6xl mx-auto space-y-4 md:space-y-6 min-h-0 flex-1 flex flex-col overflow-y-auto;
-	}
-
-	.view-content-6xl-scroll {
-		@apply max-w-6xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 lg:space-y-8 overflow-y-auto;
-	}
-
-	.view-content-3xl-scroll {
-		@apply max-w-3xl mx-auto h-full flex flex-col space-y-4 md:space-y-6 lg:space-y-8 overflow-y-auto;
-	}
-
 	.view-spacing {
 		@apply space-y-4 md:space-y-6;
 	}
@@ -236,6 +209,26 @@
 
 	.view-spacing-legal {
 		@apply space-y-6 md:space-y-8;
+	}
+
+	.view-content-4xl {
+		@apply max-w-4xl mx-auto h-full flex flex-col view-spacing-lg;
+	}
+
+	.view-content-2xl-scroll {
+		@apply max-w-2xl mx-auto h-full flex flex-col view-spacing overflow-y-auto;
+	}
+
+	.view-content-6xl-fill {
+		@apply max-w-6xl mx-auto view-spacing min-h-0 flex-1 flex flex-col overflow-y-auto;
+	}
+
+	.view-content-6xl-scroll {
+		@apply max-w-6xl mx-auto h-full flex flex-col view-spacing-lg overflow-y-auto;
+	}
+
+	.view-content-3xl-scroll {
+		@apply max-w-3xl mx-auto h-full flex flex-col view-spacing-lg overflow-y-auto;
 	}
 
 	.view-scroll-inline {
@@ -274,10 +267,6 @@
 		@apply mt-4 p-4 bg-muted rounded-lg;
 	}
 
-	.callout-primary {
-		@apply p-4 rounded-lg bg-primary/5 border border-primary/10 flex flex-col gap-3;
-	}
-
 	.card-accent-left-warning {
 		@apply border-l-4 border-yellow-500;
 	}
@@ -287,7 +276,7 @@
 	}
 
 	.dialog-body {
-		@apply space-y-4 md:space-y-6 py-4 flex-1 overflow-y-auto;
+		@apply view-spacing py-4 flex-1 overflow-y-auto;
 	}
 
 	.card-primary-tint {
@@ -306,6 +295,18 @@
 		@apply text-primary hover:underline;
 	}
 
+	.comparison-metric-row-user {
+		@apply flex justify-between items-center p-3 rounded-lg bg-primary/5;
+	}
+
+	.comparison-metric-row-baseline {
+		@apply flex justify-between items-center p-3 rounded-lg bg-muted/50;
+	}
+
+	.contact-icon-well {
+		@apply flex shrink-0 items-center justify-center rounded-lg bg-primary/10 p-3;
+	}
+
 }
 
 @layer utilities {
@@ -313,6 +314,7 @@
 		from {
 			transform: rotate(0deg);
 		}
+
 		to {
 			transform: rotate(360deg);
 		}
@@ -323,47 +325,49 @@
 		100% {
 			opacity: 1;
 		}
+
 		50% {
 			opacity: 0.75;
 		}
 	}
 
-	.animate-spin {
-		animation: spin 1s linear infinite;
+	.animate-spin,
+	.animate-spin-slow {
 		will-change: transform;
 		transform-origin: center;
+		animation: spin var(--animation-spin-duration) linear infinite;
 	}
 
 	.animate-spin-slow {
-		animation: spin 2s linear infinite;
-		will-change: transform;
-		transform-origin: center;
+		--animation-spin-duration: 2s;
 	}
 
 	.animate-pulse {
-		animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+		animation: pulse 2.5s var(--ease-pulse) infinite;
 		will-change: opacity;
 	}
 
-	@keyframes fadeInOnly {
+	@keyframes fade-in-only {
 		from {
 			opacity: 0;
 		}
+
 		to {
 			opacity: 1;
 		}
 	}
 
 	.animate-fade-in-only {
-		animation: fadeInOnly 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+		animation: fade-in-only 0.6s var(--ease-emphasized) both;
 		will-change: opacity;
 	}
 
-	@keyframes fadeInUpSimple {
+	@keyframes fade-in-up-simple {
 		from {
 			opacity: 0;
 			transform: translateY(20px);
 		}
+
 		to {
 			opacity: 1;
 			transform: translateY(0);
@@ -371,16 +375,17 @@
 	}
 
 	.animate-fade-in-up-simple {
-		animation: fadeInUpSimple 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+		animation: fade-in-up-simple 0.6s var(--ease-emphasized) both;
 		will-change: transform, opacity;
 		transform: translateZ(0);
 	}
 
-	@keyframes fadeInScaleSimple {
+	@keyframes fade-in-scale-simple {
 		from {
 			opacity: 0;
 			transform: scale(0.95);
 		}
+
 		to {
 			opacity: 1;
 			transform: scale(1);
@@ -388,24 +393,8 @@
 	}
 
 	.animate-fade-in-scale-simple {
-		animation: fadeInScaleSimple 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+		animation: fade-in-scale-simple 0.6s var(--ease-emphasized) both;
 		will-change: transform, opacity;
-		transform: translateZ(0);
-	}
-
-	@keyframes scaleInSimple {
-		from {
-			transform: scale(0);
-		}
-		to {
-			transform: scale(1);
-		}
-	}
-
-	.animate-scale-in-simple {
-		animation: scaleInSimple 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-		will-change: transform;
-		transform-origin: center;
 		transform: translateZ(0);
 	}
 }

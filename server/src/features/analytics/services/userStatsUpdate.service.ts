@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, MoreThanOrEqual, Repository } from 'typeorm';
 
-import { TIME_PERIODS_MS } from '@shared/constants';
+import { RETRY_LIMITS, TIME_PERIODS_MS } from '@shared/constants';
 import { calculateScoreRate, delay, getErrorMessage, sumBy } from '@shared/utils';
 
 import { MAX_RECENT_ACTIVITY } from '@internal/constants';
@@ -13,7 +13,7 @@ import { calculateStreak } from '@internal/utils';
 
 @Injectable()
 export class UserStatsUpdateService {
-	private readonly MAX_RETRIES = 3;
+	private readonly maxPersistenceRetries = RETRY_LIMITS.userStatsPersistence;
 	private readonly RETRY_DELAY_MS = TIME_PERIODS_MS.SECOND;
 	private readonly STREAK_CALCULATION_DAYS = 30;
 	private readonly FAILED_UPDATES_QUEUE: Map<string, GameHistoryEntity> = new Map();
@@ -30,9 +30,7 @@ export class UserStatsUpdateService {
 		const queueKey = `${userId}:${gameHistory.id}`;
 
 		// Remove from failed queue if it exists
-		if (this.FAILED_UPDATES_QUEUE.has(queueKey)) {
-			this.FAILED_UPDATES_QUEUE.delete(queueKey);
-		}
+		this.FAILED_UPDATES_QUEUE.delete(queueKey);
 
 		// Add to queue before processing
 		this.FAILED_UPDATES_QUEUE.set(queueKey, gameHistory);
@@ -52,7 +50,7 @@ export class UserStatsUpdateService {
 	}
 
 	private async attemptUpdateStats(userId: string, gameHistory: GameHistoryEntity, attempt: number = 0): Promise<void> {
-		for (let currentAttempt = attempt; currentAttempt < this.MAX_RETRIES; currentAttempt++) {
+		for (let currentAttempt = attempt; currentAttempt < this.maxPersistenceRetries; currentAttempt++) {
 			try {
 				// Wait before retry (except first attempt)
 				if (currentAttempt > 0) {
@@ -93,7 +91,7 @@ export class UserStatsUpdateService {
 				return;
 			} catch (error) {
 				const isVersionConflict = error instanceof Error && error.message.includes('version');
-				const isLastAttempt = currentAttempt === this.MAX_RETRIES - 1;
+				const isLastAttempt = currentAttempt === this.maxPersistenceRetries - 1;
 
 				if (isVersionConflict && !isLastAttempt) {
 					continue;
@@ -110,15 +108,6 @@ export class UserStatsUpdateService {
 				}
 			}
 		}
-	}
-
-	addToFailedQueue(queueKey: string, gameHistory: GameHistoryEntity): void {
-		this.FAILED_UPDATES_QUEUE.set(queueKey, gameHistory);
-		logger.analyticsStats('user_stats_failed_update_queued', {
-			queueKey,
-			gameId: gameHistory.id,
-			queueSize: this.FAILED_UPDATES_QUEUE.size,
-		});
 	}
 
 	// New method to retry failed updates (could be called by a scheduled job)
@@ -150,7 +139,7 @@ export class UserStatsUpdateService {
 	}
 
 	async removeStatsFromGame(userId: string, gameHistory: GameHistoryEntity): Promise<void> {
-		for (let attempt = 0; attempt < this.MAX_RETRIES; attempt++) {
+		for (let attempt = 0; attempt < this.maxPersistenceRetries; attempt++) {
 			try {
 				const userStats = await this.userStatsRepo.findOne({
 					where: { userId },
@@ -202,7 +191,7 @@ export class UserStatsUpdateService {
 				return;
 			} catch (error) {
 				if (error instanceof Error && error.message.includes('version')) {
-					if (attempt < this.MAX_RETRIES - 1) {
+					if (attempt < this.maxPersistenceRetries - 1) {
 						continue;
 					}
 				}
@@ -214,7 +203,7 @@ export class UserStatsUpdateService {
 					attempt: attempt + 1,
 				});
 
-				if (attempt === this.MAX_RETRIES - 1) {
+				if (attempt === this.maxPersistenceRetries - 1) {
 					throw error;
 				}
 			}
@@ -225,7 +214,7 @@ export class UserStatsUpdateService {
 		const userStats = this.userStatsRepo.create({
 			userId,
 		});
-		return await this.userStatsRepo.save(userStats);
+		return this.userStatsRepo.save(userStats);
 	}
 
 	async resetUserStats(userId: string): Promise<void> {
@@ -526,7 +515,7 @@ export class UserStatsUpdateService {
 	private async updateStreaks(userStats: UserStatsEntity, userId: string, manager?: EntityManager): Promise<void> {
 		const streakData = await this.calculateStreaksFromHistory(userId, manager);
 		userStats.currentStreak = streakData.current;
-		userStats.longestStreak = Math.max(userStats.longestStreak, streakData.best);
+		userStats.longestStreak = streakData.best;
 	}
 
 	private updateTimeBasedScores(userStats: UserStatsEntity, gameHistory: GameHistoryEntity): void {

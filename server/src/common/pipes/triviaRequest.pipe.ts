@@ -215,7 +215,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			return false;
 		}
 
-		return this.areOptionalTriviaFieldsValid(candidate);
+		return this.isOptionalString(candidate.gameId);
 	}
 
 	private isValidAnswerCount(value: unknown): value is number {
@@ -232,10 +232,6 @@ export class TriviaRequestPipe implements PipeTransform {
 		}
 		const { MIN, MAX, UNLIMITED } = VALIDATION_COUNT.QUESTIONS;
 		return value === UNLIMITED || (value >= MIN && value <= MAX);
-	}
-
-	private areOptionalTriviaFieldsValid(candidate: Record<string, unknown>): boolean {
-		return this.isOptionalString(candidate.gameId);
 	}
 
 	private isOptionalString(value: unknown): boolean {

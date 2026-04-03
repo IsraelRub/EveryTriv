@@ -14,7 +14,6 @@ import {
 	ANIMATION_DELAYS,
 	AvatarSize,
 	AvatarVariant,
-	Colors,
 	GameKey,
 	getMultiplayerSummaryStorageKey,
 	MULTIPLAYER_SUMMARY_ANSWER_HISTORY_KEY,
@@ -22,6 +21,7 @@ import {
 	MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY,
 	PODIUM_SLOTS,
 	ROUTES,
+	SEMANTIC_ICON_TEXT,
 	SocialShareMode,
 	SPRING_CONFIGS,
 } from '@/constants';
@@ -159,7 +159,7 @@ export function MultiplayerSummaryView() {
 
 	useEffect(() => {
 		if (results.length > 0 && currentUser?.id) {
-			queryInvalidationService.invalidateAfterGameComplete(queryClient, currentUser.id);
+			void queryInvalidationService.invalidateAfterGameComplete(queryClient, currentUser.id);
 		}
 	}, [queryClient, results.length, currentUser?.id]);
 
@@ -199,7 +199,10 @@ export function MultiplayerSummaryView() {
 							transition={SPRING_CONFIGS.GENTLE}
 						>
 							<Trophy
-								className={cn('w-16 md:w-20 lg:w-24 h-16 md:h-20 lg:h-24 mx-auto mb-2 md:mb-4', Colors.YELLOW_500.text)}
+								className={cn(
+									'w-16 md:w-20 lg:w-24 h-16 md:h-20 lg:h-24 mx-auto mb-2 md:mb-4',
+									SEMANTIC_ICON_TEXT.warning
+								)}
 							/>
 						</motion.div>
 					)}
@@ -211,7 +214,7 @@ export function MultiplayerSummaryView() {
 					>
 						{isWinner ? (
 							<>
-								<PartyPopper className={cn('w-8 h-8 md:w-10 md:h-10', Colors.AMBER_600.text)} />
+								<PartyPopper className={cn('w-8 h-8 md:w-10 md:h-10', SEMANTIC_ICON_TEXT.warning)} />
 								{t(GameKey.YOU_WON)}
 							</>
 						) : (
@@ -263,9 +266,8 @@ export function MultiplayerSummaryView() {
 											<div
 												className={cn(
 													'w-20 rounded-t-lg flex items-center justify-center mt-2',
-													slot.rank === 1 && cn('h-40', Colors.YELLOW_500.bg),
-													slot.rank === 2 && cn('h-32', Colors.GRAY_400.bg),
-													slot.rank === 3 && cn('h-24', Colors.AMBER_600.bg)
+													slot.podiumHeight,
+													slot.bgColor
 												)}
 											>
 												<Icon className='h-8 w-8 text-white' />
@@ -295,9 +297,7 @@ export function MultiplayerSummaryView() {
 										initial={{ opacity: 0, x: -20 }}
 										animate={{ opacity: 1, x: 0 }}
 										transition={{
-											delay:
-												ANIMATION_DELAYS.MULTIPLAYER_STANDINGS_ROW_BASE +
-												index * ANIMATION_DELAYS.STAGGER_NORMAL,
+											delay: ANIMATION_DELAYS.MULTIPLAYER_STANDINGS_ROW_BASE + index * ANIMATION_DELAYS.STAGGER_NORMAL,
 										}}
 										className={cn(
 											'flex items-center gap-4 p-4 rounded-lg',
@@ -307,9 +307,9 @@ export function MultiplayerSummaryView() {
 										<span
 											className={cn(
 												'flex items-center gap-0.5 text-3xl font-bold w-12',
-												index + 1 === 1 && Colors.YELLOW_500.text,
-												index + 1 === 2 && Colors.GRAY_400.text,
-												index + 1 === 3 && Colors.AMBER_600.text,
+												index + 1 === 1 && SEMANTIC_ICON_TEXT.warning,
+												index + 1 === 2 && SEMANTIC_ICON_TEXT.muted,
+												index + 1 === 3 && 'text-orange-600',
 												index + 1 > 3 && 'text-muted-foreground'
 											)}
 										>
@@ -352,25 +352,25 @@ export function MultiplayerSummaryView() {
 									icon={Users}
 									label={t(GameKey.PLAYERS)}
 									value={room.players?.length ?? 0}
-									color={Colors.BLUE_500.text}
+									color={SEMANTIC_ICON_TEXT.primary}
 								/>
 								<StatCard
 									icon={FileQuestion}
 									label={t(GameKey.QUESTIONS_LABEL)}
 									value={room.questions?.length ?? 0}
-									color={Colors.GREEN_500.text}
+									color={SEMANTIC_ICON_TEXT.success}
 								/>
 								<StatCard
 									icon={Gauge}
 									label={t(GameKey.DIFFICULTY)}
 									value={getDifficultyDisplayLabel(room.config?.difficulty, t)}
-									color={Colors.YELLOW_500.text}
+									color={SEMANTIC_ICON_TEXT.warning}
 								/>
 								<StatCard
 									icon={Tag}
 									label={t(GameKey.TOPIC)}
 									value={formatTitle(room.config?.topic ?? DEFAULT_GAME_CONFIG.defaultTopic)}
-									color={Colors.PURPLE_500.text}
+									color={SEMANTIC_ICON_TEXT.secondary}
 								/>
 							</div>
 						</CardContent>

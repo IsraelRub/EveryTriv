@@ -7,8 +7,8 @@ import { CurrentUser, Roles } from '@common/decorators';
 import { serverLogger as logger } from '@internal/services';
 import type { TokenPayload } from '@internal/types';
 
-import { DataMaintenanceService } from './data-maintenance.service';
-import { UserStatsMaintenanceService } from './user-stats-maintenance.service';
+import { DataMaintenanceService } from './dataMaintenance.service';
+import { UserStatsMaintenanceService } from './userStatsMaintenance.service';
 
 @Controller('/admin/maintenance')
 export class MaintenanceController {

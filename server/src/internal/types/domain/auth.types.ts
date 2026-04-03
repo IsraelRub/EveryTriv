@@ -36,7 +36,6 @@ export interface GoogleAuthPayload {
 	avatar?: string;
 }
 
-
 export interface GoogleAuthRequest extends Request {
 	user?: GoogleAuthPayload;
 }

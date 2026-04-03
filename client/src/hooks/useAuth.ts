@@ -1,32 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type { AuthCredentials, BasicUser, ChangePasswordData } from '@shared/types';
 
-import { AUTH_TOKEN_CHANGED_EVENT, QUERY_KEYS, STORAGE_KEYS } from '@/constants';
+import { AUTH_TOKEN_CHANGED_EVENT, STORAGE_KEYS } from '@/constants';
 import type { UseUserRoleReturn } from '@/types';
 import { authService, clientLogger as logger, queryInvalidationService } from '@/services';
-import { resetGameSession, resetLeaderboardPeriod, resetMultiplayer } from '@/redux/slices';
-import { store } from '@/redux/store';
+import { getAuthCurrentUserQueryKey, readAuthTokenSnapshotForQueryKey } from '@/utils';
 
-export function useHasToken(): boolean {
-	const [hasToken, setHasToken] = useState<boolean>(() => {
+function useAuthTokenSnapshot(): string | null {
+	const [tokenSnapshot, setTokenSnapshot] = useState<string | null>(() => {
 		try {
-			const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-			return !!token;
+			return sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 		} catch {
-			return false;
+			return null;
 		}
 	});
 
 	useEffect(() => {
 		const checkToken = () => {
 			try {
-				const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-				setHasToken(!!token);
+				setTokenSnapshot(sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN));
 			} catch {
-				setHasToken(false);
+				setTokenSnapshot(null);
 			}
 		};
 
@@ -37,7 +34,12 @@ export function useHasToken(): boolean {
 		};
 	}, []);
 
-	return hasToken;
+	return tokenSnapshot;
+}
+
+export function useHasToken(): boolean {
+	const tokenSnapshot = useAuthTokenSnapshot();
+	return tokenSnapshot != null && tokenSnapshot !== '';
 }
 
 export const useLogin = () => {
@@ -61,10 +63,9 @@ export const useLogin = () => {
 						emails: { current: data.user.email },
 					});
 
-					// Update React Query cache with user data
-					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), data.user);
+					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), data.user);
 
-					queryInvalidationService.invalidateAuthQueries(queryClient);
+					await queryInvalidationService.invalidateAuthQueries(queryClient);
 				} else {
 					logger.authError('Token mismatch', {
 						userId: data.user.id,
@@ -108,10 +109,9 @@ export const useRegister = () => {
 						emails: { current: data.user.email },
 					});
 
-					// Update React Query cache with user data
-					queryClient.setQueryData(QUERY_KEYS.auth.currentUser(), data.user);
+					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), data.user);
 
-					queryInvalidationService.invalidateAuthQueries(queryClient);
+					await queryInvalidationService.invalidateAuthQueries(queryClient);
 				} else {
 					logger.authError('Token mismatch', {
 						userId: data.user.id,
@@ -127,10 +127,12 @@ export const useRegister = () => {
 };
 
 export const useCurrentUser = () => {
-	const hasToken = useHasToken();
+	const tokenSnapshot = useAuthTokenSnapshot();
+	const hasToken = tokenSnapshot != null && tokenSnapshot !== '';
+	const currentUserQueryKey = useMemo(() => getAuthCurrentUserQueryKey(tokenSnapshot), [tokenSnapshot]);
 
 	return useQuery({
-		queryKey: QUERY_KEYS.auth.currentUser(),
+		queryKey: currentUserQueryKey,
 		queryFn: () => authService.getCurrentUser(),
 		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
 		retry: false, // Don't retry on auth errors
@@ -175,17 +177,3 @@ export const useChangePassword = () => {
 		mutationFn: (passwordData: ChangePasswordData) => authService.changePassword(passwordData),
 	});
 };
-
-export function useAuthLogoutHandler(): void {
-	useEffect(() => {
-		const unregisterCallback = authService.registerLogoutCallback(() => {
-			store.dispatch(resetGameSession());
-			store.dispatch(resetMultiplayer());
-			store.dispatch(resetLeaderboardPeriod());
-		});
-
-		return () => {
-			unregisterCallback();
-		};
-	}, []);
-}

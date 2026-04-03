@@ -4,13 +4,13 @@ import { motion } from 'framer-motion';
 import { Hash, Share2 } from 'lucide-react';
 
 import { APP_NAME, TIME_PERIODS_MS } from '@shared/constants';
-import { calculatePercentage, formatTitle, getErrorMessage, isSocialSharePlatform } from '@shared/utils';
+import { calculatePercentage, formatTitle, getErrorMessage } from '@shared/utils';
 
 import {
 	ANIMATION_DELAYS,
 	ButtonSize,
-	Colors,
 	GameKey,
+	SEMANTIC_ICON_TEXT,
 	SOCIAL_DATA,
 	SocialKey,
 	SocialShareMode,
@@ -18,7 +18,7 @@ import {
 } from '@/constants';
 import type { SocialShareProps } from '@/types';
 import { clientLogger as logger } from '@/services';
-import { cn, getDifficultyDisplayLabel } from '@/utils';
+import { cn, getDifficultyDisplayLabel, isSocialSharePlatform } from '@/utils';
 import {
 	AnimatedCopyFeedbackIcon,
 	Button,
@@ -104,7 +104,7 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 								: t(SocialKey.SHARE_YOUR_RESULT)}
 						</DialogTitle>
 						<DialogDescription className='flex items-center justify-center gap-1.5'>
-							<Hash className={cn('w-4 h-4', Colors.YELLOW_500.text)} />
+							<Hash className={cn('w-4 h-4', SEMANTIC_ICON_TEXT.warning)} />
 							{mode === SocialShareMode.MULTIPLAYER
 								? t(SocialKey.CHALLENGE_FRIENDS_MULTIPLAYER)
 								: t(SocialKey.CHALLENGE_FRIENDS)}
@@ -115,7 +115,7 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 					<div
 						className={cn(
 							'bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 mb-4 border',
-							`${Colors.BLUE_500.border}/20`
+							'border-primary/20'
 						)}
 					>
 						<div className='text-center'>

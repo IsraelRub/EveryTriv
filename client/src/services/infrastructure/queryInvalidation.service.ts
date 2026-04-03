@@ -68,12 +68,6 @@ class QueryInvalidationService {
 		);
 		promises.push(
 			queryClient.invalidateQueries({
-				queryKey: QUERY_KEYS.leaderboard.stats(''),
-				exact: false,
-			})
-		);
-		promises.push(
-			queryClient.invalidateQueries({
 				queryKey: QUERY_KEYS.analytics.all,
 				exact: false,
 			})
@@ -83,61 +77,65 @@ class QueryInvalidationService {
 	}
 
 	// Add new method specifically for game completion
-	invalidateAfterGameComplete(queryClient: QueryClient, userId: string): void {
-		// This is called immediately after game finalization to ensure fresh data
-		this.invalidateGameQueries(queryClient, userId);
-
-		// Also invalidate credits (if credits were used)
-		this.invalidateCreditsQueries(queryClient, userId);
+	async invalidateAfterGameComplete(queryClient: QueryClient, userId: string): Promise<void> {
+		await this.invalidateGameQueries(queryClient, userId);
+		await this.invalidateCreditsQueries(queryClient, userId);
 
 		logger.userInfo('Invalidated queries after game completion', { userId });
 	}
 
-	invalidateAuthQueries(queryClient: QueryClient): void {
-		queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all });
+	async invalidateAuthQueries(queryClient: QueryClient): Promise<void> {
+		await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all, exact: false });
 	}
 
-	invalidateUserQueries(queryClient: QueryClient, userId?: string): void {
-		this.invalidateAuthQueries(queryClient);
+	async invalidateUserQueries(queryClient: QueryClient, userId?: string): Promise<void> {
+		await this.invalidateAuthQueries(queryClient);
+
+		await queryClient.invalidateQueries({
+			queryKey: QUERY_KEYS.user.profile(),
+			exact: false,
+		});
 
 		if (userId) {
-			this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.PROFILE(userId));
-			this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.CREDITS(userId));
+			await this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.PROFILE(userId));
+			await this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.CREDITS(userId));
 		}
 	}
 
-	invalidateCreditsQueries(queryClient: QueryClient, userId?: string): void {
+	async invalidateCreditsQueries(queryClient: QueryClient, userId?: string): Promise<void> {
 		if (userId) {
-			this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.BALANCE(userId));
-			this.invalidateByServerKey(queryClient, CACHE_KEYS.PAYMENT.HISTORY(userId));
+			await this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.BALANCE(userId));
+			await this.invalidateByServerKey(queryClient, CACHE_KEYS.PAYMENT.HISTORY(userId));
 		}
 
-		this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.PACKAGES_ALL);
+		await this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.PACKAGES_ALL);
+		await queryClient.invalidateQueries({
+			queryKey: QUERY_KEYS.credits.balance(),
+			exact: false,
+		});
+		await queryClient.invalidateQueries({
+			queryKey: QUERY_KEYS.credits.paymentHistory(),
+			exact: false,
+		});
 	}
 
-	invalidateLeaderboardQueries(queryClient: QueryClient): void {
-		this.invalidateByServerKey(queryClient, CACHE_KEYS.LEADERBOARD.GLOBAL(100, 0));
-		queryClient.invalidateQueries({
+	async invalidateLeaderboardQueries(queryClient: QueryClient): Promise<void> {
+		await this.invalidateByServerKey(queryClient, CACHE_KEYS.LEADERBOARD.GLOBAL(100, 0));
+		await queryClient.invalidateQueries({
 			queryKey: QUERY_KEYS.leaderboard.all,
 			exact: false,
 		});
-
-		// Invalidate all leaderboard stats variants (all periods)
-		queryClient.invalidateQueries({
-			queryKey: QUERY_KEYS.leaderboard.stats(''),
-			exact: false,
-		});
 	}
 
-	invalidateAnalyticsQueries(queryClient: QueryClient, userId?: string): void {
+	async invalidateAnalyticsQueries(queryClient: QueryClient, userId?: string): Promise<void> {
 		if (userId) {
-			this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.USER(userId));
+			await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.USER(userId));
 		}
 
-		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_STATS);
-		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY);
-		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.TOPICS_STATS({}));
-		this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS({}));
+		await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_STATS);
+		await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY);
+		await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.TOPICS_STATS({}));
+		await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS({}));
 	}
 
 	async invalidateAdminDashboardQueries(queryClient: QueryClient): Promise<void> {

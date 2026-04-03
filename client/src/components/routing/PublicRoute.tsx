@@ -1,11 +1,6 @@
 import { Navigate, useLocation, useSearchParams } from 'react-router-dom';
 
-import {
-	LoadingMessages,
-	REGISTER_POST_STEP_AVATAR,
-	REGISTER_POST_STEP_QUERY_KEY,
-	ROUTES,
-} from '@/constants';
+import { LoadingMessages, REGISTER_POST_STEP_AVATAR, REGISTER_POST_STEP_QUERY_KEY, ROUTES } from '@/constants';
 import type { PublicRouteProps } from '@/types';
 import { FullPageSpinner } from '@/components';
 import { useCurrentUser, useHasToken, useIsAuthenticated } from '@/hooks';

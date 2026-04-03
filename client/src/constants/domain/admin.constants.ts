@@ -1,7 +1,7 @@
 import { UserRole } from '@shared/constants';
 
-import { AdminKey } from '../core/ui/localeKeys.constants';
 import type { TabSpec } from '@/types';
+import { AdminKey } from '../core/ui/localeKeys.constants';
 
 export const ROLE_BADGE_CLASSES: Record<string, string> = {
 	[UserRole.ADMIN]: 'border-2 border-primary text-primary font-semibold',
@@ -54,21 +54,18 @@ export const SYSTEM_SUB_TABS: ReadonlyArray<{ value: SystemSubTab; labelKey: str
 	{ value: SystemSubTab.MAINTENANCE, labelKey: AdminKey.SYSTEM_SUB_MAINTENANCE },
 ];
 
-/** Radix Accordion `value` ids — Performance tab (admin). */
 export enum PerformanceTabAccordion {
 	GAME_STATS = 'game-stats',
 	TRENDS = 'trends',
 	CHARTS = 'charts',
 }
 
-/** Radix Accordion `value` ids — Business tab (admin). */
 export enum BusinessTabAccordion {
 	USER_METRICS = 'user-metrics',
 	ENGAGEMENT = 'engagement',
 	PRICING = 'pricing',
 }
 
-/** Radix Accordion `value` ids — expanded user analysis panel. */
 export enum UserAnalysisAccordion {
 	OVERVIEW = 'overview',
 	STATISTICS = 'statistics',
@@ -77,14 +74,12 @@ export enum UserAnalysisAccordion {
 	RECOMMENDATIONS = 'recommendations',
 }
 
-/** Radix Accordion `value` ids — security subsection (system health). */
 export enum SystemSecurityAccordion {
 	AUTH = 'security-auth',
 	AUTHZ = 'security-authz',
 	DATA = 'security-data',
 }
 
-/** Radix Accordion `value` ids — system insights subsection. */
 export enum SystemInsightAccordion {
 	PERF = 'si-perf',
 	SEC = 'si-sec',

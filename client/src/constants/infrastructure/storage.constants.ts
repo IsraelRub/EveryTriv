@@ -27,9 +27,9 @@ export const STORAGE_KEYS = {
 	SCORE_HISTORY: 'score_history',
 
 	// Temporary data (sessionStorage - session only)
-	/** Set before OAuth from registration page; read once in `/auth/callback`. */
+
 	OAUTH_INITIATED_FROM_REGISTRATION: 'everytriv_oauth_from_registration',
-	/** After OAuth, user must complete profile first; then redirect to optional avatar on `/register`. */
+
 	PENDING_OPTIONAL_AVATAR_AFTER_PROFILE: 'everytriv_pending_optional_avatar_after_profile',
 	REDIRECT_AFTER_LOGIN: 'redirectAfterLogin',
 	ERROR_LOG: 'error-log',
@@ -42,8 +42,6 @@ export const AUTH_TOKEN_CHANGED_EVENT = 'auth-token-changed';
 
 export type StorageKey = StaticStorageKey | MultiplayerSummaryStorageKey | ErrorLogStorageKey;
 
-
-
 export function getMultiplayerSummaryStorageKey(roomId: string): MultiplayerSummaryStorageKey {
 	const key = `${STORAGE_KEYS.MULTIPLAYER_SUMMARY_PREFIX}${roomId}`;
 	if (!isMultiplayerSummaryStorageKey(key)) throw new Error('Invalid multiplayer summary key');
@@ -55,7 +53,6 @@ export function getErrorLogStorageKey(featureName: string): ErrorLogStorageKey {
 	if (!isErrorLogStorageKey(key)) throw new Error('Invalid error log key');
 	return key;
 }
-
 
 export const AUTH_STORAGE_KEYS = new Set<StorageKey>([
 	STORAGE_KEYS.AUTH_TOKEN,
@@ -79,4 +76,3 @@ export type SessionStorageKey =
 	| typeof STORAGE_KEYS.AUTH_TOKEN
 	| typeof STORAGE_KEYS.REFRESH_TOKEN
 	| typeof STORAGE_KEYS.AUTH_USER;
-

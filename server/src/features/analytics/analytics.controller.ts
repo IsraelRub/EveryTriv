@@ -23,7 +23,6 @@ import type { AnalyticsEventData, LeaderboardEntry, LeaderboardResponse } from '
 import { getErrorMessage, hasProperty, isRecord } from '@shared/utils';
 import { isLeaderboardPeriod } from '@shared/validation';
 
-import { AppConfig } from '@config';
 import { Cache, CurrentUser, CurrentUserId, Public, Roles } from '@common/decorators';
 import { LEADERBOARD_PERIOD_CONFIG, LEADERBOARD_SCORE_FIELDS } from '@internal/constants';
 import { UserStatsEntity } from '@internal/entities';
@@ -474,7 +473,7 @@ export class AnalyticsController {
 	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
 	async getSystemSecurityMetrics() {
 		try {
-			const result = await this.systemAnalyticsService.getSecurityMetrics();
+			const result = this.systemAnalyticsService.securityMetrics;
 
 			logger.apiRead('analytics_system_security', {
 				chart: 'system_security',
@@ -553,6 +552,7 @@ export class AnalyticsController {
 				limit: limitNum,
 				offset: offsetNum,
 			});
+			const totalCount = await this.leaderboardAnalyticsService.getGlobalLeaderboardTotalCount();
 
 			const globalScoreField = LEADERBOARD_PERIOD_CONFIG[LeaderboardPeriod.GLOBAL].scoreField;
 			const topScores = leaderboard.slice(0, 5).map((e, i) => ({
@@ -575,10 +575,7 @@ export class AnalyticsController {
 				firstName: entry.user?.firstName,
 				lastName: entry.user?.lastName,
 				avatar: entry.user?.preferences?.avatar,
-				avatarUrl: getAvatarUrlForUser(
-					entry.user as { id: string; customAvatar?: Buffer } | undefined,
-					AppConfig.apiPublicBaseUrl
-				),
+				avatarUrl: getAvatarUrlForUser(entry.user),
 				rank: index + offsetNum + 1,
 				score: getScoreFromUserStats(entry, globalScoreField),
 				averageScore: entry.overallSuccessRate ?? 0,
@@ -596,8 +593,8 @@ export class AnalyticsController {
 				pagination: {
 					limit: limitNum,
 					offset: offsetNum,
-					total: leaderboard.length,
-					hasMore: offsetNum + leaderboardEntries.length < leaderboard.length,
+					total: totalCount,
+					hasMore: offsetNum + leaderboardEntries.length < totalCount,
 				},
 			};
 		} catch (error) {
@@ -653,10 +650,7 @@ export class AnalyticsController {
 				firstName: entry.user?.firstName,
 				lastName: entry.user?.lastName,
 				avatar: entry.user?.preferences?.avatar,
-				avatarUrl: getAvatarUrlForUser(
-					entry.user as { id: string; customAvatar?: Buffer } | undefined,
-					AppConfig.apiPublicBaseUrl
-				),
+				avatarUrl: getAvatarUrlForUser(entry.user),
 				rank: index + 1,
 				score: getScoreFromUserStats(entry, scoreField),
 				averageScore: entry.overallSuccessRate ?? 0,

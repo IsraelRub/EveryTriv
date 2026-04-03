@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 
 import { EMPTY_VALUE } from '@shared/constants';
-import { formatDate, formatTitle, getDifficultyBadgeClasses } from '@shared/utils';
+import { formatDate, formatTitle } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import {
@@ -17,7 +17,7 @@ import {
 	VariantBase,
 } from '@/constants';
 import type { DataTableColumn, DataTableProps } from '@/types';
-import { cn, getDifficultyDisplayLabel } from '@/utils';
+import { cn, getDifficultyBadgeClasses, getDifficultyDisplayLabel } from '@/utils';
 import {
 	Badge,
 	EmptyState,

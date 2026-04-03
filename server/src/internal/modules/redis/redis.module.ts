@@ -117,7 +117,7 @@ export class RedisModule implements OnModuleInit {
 		logger.systemInfo('Redis module initialized', {
 			host: AppConfig.redis.host,
 			port: AppConfig.redis.port,
-			password: AppConfig.redis.password ? '***' : 'not set',
+			redisPasswordConfigured: AppConfig.redis.password != null && AppConfig.redis.password !== '',
 			db: AppConfig.redis.db,
 			keyPrefix: AppConfig.redis.keyPrefix,
 			connectTimeout: AppConfig.redis.connectTimeout,

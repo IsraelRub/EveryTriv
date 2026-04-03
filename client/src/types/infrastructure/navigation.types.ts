@@ -18,13 +18,6 @@ export interface NavigationLinks {
 	};
 }
 
-
-
-
-
-
-
-
 export interface NavLinkProps extends RouterNavLinkProps {
 	activeClassName?: string;
 }
@@ -79,4 +72,3 @@ export interface NavigationCreditsState {
 	display: string;
 	total?: number;
 }
-

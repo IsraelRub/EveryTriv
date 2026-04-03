@@ -4,7 +4,6 @@ export interface CompleteProfileProps {
 	onComplete?: (data: ProfileCompletionData) => void;
 }
 
-
 export type UserAvatarProps = {
 	source?: UserAvatarSource | null;
 	size?: AvatarSize;
@@ -55,4 +54,3 @@ export interface UserAvatarSource {
 	avatar?: number | null;
 	avatarUrl?: string | null;
 }
-

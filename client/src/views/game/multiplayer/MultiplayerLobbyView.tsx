@@ -19,19 +19,19 @@ import { formatTitle, getDisplayNameFromUserFields, getErrorMessage } from '@sha
 
 import {
 	AlertVariant,
+	AnimatedCopyFeedbackIconVariant,
 	AvatarSize,
 	ButtonSize,
-	Colors,
 	ComponentSize,
 	ExitGameButtonVariant,
 	GameKey,
 	ROUTES,
+	SEMANTIC_ICON_TEXT,
 	TabsListVariant,
 	TextLanguageStatus,
 	VALIDATION_MESSAGES,
 	VariantBase,
 } from '@/constants';
-import { AnimatedCopyFeedbackIconVariant } from '@/constants';
 import { clientLogger as logger } from '@/services';
 import { cn, getDifficultyDisplayLabel } from '@/utils';
 import {
@@ -241,7 +241,10 @@ export function MultiplayerLobbyView() {
 											onClick={copyRoomCode}
 											className='h-auto min-h-10 w-11 shrink-0 rounded-none rounded-r-lg border-l border-primary-foreground/15'
 										>
-											<AnimatedCopyFeedbackIcon success={roomCodeCopied} variant={AnimatedCopyFeedbackIconVariant.ON_PRIMARY} />
+											<AnimatedCopyFeedbackIcon
+												success={roomCodeCopied}
+												variant={AnimatedCopyFeedbackIconVariant.ON_PRIMARY}
+											/>
 										</Button>
 									</div>
 								</div>
@@ -285,7 +288,9 @@ export function MultiplayerLobbyView() {
 										<div className='flex-1'>
 											<div className='flex items-center gap-2'>
 												<span className='font-medium'>{getDisplayNameFromUserFields(player)}</span>
-												{player.userId === room.hostId && <Crown className={cn('h-4 w-4', Colors.YELLOW_500.text)} />}
+												{player.userId === room.hostId && (
+													<Crown className={cn('h-4 w-4', SEMANTIC_ICON_TEXT.warning)} />
+												)}
 											</div>
 										</div>
 										<Badge

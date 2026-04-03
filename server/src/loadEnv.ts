@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-
 import * as dotenv from 'dotenv';
 
 import { LOCALHOST_CONFIG } from '@shared/constants';
@@ -13,14 +12,10 @@ function runningInDockerLinuxContainer(): boolean {
 	}
 }
 
-/**
- * Compose service names (`postgres`, `redis`) resolve only on the Docker network.
- * On the host, replace with published localhost when `.env` mirrors Compose defaults.
- */
 function resolveComposeServiceHostToLocal(
 	envVarName: 'DATABASE_HOST' | 'REDIS_HOST',
 	composeServiceHostname: string,
-	localHost: string,
+	localHost: string
 ): void {
 	if (process.env[envVarName] !== composeServiceHostname) {
 		return;
@@ -31,7 +26,6 @@ function resolveComposeServiceHostToLocal(
 	process.env[envVarName] = localHost;
 }
 
-/** Directory containing `pnpm-workspace.yaml`, or `process.cwd()` if not found. */
 function findMonorepoRoot(): string {
 	let dir = process.cwd();
 	while (true) {

@@ -7,7 +7,6 @@ import { VALIDATORS } from '@shared/validation';
 import { ROUTES } from '@/constants';
 import type { UseModalRouteReturn } from '@/types';
 import { isProtectedAppPath } from '@/utils';
-
 import { useIsAuthenticated } from '../useAuth';
 
 function parseModalState(state: unknown): { modal: boolean; returnUrl?: string } | null {
@@ -33,8 +32,7 @@ export function useModalRoute(): UseModalRouteReturn {
 	const returnUrl = modalState?.returnUrl;
 
 	const closeModal = useCallback(() => {
-		const safeReturnUrl =
-			returnUrl && !isAuthenticated && isProtectedAppPath(returnUrl) ? ROUTES.HOME : returnUrl;
+		const safeReturnUrl = returnUrl && !isAuthenticated && isProtectedAppPath(returnUrl) ? ROUTES.HOME : returnUrl;
 
 		if (safeReturnUrl) {
 			navigate(safeReturnUrl, { replace: true });

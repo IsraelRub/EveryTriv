@@ -5,7 +5,14 @@ import { CheckCircle, Clock, Mail, MapPin, MessageSquare, Phone, Send } from 'lu
 import { TIME_PERIODS_MS } from '@shared/constants';
 import { delay } from '@shared/utils';
 
-import { ButtonSize, Colors, ComponentSize, LegalKey, LoadingMessages, PLACEHOLDER_EMAIL } from '@/constants';
+import {
+	ButtonSize,
+	ComponentSize,
+	LegalKey,
+	LoadingMessages,
+	PLACEHOLDER_EMAIL,
+	SEMANTIC_ICON_TEXT,
+} from '@/constants';
 import { clientLogger as logger } from '@/services';
 import { cn } from '@/utils';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Spinner, Textarea } from '@/components';
@@ -70,7 +77,7 @@ export function ContactView() {
 									<h3 className='text-2xl font-semibold mb-6'>{t(LegalKey.GET_IN_TOUCH)}</h3>
 									<div className='space-y-4'>
 										<div className='flex items-start gap-4'>
-											<div className='p-3 rounded-lg bg-primary/10'>
+											<div className='contact-icon-well'>
 												<Mail className='h-5 w-5 text-primary' />
 											</div>
 											<div>
@@ -81,7 +88,7 @@ export function ContactView() {
 										</div>
 
 										<div className='flex items-start gap-4'>
-											<div className='p-3 rounded-lg bg-primary/10'>
+											<div className='contact-icon-well'>
 												<Phone className='h-5 w-5 text-primary' />
 											</div>
 											<div>
@@ -92,7 +99,7 @@ export function ContactView() {
 										</div>
 
 										<div className='flex items-start gap-4'>
-											<div className='p-3 rounded-lg bg-primary/10'>
+											<div className='contact-icon-well'>
 												<MapPin className='h-5 w-5 text-primary' />
 											</div>
 											<div>
@@ -104,7 +111,7 @@ export function ContactView() {
 										</div>
 
 										<div className='flex items-start gap-4'>
-											<div className='p-3 rounded-lg bg-primary/10'>
+											<div className='contact-icon-well'>
 												<Clock className='h-5 w-5 text-primary' />
 											</div>
 											<div>
@@ -147,18 +154,14 @@ export function ContactView() {
 								<p className='text-sm text-muted-foreground mb-6'>{t(LegalKey.CONTACT_FORM_DISCLAIMER)}</p>
 								{isSubmitted ? (
 									<div className='flex flex-col items-center justify-center py-12 space-y-4'>
-										<CheckCircle
-											className={cn('h-16 w-16', Colors.GREEN_500.text)}
-										/>
+										<CheckCircle className={cn('h-16 w-16', SEMANTIC_ICON_TEXT.success)} />
 										<h4 className='text-xl font-semibold'>{t(LegalKey.MESSAGE_SENT_SUCCESSFULLY)}</h4>
 										<p className='text-muted-foreground text-center'>{t(LegalKey.THANK_YOU_CONTACT_SHORT)}</p>
 									</div>
 								) : (
 									<form onSubmit={handleSubmit} className='space-y-4'>
 										<div>
-											<Label className='block text-sm font-medium mb-2'>
-												{t(LegalKey.NAME)} *
-											</Label>
+											<Label className='block text-sm font-medium mb-2'>{t(LegalKey.NAME)} *</Label>
 											<Input
 												id='name'
 												name='name'
@@ -186,9 +189,7 @@ export function ContactView() {
 										</div>
 
 										<div>
-											<Label className='block text-sm font-medium mb-2'>
-												{t(LegalKey.SUBJECT)} *
-											</Label>
+											<Label className='block text-sm font-medium mb-2'>{t(LegalKey.SUBJECT)} *</Label>
 											<Input
 												id='subject'
 												name='subject'
@@ -201,9 +202,7 @@ export function ContactView() {
 										</div>
 
 										<div>
-											<Label className='block text-sm font-medium mb-2'>
-												{t(LegalKey.MESSAGE)} *
-											</Label>
+											<Label className='block text-sm font-medium mb-2'>{t(LegalKey.MESSAGE)} *</Label>
 											<Textarea
 												id='message'
 												name='message'

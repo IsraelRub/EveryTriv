@@ -15,9 +15,9 @@ import {
 	ErrorCode,
 	GameMode,
 	HttpMethod,
+	Locale,
 	LOCALHOST_CLIENT_ORIGINS,
 	LOCALHOST_CONFIG,
-	Locale,
 	MULTIPLAYER_TIME_PER_QUESTION,
 	MultiplayerEvent,
 	PlayerStatus,
@@ -30,8 +30,8 @@ import { getErrorCode, getErrorMessage } from '@shared/utils';
 import { isLocale, toDifficultyLevel } from '@shared/validation';
 
 import { WsCurrentUserId } from '@common/decorators';
-import { GameTextLanguageGateService } from '@common/validation';
 import { WsAuthGuard } from '@common/guards';
+import { GameTextLanguageGateService } from '@common/validation';
 import { serverLogger as logger } from '@internal/services';
 import type { TypedSocket } from '@internal/types';
 
@@ -44,12 +44,7 @@ import { RoomService } from './room.service';
 @WebSocketGateway({
 	namespace: '/multiplayer',
 	cors: {
-		origin: [
-			...new Set([
-				process.env.CLIENT_URL ?? LOCALHOST_CONFIG.urls.CLIENT,
-				...LOCALHOST_CLIENT_ORIGINS,
-			]),
-		],
+		origin: [...new Set([process.env.CLIENT_URL ?? LOCALHOST_CONFIG.urls.CLIENT, ...LOCALHOST_CLIENT_ORIGINS])],
 		methods: [HttpMethod.GET, HttpMethod.POST],
 		credentials: true,
 	},
@@ -109,13 +104,8 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			const roomId = client.data.roomId;
 			const userId = client.data.userId;
 
-			// Cleanup timers if room exists
-			if (roomId) {
-				this.questionScheduler.cancelSchedule(roomId);
-			}
-
 			if (roomId && userId) {
-				const room = await this.multiplayerService.leaveRoom(roomId, userId);
+				const room = await this.multiplayerService.disconnectPlayer(roomId, userId);
 
 				// Check if all players disconnected
 				if (room) {
@@ -124,7 +114,7 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 						// All players disconnected - cancel game
 						await this.handleAllPlayersDisconnected(roomId);
 					} else {
-						const event = this.createGameEvent(MultiplayerEvent.PLAYER_LEFT, roomId, { userId, players: room.players });
+						const event = this.createGameEvent(MultiplayerEvent.ROOM_UPDATED, roomId, { room });
 						this.broadcastToRoom(roomId, event);
 					}
 				}

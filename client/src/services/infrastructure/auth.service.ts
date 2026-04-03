@@ -206,10 +206,6 @@ class AuthService {
 		};
 	}
 
-	/**
-	 * Restore session in this tab using persistent refresh token (localStorage).
-	 * Used when opening a new tab so the user is auto-logged in until they manually log out.
-	 */
 	async tryRestoreSession(): Promise<boolean> {
 		try {
 			const persistentResult = await storageService.getString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN);
@@ -221,7 +217,7 @@ class AuthService {
 				return false;
 			}
 
-			await storageService.set(STORAGE_KEYS.REFRESH_TOKEN, persistentToken);
+			await storageService.setString(STORAGE_KEYS.REFRESH_TOKEN, persistentToken);
 
 			await apiService.refreshToken();
 			logger.authInfo('Session restored from persistent refresh token');
@@ -267,7 +263,7 @@ class AuthService {
 			logger.securityLogin('Initiating Google OAuth login');
 
 			// Redirect to the real server URL so session (OAuth state) is set on the same origin as the callback
-			const googleAuthUrl = ApiConfig.getOAuthBaseUrl() + API_ENDPOINTS.AUTH.GOOGLE;
+			const googleAuthUrl = ApiConfig.oauthBaseUrl + API_ENDPOINTS.AUTH.GOOGLE;
 
 			logger.authInfo('Redirecting to Google OAuth', {
 				url: googleAuthUrl,

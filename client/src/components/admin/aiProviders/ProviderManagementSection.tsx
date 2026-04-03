@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import {
 	Activity,
 	AlertTriangle,
@@ -13,11 +14,19 @@ import {
 	XCircle,
 } from 'lucide-react';
 
-import { EMPTY_VALUE, ProviderHealthStatus } from '@shared/constants';
+import { EMPTY_VALUE, ProviderHealthStatus, TIME_PERIODS_MS } from '@shared/constants';
 import { formatNumericValue, isRecord, sumBy } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { AdminKey, Colors, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, VariantBase } from '@/constants';
+import {
+	AdminKey,
+	QUERY_KEYS,
+	SEMANTIC_ICON_TEXT,
+	SKELETON_PLACEHOLDER_COUNTS,
+	SkeletonVariant,
+	VariantBase,
+} from '@/constants';
+import { adminService } from '@/services';
 import { formatDateTime } from '@/utils';
 import {
 	Accordion,
@@ -33,12 +42,24 @@ import {
 	Skeleton,
 	StatCard,
 } from '@/components';
-import { useAiProviderHealth, useAiProviderStats } from '@/hooks';
 
 export function ProviderManagementSection() {
 	const { t } = useTranslation();
-	const { data: aiProviderStats, isLoading: aiProviderStatsLoading } = useAiProviderStats();
-	const { data: aiProviderHealth, isLoading: aiProviderHealthLoading } = useAiProviderHealth();
+
+	const { data: aiProviderStats, isLoading: aiProviderStatsLoading } = useQuery({
+		queryKey: QUERY_KEYS.admin.aiProviderStats(),
+		queryFn: () => adminService.getAiProviderStats(),
+		staleTime: TIME_PERIODS_MS.TWO_MINUTES,
+		gcTime: TIME_PERIODS_MS.FIVE_MINUTES,
+	});
+
+	const { data: aiProviderHealth, isLoading: aiProviderHealthLoading } = useQuery({
+		queryKey: QUERY_KEYS.admin.aiProviderHealth(),
+		queryFn: () => adminService.getAiProviderHealth(),
+		staleTime: TIME_PERIODS_MS.THIRTY_SECONDS,
+		gcTime: TIME_PERIODS_MS.TWO_MINUTES,
+		refetchInterval: TIME_PERIODS_MS.THIRTY_SECONDS,
+	});
 
 	const totalRequests = useMemo(() => {
 		if (!aiProviderStats?.providerDetails) return 0;
@@ -83,14 +104,14 @@ export function ProviderManagementSection() {
 									icon={CheckCircle2}
 									label={t(AdminKey.AVAILABLE_PROVIDERS)}
 									value={aiProviderHealth.availableProviders}
-									color={Colors.GREEN_500.text}
+									color={SEMANTIC_ICON_TEXT.success}
 									isLoading={aiProviderHealthLoading}
 								/>
 								<StatCard
 									icon={BotMessageSquare}
 									label={t(AdminKey.TOTAL_PROVIDERS)}
 									value={aiProviderHealth.totalProviders}
-									color={Colors.BLUE_500.text}
+									color={SEMANTIC_ICON_TEXT.primary}
 									isLoading={aiProviderHealthLoading}
 								/>
 							</div>
@@ -126,13 +147,13 @@ export function ProviderManagementSection() {
 								icon={BotMessageSquare}
 								label={t(AdminKey.TOTAL_PROVIDERS)}
 								value={aiProviderStats.totalProviders}
-								color={Colors.BLUE_500.text}
+								color={SEMANTIC_ICON_TEXT.primary}
 							/>
 							<StatCard
 								icon={CircleDot}
 								label={t(AdminKey.CURRENT_PROVIDER)}
 								value={aiProviderStats.providers[aiProviderStats.currentProviderIndex] ?? EMPTY_VALUE}
-								color={Colors.GREEN_500.text}
+								color={SEMANTIC_ICON_TEXT.success}
 							/>
 							<StatCard
 								icon={Activity}
@@ -148,13 +169,13 @@ export function ProviderManagementSection() {
 										return false;
 									}).length
 								}
-								color={Colors.PURPLE_500.text}
+								color={SEMANTIC_ICON_TEXT.secondary}
 							/>
 							<StatCard
 								icon={Send}
 								label={t(AdminKey.TOTAL_REQUESTS)}
 								value={totalRequests}
-								color={Colors.YELLOW_500.text}
+								color={SEMANTIC_ICON_TEXT.warning}
 							/>
 						</div>
 
@@ -197,43 +218,43 @@ export function ProviderManagementSection() {
 																icon={Send}
 																label={t(AdminKey.REQUESTS)}
 																value={providerStats.requests ?? 0}
-																color={Colors.BLUE_500.text}
+																color={SEMANTIC_ICON_TEXT.primary}
 															/>
 															<StatCard
 																icon={CheckCircle2}
 																label={t(AdminKey.SUCCESSES)}
 																value={providerStats.successes ?? 0}
-																color={Colors.GREEN_500.text}
+																color={SEMANTIC_ICON_TEXT.success}
 															/>
 															<StatCard
 																icon={XCircle}
 																label={t(AdminKey.FAILURES)}
 																value={providerStats.failures ?? 0}
-																color={Colors.RED_500.text}
+																color={SEMANTIC_ICON_TEXT.destructive}
 															/>
 															<StatCard
 																icon={CirclePercent}
 																label={t(AdminKey.SUCCESS_RATE)}
 																value={formatNumericValue(providerStats.successRate, 2, '%')}
-																color={Colors.GREEN_500.text}
+																color={SEMANTIC_ICON_TEXT.success}
 															/>
 															<StatCard
 																icon={Timer}
 																label={t(AdminKey.AVG_RESPONSE_TIME)}
 																value={formatNumericValue(providerStats.averageResponseTime, 2, 'ms')}
-																color={Colors.YELLOW_500.text}
+																color={SEMANTIC_ICON_TEXT.warning}
 															/>
 															<StatCard
 																icon={AlertTriangle}
 																label={t(AdminKey.ERROR_RATE)}
 																value={formatNumericValue(providerStats.errorRate, 2, '%')}
-																color={Colors.RED_500.text}
+																color={SEMANTIC_ICON_TEXT.destructive}
 															/>
 															<StatCard
 																icon={Clock}
 																label={t(AdminKey.LAST_USED)}
 																value={formatDateTime(providerStats.lastUsed, t(AdminKey.DATE_DEFAULT_NEVER))}
-																color={Colors.BLUE_500.text}
+																color={SEMANTIC_ICON_TEXT.primary}
 															/>
 														</div>
 													</CardContent>

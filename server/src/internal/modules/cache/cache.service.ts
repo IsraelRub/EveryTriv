@@ -745,7 +745,7 @@ export class CacheService implements IStorageService, OnModuleDestroy {
 
 	private async getTTLRedis(key: string): Promise<number> {
 		if (!this.redisClient) return -2;
-		return await this.redisClient.ttl(key);
+		return this.redisClient.ttl(key);
 	}
 
 	private async clearRedis(): Promise<void> {
@@ -837,7 +837,7 @@ export class CacheService implements IStorageService, OnModuleDestroy {
 
 	private async incrementRedis(key: string, amount: number): Promise<number> {
 		if (!this.redisClient) return 0;
-		return await this.redisClient.incrby(key, amount);
+		return this.redisClient.incrby(key, amount);
 	}
 
 	onModuleDestroy() {
@@ -866,18 +866,6 @@ export class CacheService implements IStorageService, OnModuleDestroy {
 			return value;
 		}
 		return String(value);
-	}
-
-	async getString(key: string): Promise<StorageOperationResult<string | null>> {
-		return this.get(key, VALIDATORS.string);
-	}
-
-	async getNumber(key: string): Promise<StorageOperationResult<number | null>> {
-		return this.get(key, VALIDATORS.number);
-	}
-
-	async getBoolean(key: string): Promise<StorageOperationResult<boolean | null>> {
-		return this.get(key, VALIDATORS.boolean);
 	}
 
 	async getDate(key: string): Promise<StorageOperationResult<Date | null>> {

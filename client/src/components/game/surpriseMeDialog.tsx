@@ -5,7 +5,14 @@ import { Wand2 } from 'lucide-react';
 import { DifficultyLevel, SurpriseScope } from '@shared/constants';
 import { extractCustomDifficultyText, isCustomDifficulty } from '@shared/validation';
 
-import { ButtonSize, ComponentSize, DialogContentSize, GameKey, SURPRISE_SCOPE_LABEL_KEYS, VariantBase } from '@/constants';
+import {
+	ButtonSize,
+	ComponentSize,
+	DialogContentSize,
+	GameKey,
+	SURPRISE_SCOPE_LABEL_KEYS,
+	VariantBase,
+} from '@/constants';
 import type { SurpriseMeDialogProps } from '@/types';
 import { gameHistoryService } from '@/services';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Spinner } from '@/components';

@@ -11,7 +11,6 @@ export interface CompleteProfileParams {
 	lastName?: string;
 }
 
-
 export interface UserLoginRequest {
 	email: string;
 	password: string;
@@ -23,4 +22,3 @@ export interface UserRegisterRequest extends AuthCredentials {
 	firstName?: string;
 	lastName?: string;
 }
-

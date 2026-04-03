@@ -73,7 +73,7 @@ export class AuthService {
 
 		const tokenPair = await this.jwtTokenService.generateTokenPair(savedUser.id, savedUser.email, savedUser.role);
 
-		const avatarUrl = getAvatarUrlForUser(savedUser, AppConfig.apiPublicBaseUrl);
+		const avatarUrl = getAvatarUrlForUser(savedUser);
 		return {
 			accessToken: tokenPair.accessToken,
 			refreshToken: tokenPair.refreshToken,
@@ -153,7 +153,7 @@ export class AuthService {
 			});
 		}
 
-		const avatarUrl = getAvatarUrlForUser(user, AppConfig.apiPublicBaseUrl);
+		const avatarUrl = getAvatarUrlForUser(user);
 		return {
 			accessToken: authResult.accessToken,
 			refreshToken: authResult.refreshToken,
@@ -189,7 +189,18 @@ export class AuthService {
 	async getCurrentUser(
 		userId: string
 	): Promise<
-		Pick<UserEntity, 'id' | 'email' | 'firstName' | 'lastName' | 'role' | 'preferences' | 'createdAt' | 'emailVerified'>
+		Pick<
+			UserEntity,
+			| 'id'
+			| 'email'
+			| 'firstName'
+			| 'lastName'
+			| 'role'
+			| 'preferences'
+			| 'customAvatar'
+			| 'createdAt'
+			| 'emailVerified'
+		>
 	> {
 		logger.authDebug('getCurrentUser called', {
 			userIds: {
@@ -432,7 +443,7 @@ export class AuthService {
 
 		const tokenPair = await this.jwtTokenService.generateTokenPair(user.id, user.email, user.role);
 
-		const avatarUrl = getAvatarUrlForUser(user, AppConfig.apiPublicBaseUrl);
+		const avatarUrl = getAvatarUrlForUser(user);
 		const response = {
 			accessToken: tokenPair.accessToken,
 			refreshToken: tokenPair.refreshToken,

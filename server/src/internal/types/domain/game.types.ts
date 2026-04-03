@@ -21,7 +21,6 @@ export interface SocketData {
 	roomId?: string;
 }
 
-
 export type TypedSocket = Socket & {
 	data: SocketData;
 };
@@ -84,13 +83,10 @@ export interface UserGameHistoryParams {
 	offset?: number;
 }
 
-
 export interface SaveGameHistoryParams {
 	userId: string;
 	gameData: SaveGameHistoryData;
 }
-
-
 
 export interface DeleteGameHistoryParams {
 	userId: string;
@@ -113,7 +109,6 @@ export interface GameSessionQuestion {
 export interface GameSessionQuestionSnapshot {
 	correctAnswerIndex: number;
 }
-
 
 export interface ServerGameSessionState {
 	gameId: string;
@@ -149,4 +144,3 @@ export interface SaveGameConfigParams {
 	userId: string;
 	config: GameConfigParams;
 }
-

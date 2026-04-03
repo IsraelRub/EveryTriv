@@ -4,17 +4,13 @@ import { ChevronDown } from 'lucide-react';
 
 import { formatDate } from '@shared/utils';
 
-import { ButtonSize, LegalKey, VariantBase } from '@/constants';
-import { LegalDocumentLayoutVariant } from '@/constants';
+import { ButtonSize, LegalDocumentLayoutVariant, LegalKey, VariantBase } from '@/constants';
 import type { LegalDocumentPageProps } from '@/types';
 import { cn } from '@/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-
-
-/** Legal policy/terms: page chrome, accordion sections (closed by default), expand/collapse all. */
 export function LegalDocumentPage({
 	icon,
 	titleKey,
@@ -54,10 +50,7 @@ export function LegalDocumentPage({
 						<div className='mb-2 flex items-center gap-3'>
 							<span className={cn(isEmbedded && '[&_svg]:h-6 [&_svg]:w-6')}>{icon}</span>
 							<CardTitle
-								className={cn(
-									'text-3xl font-bold md:text-4xl',
-									isEmbedded && 'text-2xl font-bold md:text-3xl'
-								)}
+								className={cn('text-3xl font-bold md:text-4xl', isEmbedded && 'text-2xl font-bold md:text-3xl')}
 							>
 								{t(titleKey)}
 							</CardTitle>
@@ -99,9 +92,7 @@ export function LegalDocumentPage({
 								<AccordionItem
 									key={section.id}
 									value={section.id}
-									className={cn(
-										'overflow-hidden rounded-lg border border-border bg-card/40 shadow-sm last:!border-b'
-									)}
+									className='overflow-hidden rounded-lg border border-border bg-card/40 shadow-sm last:!border-b'
 								>
 									<AccordionTrigger className='px-4 text-base font-semibold text-foreground hover:no-underline md:text-lg'>
 										{section.trigger}
@@ -124,4 +115,3 @@ export function LegalDocumentPage({
 
 	return <main className='view-main animate-fade-in-up-simple'>{outer}</main>;
 }
-

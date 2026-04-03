@@ -7,6 +7,7 @@ import { MULTIPLAYER_TIME_PER_QUESTION, RoomStatus, TIME_PERIODS_MS } from '@sha
 import { calculateElapsedSeconds, getCorrectAnswerIndex, getDisplayNameFromUserFields } from '@shared/utils';
 
 import {
+	AudioKey,
 	AvatarSize,
 	ComponentSize,
 	ExitGameButtonVariant,
@@ -118,7 +119,7 @@ export function MultiplayerGameView() {
 			const choice = displayedSelectedAnswer;
 			if (choice !== null) {
 				const isCorrect = choice === correctIndex;
-				audioService.playAnswerFeedback(isCorrect);
+				audioService.play(isCorrect ? AudioKey.CORRECT_ANSWER : AudioKey.WRONG_ANSWER);
 			}
 		}
 		prevRevealPhaseRef.current = revealPhase;
@@ -127,6 +128,7 @@ export function MultiplayerGameView() {
 	const handleAnswerSelect = (answerIndex: number) => {
 		if (answered || !roomId || !currentQuestion?.id) return;
 		const timeSpent = questionStartTime ? Math.max(1, calculateElapsedSeconds(questionStartTime)) : 0;
+		setAnswered(true);
 		setSelectedAnswer(answerIndex);
 		submitAnswer(roomId, currentQuestion.id, answerIndex, timeSpent);
 	};

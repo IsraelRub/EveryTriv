@@ -5,7 +5,6 @@ import type { AnswerHistory, GameConfig, GameDifficulty, GameHistoryEntry, Trivi
 
 import { RANK_DISPLAY, TextLanguageStatus } from '@/constants';
 
-
 export interface GameModeState {
 	currentMode: GameMode;
 	currentTopic: string;
@@ -16,8 +15,6 @@ export interface GameModeState {
 }
 
 export interface GameModeOption {
-	name: string;
-	description: string;
 	icon: LucideIcon;
 	showQuestionLimit: boolean;
 	showTimeLimit: boolean;
@@ -93,4 +90,3 @@ export interface CustomSettings {
 	timePerQuestion: number;
 	difficultyValue: number;
 }
-

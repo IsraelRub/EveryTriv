@@ -119,10 +119,14 @@ export class CreditsService {
 			try {
 				await this.cacheService.delete(SERVER_CACHE_KEYS.CREDITS.BALANCE(saved.id));
 			} catch (error) {
-				logger.cacheError('Failed to invalidate credits cache after granted refill', SERVER_CACHE_KEYS.CREDITS.BALANCE(saved.id), {
-					errorInfo: { message: getErrorMessage(error) },
-					userId: saved.id,
-				});
+				logger.cacheError(
+					'Failed to invalidate credits cache after granted refill',
+					SERVER_CACHE_KEYS.CREDITS.BALANCE(saved.id),
+					{
+						errorInfo: { message: getErrorMessage(error) },
+						userId: saved.id,
+					}
+				);
 			}
 		}
 		return saved;
@@ -470,9 +474,7 @@ export class CreditsService {
 					userId,
 					type: CreditTransactionType.GAME_USAGE,
 					source:
-						deductionResult.deductionDetails.purchasedCreditsUsed > 0
-							? CreditSource.PURCHASED
-							: CreditSource.GRANTED,
+						deductionResult.deductionDetails.purchasedCreditsUsed > 0 ? CreditSource.PURCHASED : CreditSource.GRANTED,
 					amount: -totalCreditsDeducted,
 					balanceAfter: updatedUser.credits ?? 0,
 					purchasedCreditsAfter: updatedUser.purchasedCredits,

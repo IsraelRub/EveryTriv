@@ -14,8 +14,8 @@ import { isNonEmptyString, isRecord, mergeUserPreferences } from '@shared/utils'
 import { isGameMode, isLocale, isRegisteredDifficulty, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { ComponentSize, ROUTES } from '@/constants';
-import { isProtectedAppPath } from '@/utils';
 import { audioService, authService, prefetchAuthenticatedQueries, queryClient } from '@/services';
+import { isProtectedAppPath } from '@/utils';
 import {
 	BackgroundAnimation,
 	CompleteProfile,

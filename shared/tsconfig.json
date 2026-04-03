@@ -20,8 +20,6 @@
 		"noFallthroughCasesInSwitch": true,
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./*"],
-			"*": ["./*"],
 			"@shared": ["."],
 			"@shared/*": ["./*"],
 			"@shared/constants": ["./constants"],
@@ -37,5 +35,5 @@
 		}
 	},
 	"include": ["**/*.ts"],
-	"exclude": ["node_modules", "dist", "types/component.types.ts"]
+	"exclude": ["node_modules", "dist"]
 }

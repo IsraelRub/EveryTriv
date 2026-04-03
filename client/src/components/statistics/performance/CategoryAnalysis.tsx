@@ -5,7 +5,7 @@ import { ChartNoAxesCombined } from 'lucide-react';
 import { CHART_HEIGHTS, StatisticsPerformanceKey } from '@/constants';
 import type { CategoryAnalysisProps } from '@/types';
 import { SectionCard } from '@/components';
-import { CategorySkeleton } from '../skeleton';
+import { CategorySkeleton } from '../StatisticSkeletons';
 import { TopicsDistributionChart } from './TopicsDistributionChart';
 
 export const CategoryAnalysis = memo(function CategoryAnalysis({

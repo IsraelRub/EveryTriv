@@ -21,6 +21,5 @@ export * from './toast.constants';
 export * from './color.constants';
 export * from './form.constants';
 export * from './keyboard.constants';
-export * from './errorBoundary.constants';
 export * from './payment.constants';
 export * from './questionCounter.constants';
