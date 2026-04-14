@@ -31,6 +31,7 @@ export class MetricsService {
 				exists: 0,
 				clear: 0,
 				getKeys: 0,
+				getKeysByRelativePattern: 0,
 				invalidate: 0,
 				getOrSet: 0,
 				getStats: 0,
@@ -45,6 +46,7 @@ export class MetricsService {
 				exists: 0,
 				clear: 0,
 				getKeys: 0,
+				getKeysByRelativePattern: 0,
 				invalidate: 0,
 				getOrSet: 0,
 				getStats: 0,
@@ -100,6 +102,10 @@ export class MetricsService {
 			case 'getKeys':
 				ops.getKeys = (ops.getKeys ?? 0) + 1;
 				if (!success) errors.getKeys = (errors.getKeys ?? 0) + 1;
+				break;
+			case 'getKeysByRelativePattern':
+				ops.getKeysByRelativePattern = (ops.getKeysByRelativePattern ?? 0) + 1;
+				if (!success) errors.getKeysByRelativePattern = (errors.getKeysByRelativePattern ?? 0) + 1;
 				break;
 			case 'invalidate':
 				ops.invalidate = (ops.invalidate ?? 0) + 1;
@@ -239,6 +245,7 @@ export class MetricsService {
 				exists: 0,
 				clear: 0,
 				getKeys: 0,
+				getKeysByRelativePattern: 0,
 				invalidate: 0,
 				getOrSet: 0,
 				getStats: 0,
@@ -253,6 +260,7 @@ export class MetricsService {
 				exists: 0,
 				clear: 0,
 				getKeys: 0,
+				getKeysByRelativePattern: 0,
 				invalidate: 0,
 				getOrSet: 0,
 				getStats: 0,

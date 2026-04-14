@@ -1,5 +1,4 @@
 import { GENERATED_PAYMENT_INTENT_ID_PREFIX } from '@shared/constants';
-import type { GeneratedPaymentIntentId } from '@shared/types';
 
 function generateId(length: number = 13): string {
 	return Math.random()
@@ -15,10 +14,6 @@ export function generateSessionId(): string {
 	return Date.now().toString(36) + generateId(15);
 }
 
-function createGeneratedPaymentIntentId(suffix: string): GeneratedPaymentIntentId {
-	return `${GENERATED_PAYMENT_INTENT_ID_PREFIX}${suffix}`;
-}
-
-export function generatePaymentIntentId(): GeneratedPaymentIntentId {
-	return createGeneratedPaymentIntentId(generateId(20));
+export function generatePaymentIntentId(): string {
+	return GENERATED_PAYMENT_INTENT_ID_PREFIX + generateId(20);
 }

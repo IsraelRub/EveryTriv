@@ -10,7 +10,7 @@ import {
 	LOCALHOST_CONFIG,
 	TIME_PERIODS_MS,
 	VITE_API_BUNDLE_USE_ORIGIN_PREFIX,
-} from '../shared/constants';
+} from '../shared/vite-config-constants';
 
 const HTML_APP_NAME_PLACEHOLDER = '__APP_NAME__';
 
@@ -63,6 +63,11 @@ export default defineConfig({
 				changeOrigin: true,
 				secure: false,
 				bypass: req => {
+					const pathname = req.url?.split('?')[0] ?? '';
+					if (pathname === '/auth/callback') {
+						return '/index.html';
+					}
+
 					const isFrontendRequest = req.method === HttpMethod.GET && !req.headers?.accept?.includes('application/json');
 
 					if (isFrontendRequest) {

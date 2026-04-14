@@ -20,7 +20,6 @@
 	"connectingToSocket": "Connecting to multiplayer server...",
 	"joiningRoom": "Joining room...",
 	"waitingForGameState": "Waiting for game state...",
-	"waitingForOtherPlayers": "Waiting for other players...",
 	"loadingMultiplayerQuestions": "Loading questions...",
 	"noQuestionsAvailable": "No questions available"
 }

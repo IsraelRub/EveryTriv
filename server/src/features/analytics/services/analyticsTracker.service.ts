@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
-import { TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { CACHE_KEYS, TIME_DURATIONS_SECONDS } from '@shared/constants';
 import type { AnalyticsEventData, TrackEventResponse } from '@shared/types';
 import { getErrorMessage, isStringArray } from '@shared/utils';
 
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 
@@ -15,12 +14,12 @@ export class AnalyticsTrackerService {
 	async trackEvent(eventData: AnalyticsEventData): Promise<TrackEventResponse> {
 		try {
 			const eventId = `event_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-			const cacheKey = SERVER_CACHE_KEYS.ANALYTICS.EVENT(eventData.userId ?? 'anonymous', eventId);
+			const cacheKey = CACHE_KEYS.ANALYTICS.EVENT(eventData.userId ?? 'anonymous', eventId);
 
 			await this.cacheService.set(cacheKey, eventData, TIME_DURATIONS_SECONDS.MONTH);
 
 			if (eventData.userId != null) {
-				const userEventsKey = SERVER_CACHE_KEYS.ANALYTICS.USER_EVENTS(eventData.userId);
+				const userEventsKey = CACHE_KEYS.ANALYTICS.USER_EVENTS(eventData.userId);
 				const existingEventsResult = await this.cacheService.get<string[]>(userEventsKey, isStringArray);
 				const eventsList =
 					existingEventsResult.success && existingEventsResult.data != null ? existingEventsResult.data : [];

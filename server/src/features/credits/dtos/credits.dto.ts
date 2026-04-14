@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
+	ArrayMaxSize,
+	ArrayMinSize,
 	IsArray,
 	IsEnum,
 	IsNotEmpty,
@@ -15,7 +17,13 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { GameMode, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
+import {
+	ADMIN_CREDIT_PACKAGES_COUNT_MAX,
+	ADMIN_CREDIT_PACKAGES_COUNT_MIN,
+	GameMode,
+	VALIDATION_COUNT,
+	VALIDATION_LENGTH,
+} from '@shared/constants';
 
 import { PaymentMethodDetailsDto } from '../../payment/dtos';
 
@@ -104,9 +112,15 @@ export class PurchaseCreditsDto extends PaymentMethodDetailsDto {
 }
 
 export class CreditPackageItemDto {
-	@ApiProperty({ description: 'Package ID', example: 'package_50' })
+	@ApiProperty({ description: 'Stable package SKU (not tied to credit amount)', example: 'cpkg_def_1' })
 	@IsString()
 	@IsNotEmpty()
+	@MinLength(VALIDATION_LENGTH.NAME.MIN, {
+		message: `Package ID must be at least ${VALIDATION_LENGTH.NAME.MIN} character long`,
+	})
+	@MaxLength(80, {
+		message: 'Package ID cannot exceed 80 characters',
+	})
 	id: string;
 
 	@ApiProperty({ description: 'Number of credits', minimum: 1 })
@@ -128,6 +142,8 @@ export class CreditPackageItemDto {
 export class UpdateCreditPackagesDto {
 	@ApiProperty({ type: [CreditPackageItemDto], description: 'Credit packages to set' })
 	@IsArray()
+	@ArrayMinSize(ADMIN_CREDIT_PACKAGES_COUNT_MIN)
+	@ArrayMaxSize(ADMIN_CREDIT_PACKAGES_COUNT_MAX)
 	@ValidateNested({ each: true })
 	@Type(() => CreditPackageItemDto)
 	packages: CreditPackageItemDto[];

@@ -198,5 +198,19 @@
 	"failedToLoadUsers": "Failed to load users. Please try again later.",
 	"healthStatusHealthy": "Healthy",
 	"healthStatusUnhealthy": "Unhealthy",
-	"healthStatusUnknown": "Unknown"
+	"healthStatusUnknown": "Unknown",
+	"systemHealthAtAGlance": "Status at a glance",
+	"overallStatusHealthy": "All clear",
+	"overallStatusAttention": "Needs attention",
+	"overallStatusCritical": "Critical issues detected",
+	"pricingValidationCredits": "Credits must be a whole number between 1 and 100,000.",
+	"pricingValidationPrice": "Price must be between $0.01 and $99,999.99.",
+	"pricingValidationDuplicateIds": "Each package must have a unique internal ID (SKU).",
+	"pricingValidationPackageCount": "You must have between {{min}} and {{max}} credit packages.",
+	"pricingAddPackage": "Add package",
+	"pricingRemovePackage": "Remove package",
+	"pricingActions": "Actions",
+	"restoreDefaultsConfirmTitle": "Restore default packages?",
+	"restoreDefaultsConfirmDesc": "This replaces the table with the built-in default packages. You still need to click Save to persist.",
+	"viewPaymentPage": "Open payment page (new tab)"
 }

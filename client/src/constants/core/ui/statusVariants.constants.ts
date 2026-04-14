@@ -40,10 +40,16 @@ export const resultVariants = cva('', {
 			target: ResultTarget.CARD,
 			class: SEMANTIC_SURFACE.resultNegativeCard,
 		},
-		{ direction: StatusDirection.POSITIVE, target: ResultTarget.ICON_SM, class: SEMANTIC_ICON_TEXT.success },
-		{ direction: StatusDirection.NEGATIVE, target: ResultTarget.ICON_SM, class: SEMANTIC_ICON_TEXT.destructive },
-		{ direction: StatusDirection.POSITIVE, target: ResultTarget.ICON_MD, class: SEMANTIC_ICON_TEXT.success },
-		{ direction: StatusDirection.NEGATIVE, target: ResultTarget.ICON_MD, class: SEMANTIC_ICON_TEXT.destructive },
+		{
+			direction: StatusDirection.POSITIVE,
+			target: [ResultTarget.ICON_SM, ResultTarget.ICON_MD],
+			class: SEMANTIC_ICON_TEXT.success,
+		},
+		{
+			direction: StatusDirection.NEGATIVE,
+			target: [ResultTarget.ICON_SM, ResultTarget.ICON_MD],
+			class: SEMANTIC_ICON_TEXT.destructive,
+		},
 	],
 	defaultVariants: { direction: StatusDirection.NEGATIVE, target: ResultTarget.CARD },
 });
@@ -68,10 +74,16 @@ export const trendVariants = cva('', {
 			target: TrendTarget.CARD,
 			class: SEMANTIC_SURFACE.trendNegativeCard,
 		},
-		{ direction: StatusDirection.POSITIVE, target: TrendTarget.ICON, class: SEMANTIC_ICON_TEXT.success },
-		{ direction: StatusDirection.NEGATIVE, target: TrendTarget.ICON, class: SEMANTIC_ICON_TEXT.destructive },
-		{ direction: StatusDirection.POSITIVE, target: TrendTarget.TEXT, class: SEMANTIC_ICON_TEXT.success },
-		{ direction: StatusDirection.NEGATIVE, target: TrendTarget.TEXT, class: SEMANTIC_ICON_TEXT.destructive },
+		{
+			direction: StatusDirection.POSITIVE,
+			target: [TrendTarget.ICON, TrendTarget.TEXT],
+			class: SEMANTIC_ICON_TEXT.success,
+		},
+		{
+			direction: StatusDirection.NEGATIVE,
+			target: [TrendTarget.ICON, TrendTarget.TEXT],
+			class: SEMANTIC_ICON_TEXT.destructive,
+		},
 	],
 	defaultVariants: { direction: StatusDirection.NEGATIVE, target: TrendTarget.CARD },
 });

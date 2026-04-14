@@ -14,17 +14,18 @@ import {
 	getRegisterOptionalAvatarSearch,
 	LoadingKey,
 	ProfileNameField,
+	QUERY_KEYS,
 	ROUTES,
 	STORAGE_KEYS,
 } from '@/constants';
 import type { CompleteProfileProps, ProfileFieldErrors } from '@/types';
-import { authService, clientLogger as logger, queryClient, queryInvalidationService } from '@/services';
+import { authService, clientLogger as logger, queryClient } from '@/services';
 import {
 	getAuthCurrentUserQueryKey,
 	getTranslatedErrorMessage,
-	profileResponseToBasicUser,
 	readAuthTokenSnapshotForQueryKey,
 	translateValidationMessage,
+	userProfileToBasicUser,
 } from '@/utils';
 import { AlertIcon, Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
 
@@ -105,11 +106,22 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 				});
 
 				if (profileResponse.profile) {
+					try {
+						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
+						await queryClient.cancelQueries({
+							queryKey: getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
+						});
+					} catch (cancelError) {
+						logger.userDebug('Complete profile: cancelQueries before cache write failed (ignored)', {
+							errorInfo: { message: getErrorMessage(cancelError) },
+						});
+					}
+					queryClient.setQueryData(QUERY_KEYS.user.profile(), profileResponse, { updatedAt: Date.now() });
 					queryClient.setQueryData(
 						getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-						profileResponseToBasicUser(profileResponse)
+						userProfileToBasicUser(profileResponse.profile),
+						{ updatedAt: Date.now() }
 					);
-					await queryInvalidationService.invalidateAuthQueries(queryClient);
 				}
 
 				// Call optional onComplete callback

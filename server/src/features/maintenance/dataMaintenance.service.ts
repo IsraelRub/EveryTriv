@@ -2,11 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { CACHE_KEYS } from '@shared/constants';
 import type { ClearOperationResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { SERVER_CACHE_KEYS, TEST_USER_EMAIL_PATTERN } from '@internal/constants';
+import { TEST_USER_EMAIL_PATTERN } from '@internal/constants';
 import {
 	CreditTransactionEntity,
 	GameHistoryEntity,
@@ -44,10 +45,10 @@ export class DataMaintenanceService {
 
 			if (totalBefore === 0) {
 				try {
-					await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.GAME_HISTORY.ALL_PATTERN);
+					await this.cacheService.invalidatePattern(CACHE_KEYS.GAME_HISTORY.ALL_PATTERN);
 					await this.cacheInvalidationService.invalidateOnAnalyticsUpdate();
 				} catch (cacheError) {
-					logger.cacheError('invalidatePattern', SERVER_CACHE_KEYS.GAME_HISTORY.ALL_PATTERN, {
+					logger.cacheError('invalidatePattern', CACHE_KEYS.GAME_HISTORY.ALL_PATTERN, {
 						errorInfo: { message: getErrorMessage(cacheError) },
 					});
 				}
@@ -61,13 +62,13 @@ export class DataMaintenanceService {
 			await this.gameHistoryRepository.clear();
 
 			try {
-				const cacheDeleted = await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.GAME_HISTORY.ALL_PATTERN);
+				const cacheDeleted = await this.cacheService.invalidatePattern(CACHE_KEYS.GAME_HISTORY.ALL_PATTERN);
 				if (cacheDeleted > 0) {
 					logger.cacheInfo(`Game history cache cleared: ${cacheDeleted} keys deleted`);
 				}
 				await this.cacheInvalidationService.invalidateOnAnalyticsUpdate();
 			} catch (cacheError) {
-				logger.cacheError('invalidatePattern', SERVER_CACHE_KEYS.GAME_HISTORY.ALL_PATTERN, {
+				logger.cacheError('invalidatePattern', CACHE_KEYS.GAME_HISTORY.ALL_PATTERN, {
 					errorInfo: { message: getErrorMessage(cacheError) },
 				});
 			}
@@ -95,9 +96,9 @@ export class DataMaintenanceService {
 
 			if (totalBefore === 0) {
 				try {
-					await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.TRIVIA.ALL_PATTERN);
+					await this.cacheService.invalidatePattern(CACHE_KEYS.TRIVIA.ALL_PATTERN);
 				} catch (cacheError) {
-					logger.cacheError('invalidatePattern', SERVER_CACHE_KEYS.TRIVIA.ALL_PATTERN, {
+					logger.cacheError('invalidatePattern', CACHE_KEYS.TRIVIA.ALL_PATTERN, {
 						errorInfo: { message: getErrorMessage(cacheError) },
 					});
 				}
@@ -111,12 +112,12 @@ export class DataMaintenanceService {
 			await this.triviaRepository.clear();
 
 			try {
-				const cacheDeleted = await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.TRIVIA.ALL_PATTERN);
+				const cacheDeleted = await this.cacheService.invalidatePattern(CACHE_KEYS.TRIVIA.ALL_PATTERN);
 				if (cacheDeleted > 0) {
 					logger.cacheInfo(`Trivia cache cleared: ${cacheDeleted} keys deleted`);
 				}
 			} catch (cacheError) {
-				logger.cacheError('invalidatePattern', SERVER_CACHE_KEYS.TRIVIA.ALL_PATTERN, {
+				logger.cacheError('invalidatePattern', CACHE_KEYS.TRIVIA.ALL_PATTERN, {
 					errorInfo: { message: getErrorMessage(cacheError) },
 				});
 			}
@@ -144,9 +145,9 @@ export class DataMaintenanceService {
 
 			if (totalBefore === 0) {
 				try {
-					await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.USER_STATS.ALL_PATTERN);
+					await this.cacheService.invalidatePattern(CACHE_KEYS.USER_STATS.ALL_PATTERN);
 				} catch (cacheError) {
-					logger.cacheError('invalidatePattern', SERVER_CACHE_KEYS.USER_STATS.ALL_PATTERN, {
+					logger.cacheError('invalidatePattern', CACHE_KEYS.USER_STATS.ALL_PATTERN, {
 						errorInfo: { message: getErrorMessage(cacheError) },
 					});
 				}
@@ -162,13 +163,13 @@ export class DataMaintenanceService {
 			const deletedCount = VALIDATORS.number(deleteResult.affected) ? deleteResult.affected : totalBefore;
 
 			try {
-				const cacheDeleted = await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.USER_STATS.ALL_PATTERN);
+				const cacheDeleted = await this.cacheService.invalidatePattern(CACHE_KEYS.USER_STATS.ALL_PATTERN);
 				if (cacheDeleted > 0) {
 					logger.cacheInfo(`User stats cache cleared: ${cacheDeleted} keys deleted`);
 				}
 				await this.cacheInvalidationService.invalidateOnAnalyticsUpdate();
 			} catch (cacheError) {
-				logger.cacheError('invalidatePattern', SERVER_CACHE_KEYS.USER_STATS.ALL_PATTERN, {
+				logger.cacheError('invalidatePattern', CACHE_KEYS.USER_STATS.ALL_PATTERN, {
 					errorInfo: { message: getErrorMessage(cacheError) },
 				});
 			}
@@ -260,10 +261,10 @@ export class DataMaintenanceService {
 
 			for (const userId of userIds) {
 				try {
-					await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
-					await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
-					await this.cacheService.delete(SERVER_CACHE_KEYS.USER.CREDITS(userId));
-					await this.cacheService.delete(SERVER_CACHE_KEYS.GAME_HISTORY.USER(userId));
+					await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
+					await this.cacheService.delete(CACHE_KEYS.USER.STATS(userId));
+					await this.cacheService.delete(CACHE_KEYS.USER.CREDITS(userId));
+					await this.cacheService.delete(CACHE_KEYS.GAME_HISTORY.USER(userId));
 				} catch (cacheError) {
 					logger.cacheError('cleanupTestUsers cache delete', userId, {
 						errorInfo: { message: getErrorMessage(cacheError) },

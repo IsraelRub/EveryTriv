@@ -10,14 +10,14 @@
 
 ## Redux
 
-פירוט מבנה slices ו-selectors: [REDUX.md](./REDUX.md).
+מבנה slices ו־selectors: `client/src/redux/` (ספריות `features/`, `selectors.ts`, `store.ts`).
 
 ## React Query
 
 - מפתחות שאילתות מרוכזים בקבועים (`QUERY_KEYS` וכו').
-- Invalidation מרוכז דרך `queryInvalidationService` — ראו [REFRESH_INVALIDATION.md](./REFRESH_INVALIDATION.md).
+- Invalidation מרוכז דרך `client/src/services/infrastructure/queryInvalidation.service.ts`.
 
 ## קישורים
 
 - [HOOKS_ARCHITECTURE.md](./HOOKS_ARCHITECTURE.md)
-- [../ARCHITECTURE.md](../ARCHITECTURE.md)
+- [README — סקירת המונורפו](../../README.md)

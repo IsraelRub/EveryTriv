@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Coins, Crown, Plus } from 'lucide-react';
+import { CalendarClock, Coins, Crown, Plus } from 'lucide-react';
 
 import { GRANTED_CREDITS_CAP, Locale } from '@shared/constants';
 
@@ -15,7 +15,7 @@ export function CreditBalance() {
 	const { data: creditBalance, isLoading } = useCreditBalance();
 	const { isAdmin } = useUserRole();
 
-	const grantedRefillHint = useMemo(() => {
+	const grantedRefillHint = useMemo((): string | null => {
 		const nextRefillAt = creditBalance?.nextGrantedCreditsRefillAt;
 		if (isAdmin || nextRefillAt == null || (creditBalance?.credits ?? 0) >= GRANTED_CREDITS_CAP) {
 			return null;
@@ -53,10 +53,11 @@ export function CreditBalance() {
 					</span>
 					{grantedRefillHint ? (
 						<span
-							className='max-w-[160px] truncate text-[10px] font-normal leading-tight text-muted-foreground'
+							className='flex max-w-[min(260px,55vw)] items-start gap-1 text-[10px] font-normal leading-snug text-muted-foreground min-w-0'
 							title={grantedRefillHint}
 						>
-							{grantedRefillHint}
+							<CalendarClock className='mt-0.5 h-3 w-3 shrink-0' />
+							<span className='min-w-0 break-words'>{grantedRefillHint}</span>
 						</span>
 					) : null}
 				</div>

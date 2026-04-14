@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ensureErrorObject } from '@shared/utils';
 
 import { FullPageSpinnerLayout, LoadingMessages, ROUTES } from '@/constants';
-import { authService, clientLogger as logger, prefetchAuthenticatedQueries } from '@/services';
+import { authService, clientLogger as logger } from '@/services';
 import { getAuthCurrentUserQueryKey, isProtectedAppPath, readAuthTokenSnapshotForQueryKey } from '@/utils';
 import { BackgroundAnimation } from '@/components/ui/BackgroundAnimation';
 import { FullPageSpinner } from '@/components/ui/spinner';
@@ -64,12 +64,6 @@ export function AppAuthBootstrap({ children }: AppAuthBootstrapProps): JSX.Eleme
 
 				if (cancelled) {
 					return;
-				}
-
-				try {
-					await prefetchAuthenticatedQueries();
-				} catch {
-					// Same as AppRoutes: optional prefetch; failures are non-fatal
 				}
 			} catch (error) {
 				logger.systemError(ensureErrorObject(error), {

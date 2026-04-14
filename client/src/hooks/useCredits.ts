@@ -55,7 +55,7 @@ export const useDeductCredits = () => {
 			} catch (error) {
 				// Ignore errors when canceling queries
 				// Use logger at a low level to avoid noise
-				logger.apiDebug('Error canceling queries', {
+				logger.userDebug('Credits mutation: cancelQueries failed (ignored)', {
 					errorInfo: { message: getErrorMessage(error) },
 				});
 			}
@@ -67,54 +67,62 @@ export const useDeductCredits = () => {
 			const normalizedGameMode = gameMode ?? GameMode.QUESTION_LIMITED;
 
 			// Optimistically update the balance using shared deduction logic
-			queryClient.setQueryData(QUERY_KEYS.credits.balance(), (old: unknown): CreditBalance => {
-				// Simple type guard for CreditBalance
-				const isCreditBalance = (value: unknown): value is CreditBalance => {
-					return (
-						isRecord(value) &&
-						'totalCredits' in value &&
-						'credits' in value &&
-						'purchasedCredits' in value &&
-						'nextGrantedCreditsRefillAt' in value &&
-						'userId' in value
-					);
-				};
-
-				const current = isCreditBalance(old) ? old : undefined;
-				if (!current) {
-					return {
-						totalCredits: 0,
-						credits: 0,
-						purchasedCredits: 0,
-						nextGrantedCreditsRefillAt: null,
-						userId: '',
+			queryClient.setQueryData(
+				QUERY_KEYS.credits.balance(),
+				(old: unknown): CreditBalance => {
+					// Simple type guard for CreditBalance
+					const isCreditBalance = (value: unknown): value is CreditBalance => {
+						return (
+							isRecord(value) &&
+							'totalCredits' in value &&
+							'credits' in value &&
+							'purchasedCredits' in value &&
+							'nextGrantedCreditsRefillAt' in value &&
+							'userId' in value
+						);
 					};
-				}
 
-				// Use shared deduction logic to ensure consistency with server
-				const deductionResult = calculateNewBalance(current, questionsPerRequest, normalizedGameMode);
-				return deductionResult.newBalance;
-			});
+					const current = isCreditBalance(old) ? old : undefined;
+					if (!current) {
+						return {
+							totalCredits: 0,
+							credits: 0,
+							purchasedCredits: 0,
+							nextGrantedCreditsRefillAt: null,
+							userId: '',
+						};
+					}
+
+					// Use shared deduction logic to ensure consistency with server
+					const deductionResult = calculateNewBalance(current, questionsPerRequest, normalizedGameMode);
+					return deductionResult.newBalance;
+				},
+				{ updatedAt: Date.now() }
+			);
 
 			return { previousBalance };
 		},
 		onError: (error, variables, context) => {
-			logger.apiDebug('Rolling back credit balance after deduct failure', {
+			logger.userDebug('Rolling back credit balance after deduct failure', {
 				errorInfo: { message: getErrorMessage(error) },
 				gameMode: variables.gameMode,
 				questionsPerRequest: variables.questionsPerRequest,
 			});
-			// Rollback on error
+			// Rollback on error (avoid onSettled invalidate here — it would refetch and fight the rollback window)
 			if (context?.previousBalance) {
-				queryClient.setQueryData(QUERY_KEYS.credits.balance(), context.previousBalance);
+				queryClient.setQueryData(QUERY_KEYS.credits.balance(), context.previousBalance, {
+					updatedAt: Date.now(),
+				});
 			}
 		},
-		onSettled: () => {
-			void queryInvalidationService.invalidateCreditsQueries(queryClient).catch(error => {
-				logger.apiDebug('invalidateCreditsQueries after deduct settled failed', {
+		onSuccess: async () => {
+			try {
+				await queryInvalidationService.invalidateCreditsQueries(queryClient);
+			} catch (error) {
+				logger.userDebug('invalidateCreditsQueries after deduct success failed', {
 					errorInfo: { message: getErrorMessage(error) },
 				});
-			});
+			}
 		},
 	});
 };
@@ -144,6 +152,14 @@ export const usePurchaseCredits = () => {
 	return useMutation({
 		mutationFn: (request: CreditsPurchaseRequest) => paymentService.purchaseCredits(request),
 		onSuccess: async () => {
+			try {
+				await queryClient.cancelQueries({ queryKey: QUERY_KEYS.credits.balance() });
+				await queryClient.cancelQueries({ queryKey: QUERY_KEYS.credits.paymentHistory() });
+			} catch (error) {
+				logger.userDebug('Purchase credits: cancelQueries before invalidate failed (ignored)', {
+					errorInfo: { message: getErrorMessage(error) },
+				});
+			}
 			await queryInvalidationService.invalidateCreditsQueries(queryClient);
 		},
 	});

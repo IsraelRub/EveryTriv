@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { TIME_PERIODS_MS } from '@shared/constants';
 import type { UpdateUserProfileData, UserPreferences } from '@shared/types';
 
 import { QUERY_KEYS } from '@/constants';
 import { apiService, clientLogger as logger, queryInvalidationService } from '@/services';
-import { getAuthCurrentUserQueryKey, profileResponseToBasicUser, readAuthTokenSnapshotForQueryKey } from '@/utils';
+import { getAuthCurrentUserQueryKey, readAuthTokenSnapshotForQueryKey, userProfileToBasicUser } from '@/utils';
 import { useIsAuthenticated } from './useAuth';
 
 export const useUpdateUserProfile = () => {
@@ -13,16 +14,24 @@ export const useUpdateUserProfile = () => {
 	return useMutation({
 		mutationFn: (data: UpdateUserProfileData) => apiService.updateUserProfile(data),
 		onSuccess: async profileResponse => {
-			queryClient.setQueryData(QUERY_KEYS.user.profile(), profileResponse);
+			await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
+			await queryClient.cancelQueries({
+				queryKey: getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
+			});
+			queryClient.setQueryData(QUERY_KEYS.user.profile(), profileResponse, { updatedAt: Date.now() });
 			queryClient.setQueryData(
 				getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-				profileResponseToBasicUser(profileResponse)
+				userProfileToBasicUser(profileResponse.profile),
+				{ updatedAt: Date.now() }
 			);
-			await queryInvalidationService.invalidateUserQueries(queryClient);
 		},
 	});
 };
 
+/**
+ * Avatar mutations sync cache via cancelQueries + setQueryData only.
+ * Do not chain `invalidateUserQueries` here: invalidation would refetch immediately and can race this write.
+ */
 export const useSetAvatar = () => {
 	const queryClient = useQueryClient();
 
@@ -32,12 +41,16 @@ export const useSetAvatar = () => {
 			if (!profileResponse?.profile) {
 				return;
 			}
+			await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
+			await queryClient.cancelQueries({
+				queryKey: getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
+			});
 			queryClient.setQueryData(QUERY_KEYS.user.profile(), profileResponse, { updatedAt: Date.now() });
 			queryClient.setQueryData(
 				getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-				profileResponseToBasicUser(profileResponse)
+				userProfileToBasicUser(profileResponse.profile),
+				{ updatedAt: Date.now() }
 			);
-			await queryInvalidationService.invalidateUserQueries(queryClient);
 		},
 	});
 };
@@ -51,12 +64,16 @@ export const useUploadAvatar = () => {
 			if (!profileResponse?.profile) {
 				return;
 			}
+			await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
+			await queryClient.cancelQueries({
+				queryKey: getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
+			});
 			queryClient.setQueryData(QUERY_KEYS.user.profile(), profileResponse, { updatedAt: Date.now() });
 			queryClient.setQueryData(
 				getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-				profileResponseToBasicUser(profileResponse)
+				userProfileToBasicUser(profileResponse.profile),
+				{ updatedAt: Date.now() }
 			);
-			await queryInvalidationService.invalidateUserQueries(queryClient);
 		},
 	});
 };
@@ -67,7 +84,9 @@ export const useUserProfile = () => {
 	return useQuery({
 		queryKey: QUERY_KEYS.user.profile(),
 		queryFn: () => apiService.getUserProfile(),
-		staleTime: 0, // Always consider stale to allow immediate updates
+		// Mutations update this query via setQueryData; a short stale window avoids refetch-on-mount
+		// immediately overwriting fresh cache while still allowing periodic refresh.
+		staleTime: TIME_PERIODS_MS.MINUTE,
 		enabled: isAuthenticated, // Only fetch if user is authenticated
 	});
 };

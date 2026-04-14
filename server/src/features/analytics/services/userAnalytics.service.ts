@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import {
+	CACHE_KEYS,
 	ComparisonTarget,
 	ErrorCode,
 	RecommendationPriority,
@@ -34,7 +35,6 @@ import type {
 import { calculateScoreRate, clamp, formatDate, formatTitle, getErrorMessage, sumBy } from '@shared/utils';
 import { isGameDifficulty, isUuid } from '@shared/validation';
 
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -106,7 +106,7 @@ export class UserAnalyticsService {
 
 	async getUserAnalytics(userId: string): Promise<CompleteUserAnalytics> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.ANALYTICS.USER(userId);
+			const cacheKey = CACHE_KEYS.ANALYTICS.USER(userId);
 
 			return await this.cacheService.getOrSet<CompleteUserAnalytics>(
 				cacheKey,
@@ -213,7 +213,7 @@ export class UserAnalyticsService {
 		}
 	): Promise<AnalyticsResponse<UnifiedUserAnalyticsResponse>> {
 		const querySig = buildUnifiedQuerySignature(includeSections, options);
-		const cacheKey = SERVER_CACHE_KEYS.ANALYTICS.USER_UNIFIED(userId, querySig);
+		const cacheKey = CACHE_KEYS.ANALYTICS.USER_UNIFIED(userId, querySig);
 		try {
 			return await this.cacheService.getOrSet(
 				cacheKey,

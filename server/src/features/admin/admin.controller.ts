@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import { Body, Controller, DefaultValuePipe, Get, ParseIntPipe, Put, Query } from '@nestjs/common';
 
 import { API_ENDPOINTS, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
@@ -51,9 +51,13 @@ export class AdminController {
 	@Get('trivia')
 	@Roles(UserRole.ADMIN)
 	@Cache(TIME_DURATIONS_SECONDS.HOUR)
-	async getAllTriviaQuestions(@CurrentUser() user: TokenPayload) {
+	async getAllTriviaQuestions(
+		@CurrentUser() user: TokenPayload,
+		@Query('limit', new DefaultValuePipe(500), ParseIntPipe) limit: number,
+		@Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number
+	) {
 		try {
-			const result = await this.adminService.getAllTriviaQuestions();
+			const result = await this.adminService.getAllTriviaQuestions({ limit, offset });
 
 			const questions = result?.questions ?? [];
 			const topicCounts: Record<string, number> = {};
@@ -66,6 +70,7 @@ export class AdminController {
 				role: user.role,
 				chart: 'admin_trivia',
 				count: questions.length,
+				totalCount: result.totalCount,
 				topicsPlayed: topicCounts,
 			});
 

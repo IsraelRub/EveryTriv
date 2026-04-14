@@ -5,7 +5,6 @@ import type {
 	LogContext,
 	LogLevel,
 	PaymentMethod,
-	PlanType,
 	UserRole,
 	UserStatus,
 	ValidateTextContext,
@@ -261,7 +260,8 @@ export interface LogMeta {
 	authorized?: boolean;
 	availableKeys?: string[];
 	availableProviders?: number;
-	avatar?: number;
+	avatar?: number | null;
+	avatarUrl?: string;
 	averageAccuracy?: number;
 	averageGameTime?: number;
 	averageGames?: number;
@@ -393,6 +393,7 @@ export interface LogMeta {
 	isPlainObject?: boolean;
 	isString?: boolean;
 	insights?: Record<string, unknown>;
+	imageSrc?: string;
 	jobId?: string | number;
 	key?: string;
 	keyPrefix?: string;
@@ -450,7 +451,7 @@ export interface LogMeta {
 	pointsCount?: number;
 	photosCount?: number;
 	plansCount?: number;
-	planType?: PlanType;
+	planType?: string;
 	playerCount?: number;
 	platform?: string;
 	port?: number;
@@ -498,6 +499,7 @@ export interface LogMeta {
 	resultsCount?: number;
 	retryAfterSeconds?: number;
 	retryCount?: number;
+	rawSrc?: string;
 	role?: UserRole;
 	roomCode?: string;
 	roomId?: string;
@@ -516,7 +518,7 @@ export interface LogMeta {
 	reduxGameId?: string;
 	severity?: string;
 	shouldEndGame?: boolean;
-	src?: string;
+	src?: string | null;
 	stack?: string;
 	startTime?: number;
 	startedAt?: string;
@@ -552,6 +554,7 @@ export interface LogMeta {
 	totalDifficulties?: number;
 	totalErrors?: number;
 	totalGames?: number;
+	totalCount?: number;
 	totalItems?: number;
 	totalMiddlewares?: number;
 	totalOps?: number;

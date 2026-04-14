@@ -61,7 +61,7 @@ export class CreditsController {
 	}
 
 	@Get('can-play')
-	@Cache(TIME_DURATIONS_SECONDS.MINUTE)
+	@NoCache()
 	async canPlay(@CurrentUserId() userId: string | null, @Query() query: CanPlayDto) {
 		if (!userId) {
 			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);

@@ -26,7 +26,9 @@ export function toAbsoluteAvatarUrl(url: string | null | undefined, apiBaseUrl: 
 				const base = apiBaseUrl.replace(/\/$/, '');
 				return `${base}${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
 			}
-		} catch {}
+		} catch {
+			// Malformed absolute URL; fall through to return original
+		}
 		return url;
 	}
 	if (url.startsWith('//')) return url;

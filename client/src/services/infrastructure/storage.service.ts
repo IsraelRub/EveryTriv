@@ -28,7 +28,9 @@ class StorageService {
 			if (VALIDATORS.string(parsed)) {
 				return { success: true, data: parsed, timestamp: new Date() };
 			}
-		} catch {}
+		} catch {
+			// Invalid JSON or storage access denied (private mode, quota, etc.)
+		}
 
 		return createFailResult<string>(undefined);
 	}
@@ -43,7 +45,9 @@ class StorageService {
 			}
 
 			return { success: true, data: value, timestamp: new Date() };
-		} catch {}
+		} catch {
+			// setItem failed (quota, private mode, etc.)
+		}
 
 		return createFailResult<string>(undefined);
 	}
@@ -58,7 +62,9 @@ class StorageService {
 			}
 
 			return { success: true, data: true, timestamp: new Date() };
-		} catch {}
+		} catch {
+			// removeItem failed
+		}
 
 		return createFailResult<boolean>(false);
 	}

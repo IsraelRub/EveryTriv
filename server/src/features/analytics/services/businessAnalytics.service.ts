@@ -2,11 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 
-import { TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
+import { CACHE_KEYS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
 import type { BusinessMetrics } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { GameHistoryEntity, PaymentHistoryEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -39,7 +38,7 @@ export class BusinessAnalyticsService {
 
 	private async calculateBusinessMetrics(): Promise<BusinessMetrics> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.ANALYTICS.BUSINESS_METRICS;
+			const cacheKey = CACHE_KEYS.ANALYTICS.BUSINESS_METRICS;
 
 			return await this.cacheService.getOrSet<BusinessMetrics>(
 				cacheKey,

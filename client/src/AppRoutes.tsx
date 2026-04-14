@@ -10,11 +10,11 @@ import {
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import type { GameConfig } from '@shared/types';
-import { isNonEmptyString, isRecord, mergeUserPreferences } from '@shared/utils';
+import { isNonEmptyString, isRecord } from '@shared/utils';
 import { isGameMode, isLocale, isRegisteredDifficulty, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { ComponentSize, ROUTES } from '@/constants';
-import { audioService, authService, prefetchAuthenticatedQueries, queryClient } from '@/services';
+import { authService, prefetchAuthenticatedQueries, queryClient } from '@/services';
 import { isProtectedAppPath } from '@/utils';
 import {
 	BackgroundAnimation,
@@ -100,22 +100,10 @@ export default function AppRoutes() {
 	// Redirect to login on auth failure only when on a protected route (so closing login modal doesn't send user back to login)
 	const isProtectedPath = isProtectedAppPath(location.pathname);
 
-	// Session restore and /me run in AppAuthBootstrap; here we sync audio, prefetch after login, and handle token expiry during the session.
+	// Session restore and /me run in AppAuthBootstrap; here we prefetch after login becomes available and handle token expiry during the session.
 	useEffect(() => {
 		if (currentUser) {
-			if ('preferences' in currentUser && currentUser.preferences) {
-				const mergedPreferences = mergeUserPreferences(null, currentUser.preferences);
-				audioService.setUserPreferences(mergedPreferences);
-			}
-
-			const handlePrefetchQueries = async () => {
-				try {
-					await prefetchAuthenticatedQueries();
-				} catch {
-					// Silently handle prefetch errors
-				}
-			};
-			void handlePrefetchQueries();
+			void prefetchAuthenticatedQueries();
 			return;
 		}
 
@@ -134,7 +122,7 @@ export default function AppRoutes() {
 	return (
 		<div className='app-shell'>
 			<BackgroundAnimation />
-			{!isAuthPage && <Navigation />}
+			<Navigation />
 			<main id='main-content' className='app-main' dir={locale === Locale.HE ? 'rtl' : 'ltr'}>
 				<Routes>
 					{/* Public routes */}
@@ -264,7 +252,7 @@ export default function AppRoutes() {
 					<Route path='*' element={<NotFound />} />
 				</Routes>
 			</main>
-			{!isAuthPage && <Footer />}
+			<Footer />
 			<Toaster />
 		</div>
 	);

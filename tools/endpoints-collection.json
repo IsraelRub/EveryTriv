@@ -2454,7 +2454,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"package_100\",\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\"\n}"
+              "raw": "{\n  \"packageId\": \"cpkg_def_2\",\n  \"paymentMethod\": \"manual_credit\",\n  \"cardNumber\": \"4242424242424242\",\n  \"expiryDate\": \"12/30\",\n  \"cvv\": \"123\",\n  \"cardHolderName\": \"Test User\",\n  \"postalCode\": \"94107\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/payment/purchase-credits",
@@ -2479,7 +2479,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packageId\": \"package_100\",\n  \"paymentMethod\": \"paypal\"\n}"
+              "raw": "{\n  \"packageId\": \"cpkg_def_2\",\n  \"paymentMethod\": \"paypal\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/payment/purchase-credits",
@@ -3137,7 +3137,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"packages\": [\n    { \"id\": \"package_1\", \"credits\": 100, \"price\": 4.99 },\n    { \"id\": \"package_2\", \"credits\": 500, \"price\": 19.99 },\n    { \"id\": \"package_3\", \"credits\": 1000, \"price\": 34.99 }\n  ]\n}"
+              "raw": "{\n  \"packages\": [\n    { \"id\": \"cpkg_def_1\", \"credits\": 100, \"price\": 4.99 },\n    { \"id\": \"cpkg_def_2\", \"credits\": 500, \"price\": 19.99 },\n    { \"id\": \"cpkg_def_3\", \"credits\": 1000, \"price\": 34.99 }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/admin/pricing",

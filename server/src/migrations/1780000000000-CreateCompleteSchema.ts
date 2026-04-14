@@ -2,6 +2,19 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 import { MAX_POINTS_PER_QUESTION, UserRole } from '@shared/constants';
 
+const CREDIT_PACKAGES_KEY = 'credit_packages';
+
+interface StoredCreditPackageRow {
+	id?: unknown;
+	credits?: unknown;
+	price?: unknown;
+	tier?: unknown;
+}
+
+function isStoredPackageRow(value: unknown): value is StoredCreditPackageRow {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 	name = 'CreateCompleteSchema1780000000000';
 
@@ -109,36 +122,20 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				WHERE "role" = '${UserRole.ADMIN}';
 			`);
 
-			// Granted credits rolling refill (merged from AddLastGrantedCreditsRefill migration)
-			console.log('Adding last_granted_credits_refill_at and credits default 150 if needed');
+			// Upgrade-only adds (no-ops on fresh DBs where CREATE TABLE already defined these columns).
+			console.log('Ensuring users columns for upgrades and credits default 150');
 			await queryRunner.query(`
 				ALTER TABLE "users"
-				ADD COLUMN IF NOT EXISTS "last_granted_credits_refill_at" TIMESTAMP NULL;
-			`);
-			await queryRunner.query(`
-				ALTER TABLE "users"
-				ALTER COLUMN "credits" SET DEFAULT 150;
-			`);
-
-			console.log('Adding email_verified column to users if needed');
-			await queryRunner.query(`
-				ALTER TABLE "users"
-				ADD COLUMN IF NOT EXISTS "email_verified" boolean NOT NULL DEFAULT false
+					ADD COLUMN IF NOT EXISTS "last_granted_credits_refill_at" TIMESTAMP NULL,
+					ADD COLUMN IF NOT EXISTS "email_verified" boolean NOT NULL DEFAULT false,
+					ADD COLUMN IF NOT EXISTS "custom_avatar" bytea NULL,
+					ADD COLUMN IF NOT EXISTS "custom_avatar_mime" character varying(30) NULL,
+					ALTER COLUMN "credits" SET DEFAULT 150
 			`);
 			await queryRunner.query(`
 				UPDATE "users"
 				SET "email_verified" = true
 				WHERE "google_id" IS NOT NULL
-			`);
-
-			console.log('Adding custom_avatar columns to users if needed');
-			await queryRunner.query(`
-				ALTER TABLE "users"
-				ADD COLUMN IF NOT EXISTS "custom_avatar" bytea NULL
-			`);
-			await queryRunner.query(`
-				ALTER TABLE "users"
-				ADD COLUMN IF NOT EXISTS "custom_avatar_mime" character varying(30) NULL
 			`);
 
 			// Create indexes for users table (email already indexed via UNIQUE constraint)
@@ -169,18 +166,9 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 
 			console.log('Adding completed_at and failed_at columns to payment_history if needed');
 			await queryRunner.query(`
-				DO $$ BEGIN
-					ALTER TABLE "payment_history" ADD COLUMN "completed_at" TIMESTAMP NULL;
-				EXCEPTION
-					WHEN duplicate_column THEN null;
-				END $$;
-			`);
-			await queryRunner.query(`
-				DO $$ BEGIN
-					ALTER TABLE "payment_history" ADD COLUMN "failed_at" TIMESTAMP NULL;
-				EXCEPTION
-					WHEN duplicate_column THEN null;
-				END $$;
+				ALTER TABLE "payment_history"
+					ADD COLUMN IF NOT EXISTS "completed_at" TIMESTAMP NULL,
+					ADD COLUMN IF NOT EXISTS "failed_at" TIMESTAMP NULL
 			`);
 
 			// Create indexes for payment_history table
@@ -297,6 +285,44 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				)
 			`);
 
+			// Reassign stable sequential SKUs (`cpkg_def_1` …) in credits_config when row exists (merged from MigrateCreditPackageIds)
+			console.log('Migrating credit_packages config ids if present');
+			const creditPackageRows: Array<{ id: string; value: unknown }> = await queryRunner.query(
+				`SELECT id, value FROM credits_config WHERE key = $1`,
+				[CREDIT_PACKAGES_KEY]
+			);
+			if (creditPackageRows.length > 0) {
+				const pkgRow = creditPackageRows[0];
+				if (pkgRow?.value != null) {
+					const raw = pkgRow.value;
+					if (Array.isArray(raw) && raw.length > 0) {
+						const migrated = raw
+							.filter(isStoredPackageRow)
+							.map((entry, index) => {
+								const credits = typeof entry.credits === 'number' ? entry.credits : Number(entry.credits);
+								const price = typeof entry.price === 'number' ? entry.price : Number(entry.price);
+								const tier = typeof entry.tier === 'string' ? entry.tier : undefined;
+								const next: { id: string; credits: number; price: number; tier?: string } = {
+									id: `cpkg_def_${index + 1}`,
+									credits: Number.isFinite(credits) ? credits : 0,
+									price: Number.isFinite(price) ? price : 0,
+								};
+								if (tier !== undefined) {
+									next.tier = tier;
+								}
+								return next;
+							})
+							.filter(p => p.credits > 0 && p.price > 0);
+						if (migrated.length > 0) {
+							await queryRunner.query(`UPDATE credits_config SET value = $1::jsonb WHERE id = $2`, [
+								JSON.stringify(migrated),
+								pkgRow.id,
+							]);
+						}
+					}
+				}
+			}
+
 			// Create game_history table
 			console.log('Creating game_history table');
 			await queryRunner.query(`
@@ -335,13 +361,9 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 				ON "game_history" ("user_id", "created_at")
 			`);
 			await queryRunner.query(`
-				DO $$ BEGIN
-					CREATE UNIQUE INDEX "idx_game_history_client_mutation_id"
-					ON "game_history" ("client_mutation_id")
-					WHERE "client_mutation_id" IS NOT NULL;
-				EXCEPTION
-					WHEN duplicate_table THEN null;
-				END $$;
+				CREATE UNIQUE INDEX IF NOT EXISTS "idx_game_history_client_mutation_id"
+				ON "game_history" ("client_mutation_id")
+				WHERE "client_mutation_id" IS NOT NULL
 			`);
 
 			// Add foreign key constraint for game_history
@@ -432,11 +454,8 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 
 			console.log('Adding version column to user_stats if needed');
 			await queryRunner.query(`
-				DO $$ BEGIN
-					ALTER TABLE "user_stats" ADD COLUMN "version" integer NOT NULL DEFAULT '0';
-				EXCEPTION
-					WHEN duplicate_column THEN null;
-				END $$;
+				ALTER TABLE "user_stats"
+					ADD COLUMN IF NOT EXISTS "version" integer NOT NULL DEFAULT 0
 			`);
 
 			// Create indexes for user_stats table (user_id already indexed via UNIQUE ("user_id"))

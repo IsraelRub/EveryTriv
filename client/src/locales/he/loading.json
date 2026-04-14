@@ -20,7 +20,6 @@
 	"connectingToSocket": "מתחבר לשרת מרובה משתתפים...",
 	"joiningRoom": "מצטרף לחדר...",
 	"waitingForGameState": "מחכה למצב המשחק...",
-	"waitingForOtherPlayers": "מחכה לשחקנים אחרים...",
 	"loadingMultiplayerQuestions": "טוען שאלות...",
 	"noQuestionsAvailable": "אין שאלות זמינות"
 }

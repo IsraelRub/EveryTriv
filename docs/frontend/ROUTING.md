@@ -14,4 +14,5 @@
 
 ## קישורים
 
-- [VIEWS.md](./VIEWS.md)
+- [רכיבי UI](./COMPONENTS.md)
+- [מצב ו־React Query](./STATE.md)

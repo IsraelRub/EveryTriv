@@ -1,6 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
 
-import type { CreditPurchaseOption } from '@shared/types';
+import type {
+	CreditPurchaseOption,
+	SecurityMetrics,
+	SystemInsights,
+	SystemPerformanceMetrics,
+	SystemRecommendation,
+} from '@shared/types';
 
 export interface AdminPricingResponse {
 	packages: CreditPurchaseOption[];
@@ -30,6 +36,13 @@ export interface ClearOperation {
 }
 
 export type { TriviaQuestionsResponse } from '@shared/types';
+
+export interface AdminSystemHealthDashboardBundle {
+	readonly performance: SystemPerformanceMetrics;
+	readonly security: SecurityMetrics;
+	readonly recommendations: SystemRecommendation[];
+	readonly insights: SystemInsights;
+}
 
 export interface PlatformTrendsSectionStats {
 	icon: LucideIcon;

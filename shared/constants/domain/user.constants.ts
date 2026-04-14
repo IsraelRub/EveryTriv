@@ -3,9 +3,7 @@ import { DEFAULT_GAME_CONFIG, GameMode } from './game.constants';
 
 export enum UserRole {
 	ADMIN = 'admin',
-	GUEST = 'guest',
 	USER = 'user',
-	PREMIUM = 'premium',
 }
 
 export const USER_ROLES = new Set<string>(Object.values(UserRole));

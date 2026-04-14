@@ -20,7 +20,6 @@ export enum LoadingMessages {
 	CONNECTING_TO_SOCKET = 'loading:connectingToSocket',
 	JOINING_ROOM = 'loading:joiningRoom',
 	WAITING_FOR_GAME_STATE = 'loading:waitingForGameState',
-	WAITING_FOR_OTHER_PLAYERS = 'loading:waitingForOtherPlayers',
 	LOADING_MULTIPLAYER_QUESTIONS = 'loading:loadingMultiplayerQuestions',
 	NO_QUESTIONS_AVAILABLE = 'loading:noQuestionsAvailable',
 }

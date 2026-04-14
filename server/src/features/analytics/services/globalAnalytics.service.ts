@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 
-import { TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
+import { CACHE_KEYS, TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
 import type {
 	AnalyticsResponse,
 	CountRecord,
@@ -26,7 +26,7 @@ import {
 } from '@shared/utils';
 import { isGameDifficulty, VALIDATORS } from '@shared/validation';
 
-import { SERVER_CACHE_KEYS, SQL_CONDITIONS } from '@internal/constants';
+import { SQL_CONDITIONS } from '@internal/constants';
 import { GameHistoryEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -80,7 +80,7 @@ export class GlobalAnalyticsService {
 		try {
 			logger.analyticsStats('global_difficulty', {});
 
-			const cacheKey = SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY;
+			const cacheKey = CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY;
 
 			return await this.cacheService.getOrSet<DifficultyBreakdown>(
 				cacheKey,
@@ -126,7 +126,7 @@ export class GlobalAnalyticsService {
 
 	async getGlobalStats(): Promise<GlobalStatsResponse> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_STATS;
+			const cacheKey = CACHE_KEYS.ANALYTICS.GLOBAL_STATS;
 
 			return await this.cacheService.getOrSet<GlobalStatsResponse>(
 				cacheKey,
@@ -196,7 +196,7 @@ export class GlobalAnalyticsService {
 
 	async getGlobalTrends(query?: TrendQueryOptions): Promise<AnalyticsResponse<UserTrendPoint[]>> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS(query);
+			const cacheKey = CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS(query);
 			return await this.cacheService.getOrSet<AnalyticsResponse<UserTrendPoint[]>>(
 				cacheKey,
 				async () => {
@@ -236,7 +236,7 @@ export class GlobalAnalyticsService {
 
 	private async getTopicsFromDatabase(query?: GameAnalyticsQuery): Promise<TopicAnalyticsRecord[]> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.ANALYTICS.TOPICS_STATS(query);
+			const cacheKey = CACHE_KEYS.ANALYTICS.TOPICS_STATS(query);
 
 			return await this.cacheService.getOrSet<TopicAnalyticsRecord[]>(
 				cacheKey,

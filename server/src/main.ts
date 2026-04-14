@@ -9,7 +9,6 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { json, urlencoded } from "express";
 
 import {
-  API_VERSION,
   HttpMethod,
   LOCALHOST_CLIENT_ORIGINS,
   LOCALHOST_CONFIG,
@@ -23,9 +22,6 @@ import { AppModule } from "./app.module";
 import { AppConfig, validateEnvironmentVariables } from "@config";
 import dataSource from "./config/dataSource";
 import { RedisIoAdapter } from "@internal/modules";
-
-// Environment configuration
-const environment = process.env.NODE_ENV ?? "production";
 
 async function bootstrap() {
   const startTime = Date.now();
@@ -95,7 +91,7 @@ async function bootstrap() {
           "CLIENT_URL is not set. OAuth redirect will use localhost fallback. Set CLIENT_URL for production.",
         ),
       );
-    } else if (environment === "production" && /localhost|127\.0\.0\.1/i.test(clientUrl)) {
+    } else if (AppConfig.isProductionRuntime && /localhost|127\.0\.0\.1/i.test(clientUrl)) {
       console.warn(
         MESSAGE_FORMATTERS.oauth.warn(
           "GoogleOAuth",
@@ -164,7 +160,6 @@ async function bootstrap() {
     const config = new DocumentBuilder()
       .setTitle("EveryTriv API")
       .setDescription("API documentation for EveryTriv trivia game platform")
-      .setVersion(API_VERSION)
       .addBearerAuth(
         {
           type: "http",
@@ -185,7 +180,7 @@ async function bootstrap() {
     console.log("Server startup complete:", {
       port: AppConfig.port,
       bootTime: `${calculateDuration(startTime)}ms`,
-      environment: environment,
+      environment: AppConfig.nodeEnv,
       nodeVersion: process.version,
       timestamp: new Date().toISOString(),
     });

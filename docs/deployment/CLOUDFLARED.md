@@ -48,13 +48,22 @@ docker compose up -d
 docker compose --profile demo-tunnel up -d
 ```
 
-או פקודה אחת שמפעילה את כל השירותים כולל הטונל:
+**רק קונטיינרים + טונל (בלי סנכרון `.env` / everytriv-link):**
 
 ```text
-pnpm run start:docker:demo
+pnpm run start:demo:up
 ```
 
-ה־URL מודפס בלוגים:
+**זרם מלא (מומלץ לדמו ציבורי):** stack + המתנה ל־`https://*.trycloudflare.com` בלוגים + `sync-demo-redirect` (בילד `client` כברירת מחדל):
+
+```text
+pnpm run start:demo
+```
+
+דחיפה ל־GitHub (everytriv-link) היא **ברירת מחדל** עם `pnpm run start:demo`. בלי דחיפה: `pnpm run start:demo:local`.  
+(פרמטרים נוספים: `-SkipPages`, `-SkipUp`, `-NoGitPush`, `-RebuildClient:$false` — ראה `scripts/deployment/start-docker-demo-and-sync.ps1`.)
+
+ה־URL מופיע בלוגים אם מריצים רק `start:demo:up`:
 
 ```text
 pnpm run tunnel:cloudflared:logs
@@ -74,6 +83,20 @@ pnpm run tunnel:cloudflared:logs
 
 ## אחרי שיש לך את ה־https הציבורי
 
+**אוטומטי (מומלץ):** מתיקיית השורש של המונוריפו —  
+
+- **הכל ברצף (דוקר + המתנה לטונל + סנכרון + דחיפה ל־Pages):** `pnpm run start:demo` (בלי דחיפה: `pnpm run start:demo:local`).
+- עם כתובת מפורשת:  
+  `.\scripts\deployment\sync-demo-redirect.ps1 -FrontendTunnelUrl 'https://…' -RebuildClient -GitPush`
+- **בלי להעתיק URL ידנית** (טונל בדוקר, פרופיל `demo-tunnel`): הסקריפט קורא את `https://*.trycloudflare.com` מ־`docker compose logs cloudflared`:  
+  `.\scripts\deployment\sync-demo-redirect.ps1 -DiscoverUrlFromDockerLogs -RebuildClient -GitPush`
+- טונל על ה־host: שמור את פלט הטרמינל לקובץ והרץ עם `-TunnelLogFilePath '…\cloudflared.log'`.
+
+(מעדכן `.env` כולל `COOKIE_SECURE` לטונל HTTPS, כותב ל־`everytriv-link/index.html`, בונה client, `docker compose up -d server client`, דוחף submodule + מצביע במונוריפו.)  
+לעדכון `.env` בלבד: הוסף `-SkipPages`.
+
+**ידני:**
+
 1. ב־`.env` בשורש: `SERVER_URL` ו־`CLIENT_URL` = אותו URL; `VITE_API_BASE_URL=USE_ORIGIN_API_PREFIX`.
 2. `docker compose build client` ו־`docker compose up -d client`.
 3. בריפו `everytriv-link`: עדכן `FRONTEND_DEMO_URL` ב־`index.html` ודחוף ל־`main`.
@@ -81,5 +104,5 @@ pnpm run tunnel:cloudflared:logs
 
 ## הערות
 
-- כתובת Try Cloudflare **משתנה** בכל הרצה חדשה של Quick Tunnel (אלא אם מגדירים tunnel קבוע ב־Cloudflare Zero Trust — מחוץ לתחום מסמך זה).
-- `pnpm run tunnel:cloudflared` דורש ש־`cloudflared` יהיה ב־PATH (אחרי התקנת winget — לפעמים צריך טרמינל חדש).
+- כתובת Try Cloudflare **משתנה** בדרך כלל בכל הרצה חדשה של Quick Tunnel.
+- `pnpm run tunnel:cloudflared` דורש ש־`cloudflared` יהיה ב־PATH (אחרי winget — לפעמים טרמינל חדש).

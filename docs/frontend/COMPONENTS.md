@@ -21,5 +21,7 @@
 
 ## קישורים
 
-- [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md)
-- [../CHART_GUIDELINES.md](../CHART_GUIDELINES.md)
+- [ניתוב](./ROUTING.md)
+- [מצב ו־React Query](./STATE.md)
+- [ארכיטקטורת Hooks](./HOOKS_ARCHITECTURE.md)
+- [README — סקירת המונורפו](../../README.md)

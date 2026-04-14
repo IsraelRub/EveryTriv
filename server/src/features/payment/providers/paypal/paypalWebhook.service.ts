@@ -2,10 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { PaymentStatus, PAYPAL_WEBHOOK_EVENTS, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { CACHE_KEYS, PaymentStatus, PAYPAL_WEBHOOK_EVENTS, TIME_DURATIONS_SECONDS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { PaymentHistoryEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -258,7 +257,7 @@ export class PayPalWebhookService {
 
 	private async isEventProcessed(eventId: string): Promise<boolean> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.PAYPAL.WEBHOOK_EVENT(eventId);
+			const cacheKey = CACHE_KEYS.PAYPAL.WEBHOOK_EVENT(eventId);
 			const cached = await this.cacheService.get<string>(
 				cacheKey,
 				(value: unknown): value is string => typeof value === 'string'
@@ -271,10 +270,10 @@ export class PayPalWebhookService {
 
 	private async markEventAsProcessed(eventId: string): Promise<void> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.PAYPAL.WEBHOOK_EVENT(eventId);
+			const cacheKey = CACHE_KEYS.PAYPAL.WEBHOOK_EVENT(eventId);
 			await this.cacheService.set(cacheKey, 'processed', TIME_DURATIONS_SECONDS.WEEK);
 		} catch (error) {
-			logger.cacheError('mark webhook event as processed', SERVER_CACHE_KEYS.PAYPAL.WEBHOOK_EVENT(eventId), {
+			logger.cacheError('mark webhook event as processed', CACHE_KEYS.PAYPAL.WEBHOOK_EVENT(eventId), {
 				errorInfo: { message: getErrorMessage(error) },
 			});
 		}
@@ -282,10 +281,10 @@ export class PayPalWebhookService {
 
 	private async invalidatePaymentHistoryCache(userId: string): Promise<void> {
 		try {
-			await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.PAYMENT.HISTORY(userId));
-			await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.PAYMENT.HISTORY_PATTERN);
+			await this.cacheService.invalidatePattern(CACHE_KEYS.PAYMENT.HISTORY(userId));
+			await this.cacheService.invalidatePattern(CACHE_KEYS.PAYMENT.HISTORY_PATTERN);
 		} catch (error) {
-			logger.cacheError('invalidate payment history cache', SERVER_CACHE_KEYS.PAYMENT.HISTORY(userId), {
+			logger.cacheError('invalidate payment history cache', CACHE_KEYS.PAYMENT.HISTORY(userId), {
 				errorInfo: { message: getErrorMessage(error) },
 			});
 		}

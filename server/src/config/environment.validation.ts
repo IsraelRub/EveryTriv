@@ -1,5 +1,7 @@
 import { ERROR_MESSAGES } from '@shared/constants';
 
+import { AppConfig } from './app.config';
+
 const PLACEHOLDER_ENV_VALUES = {
 	JWT_SECRET: ['change-this-in-production', 'your-jwt-secret-here'],
 	SESSION_SECRET: ['everytriv-oauth-session-secret', 'your-session-secret-here'],
@@ -15,7 +17,7 @@ function isPlaceholder(value: string, placeholders: readonly string[]): boolean 
 export function validateEnvironmentVariables(): void {
 	const missingVariables: string[] = [];
 	const invalidVariables: string[] = [];
-	const isProduction = (process.env.NODE_ENV ?? 'production').toLowerCase() === 'production';
+	const isProduction = AppConfig.isProductionRuntime;
 
 	// Critical security variables
 	const jwtSecret = process.env.JWT_SECRET;

@@ -3,6 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 
 import {
+	ADMIN_CREDIT_PACKAGES_COUNT_MAX,
+	ADMIN_CREDIT_PACKAGES_COUNT_MIN,
+	CACHE_KEYS,
 	CREDIT_PURCHASE_PACKAGES,
 	CREDITS_CONFIG_KEY_PACKAGES,
 	CreditSource,
@@ -18,6 +21,7 @@ import {
 } from '@shared/constants';
 import type { CanPlayResponse, CreditBalance, CreditPurchaseOption } from '@shared/types';
 import {
+	buildPaypalProductIdForCreditPackage,
 	calculateNewBalance,
 	calculateRequiredCredits,
 	ensureErrorObject,
@@ -28,7 +32,6 @@ import {
 } from '@shared/utils';
 import { isUuid, VALIDATORS } from '@shared/validation';
 
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { CreditsConfigEntity, CreditTransactionEntity, UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -117,11 +120,11 @@ export class CreditsService {
 		const saved = await repo.save(user);
 		if (!transactionalEntityManager) {
 			try {
-				await this.cacheService.delete(SERVER_CACHE_KEYS.CREDITS.BALANCE(saved.id));
+				await this.cacheService.delete(CACHE_KEYS.CREDITS.BALANCE(saved.id));
 			} catch (error) {
 				logger.cacheError(
 					'Failed to invalidate credits cache after granted refill',
-					SERVER_CACHE_KEYS.CREDITS.BALANCE(saved.id),
+					CACHE_KEYS.CREDITS.BALANCE(saved.id),
 					{
 						errorInfo: { message: getErrorMessage(error) },
 						userId: saved.id,
@@ -148,7 +151,7 @@ export class CreditsService {
 				throw new BadRequestException(ErrorCode.INVALID_USER_ID);
 			}
 
-			const cacheKey = SERVER_CACHE_KEYS.CREDITS.BALANCE(userId);
+			const cacheKey = CACHE_KEYS.CREDITS.BALANCE(userId);
 
 			return await this.cacheService.getOrSet<CreditBalance>(
 				cacheKey,
@@ -184,7 +187,7 @@ export class CreditsService {
 			price: pkg.price,
 			priceDisplay,
 			pricePerCredit,
-			paypalProductId: `everytriv_credits_${pkg.credits}`,
+			paypalProductId: buildPaypalProductIdForCreditPackage(pkg.id),
 			paypalPrice: Number(pkg.price).toFixed(2),
 			supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 		};
@@ -200,7 +203,7 @@ export class CreditsService {
 
 	async getCreditPackages(): Promise<CreditPurchaseOption[]> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.CREDITS.PACKAGES_ALL;
+			const cacheKey = CACHE_KEYS.CREDITS.PACKAGES_ALL;
 
 			return await this.cacheService.getOrSet<CreditPurchaseOption[]>(
 				cacheKey,
@@ -233,6 +236,13 @@ export class CreditsService {
 		if (!isCreditPackageConfigItemArray(packages)) {
 			throw new BadRequestException(ERROR_MESSAGES.validation.INVALID_INPUT_DATA);
 		}
+		if (packages.length < ADMIN_CREDIT_PACKAGES_COUNT_MIN || packages.length > ADMIN_CREDIT_PACKAGES_COUNT_MAX) {
+			throw new BadRequestException(ERROR_MESSAGES.validation.INVALID_INPUT_DATA);
+		}
+		const ids = packages.map(p => p.id);
+		if (new Set(ids).size !== ids.length) {
+			throw new BadRequestException(ERROR_MESSAGES.validation.INVALID_INPUT_DATA);
+		}
 		let row = await this.creditsConfigRepository.findOne({
 			where: { key: CREDITS_CONFIG_KEY_PACKAGES },
 		});
@@ -243,16 +253,11 @@ export class CreditsService {
 			row = this.creditsConfigRepository.create({ key: CREDITS_CONFIG_KEY_PACKAGES, value: packages });
 			await this.creditsConfigRepository.save(row);
 		}
-		await this.cacheService.invalidate(SERVER_CACHE_KEYS.CREDITS.PACKAGES_ALL);
+		await this.cacheService.invalidate(CACHE_KEYS.CREDITS.PACKAGES_ALL);
 	}
 
 	async getPackageById(packageId: string): Promise<CreditPurchaseOption | null> {
 		const packages = await this.getCreditPackages();
-		const creditsMatch = packageId.match(/package_(\d+)/);
-		if (creditsMatch?.[1]) {
-			const credits = parseInt(creditsMatch[1], 10);
-			return packages.find(p => p.credits === credits) ?? null;
-		}
 		return packages.find(p => p.id === packageId) ?? null;
 	}
 
@@ -397,7 +402,7 @@ export class CreditsService {
 			// Use atomic transaction with optimistic locking to prevent race conditions
 			// Optimistic locking via WHERE conditions is more performant than pessimistic locks
 			// canPlay validation is now inside transaction to prevent race conditions
-			return await this.userRepository.manager.transaction(async transactionalEntityManager => {
+			const balanceAfterDeduction = await this.userRepository.manager.transaction(async transactionalEntityManager => {
 				// Get user without lock (optimistic approach)
 				const user = await transactionalEntityManager.findOne(UserEntity, {
 					where: { id: userId },
@@ -503,11 +508,19 @@ export class CreditsService {
 					reason: reason ?? 'not_provided',
 				});
 
-				// Invalidate credits cache (outside transaction for performance)
-				this.invalidateCreditsCacheAsync(userId);
-
 				return this.mapUserToCreditBalance(updatedUser);
 			});
+
+			try {
+				await this.cacheService.delete(CACHE_KEYS.CREDITS.BALANCE(userId));
+			} catch (error) {
+				logger.cacheError('Failed to invalidate credits cache after deduct', CACHE_KEYS.CREDITS.BALANCE(userId), {
+					errorInfo: { message: getErrorMessage(error) },
+					userId,
+				});
+			}
+
+			return balanceAfterDeduction;
 		} catch (error) {
 			logger.databaseError(ensureErrorObject(error), {
 				contextMessage: 'Failed to deduct credits',
@@ -562,8 +575,8 @@ export class CreditsService {
 				? await this.applyGrantedCreditsRefillIfNeeded(user, entityManager)
 				: await this.applyGrantedCreditsRefillIfNeeded(user);
 
-			// Update user credits
-			userAfterRefill.credits = (userAfterRefill.credits ?? 0) + credits;
+			// Purchased packages credit only the purchased bucket; granted credits stay in `credits`
+			// (adding to both would double-count in mapUserToCreditBalance: credits + purchasedCredits).
 			userAfterRefill.purchasedCredits = (userAfterRefill.purchasedCredits ?? 0) + credits;
 			await userRepo.save(userAfterRefill);
 
@@ -583,7 +596,7 @@ export class CreditsService {
 			await transactionRepo.save(creditTransaction);
 
 			// Invalidate cache
-			await this.cacheService.delete(SERVER_CACHE_KEYS.CREDITS.BALANCE(userId));
+			await this.cacheService.delete(CACHE_KEYS.CREDITS.BALANCE(userId));
 
 			return this.mapUserToCreditBalance(userAfterRefill);
 		} catch (error) {
@@ -595,19 +608,5 @@ export class CreditsService {
 			});
 			throw error;
 		}
-	}
-
-	private invalidateCreditsCacheAsync(userId: string): void {
-		const handleInvalidation = async () => {
-			try {
-				await this.cacheService.delete(SERVER_CACHE_KEYS.CREDITS.BALANCE(userId));
-			} catch (error) {
-				logger.cacheError('Failed to invalidate credits cache', SERVER_CACHE_KEYS.CREDITS.BALANCE(userId), {
-					errorInfo: { message: getErrorMessage(error) },
-					userId,
-				});
-			}
-		};
-		handleInvalidation();
 	}
 }

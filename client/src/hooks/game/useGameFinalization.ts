@@ -35,9 +35,7 @@ export const useGameFinalization = () => {
 	const queryClient = useQueryClient();
 	const finalizeGameSessionMutation = useMutation({
 		mutationFn: (sessionGameId: string) => gameHistoryService.finalizeGameSession(sessionGameId),
-		onSuccess: () => {
-			void queryInvalidationService.invalidateGameQueries(queryClient);
-		},
+		// Invalidation runs in mutate({ onSuccess }) so we can pass userId / avoid double invalidation vs optimistic update.
 		onError: (error: unknown) => {
 			const message = getErrorMessage(error);
 			logger.gameError('Failed to finalize game session', {
@@ -90,7 +88,7 @@ export const useGameFinalization = () => {
 
 			const attemptFinalization = (attempt: number = 0): void => {
 				// Cancel any outgoing refetches to avoid overwriting optimistic update
-				queryClient.cancelQueries({ queryKey: QUERY_KEYS.analytics.user('current') });
+				void queryClient.cancelQueries({ queryKey: QUERY_KEYS.analytics.user('current') });
 
 				// Snapshot the previous value for rollback
 				const previousAnalytics = queryClient.getQueryData<CompleteUserAnalytics>(QUERY_KEYS.analytics.user('current'));
@@ -110,15 +108,14 @@ export const useGameFinalization = () => {
 						},
 					};
 
-					queryClient.setQueryData(QUERY_KEYS.analytics.user('current'), optimisticAnalytics);
+					queryClient.setQueryData(QUERY_KEYS.analytics.user('current'), optimisticAnalytics, {
+						updatedAt: Date.now(),
+					});
 				}
 
 				finalizeGameSessionMutation.mutate(sessionGameId, {
 					onSuccess: async savedHistory => {
-						const logMessage = options.logContext
-							? `Game session finalized - ${options.logContext}`
-							: 'Game session finalized';
-						logger.gameInfo(logMessage, {
+						logger.gameInfo(`Game session finalized ${options.logContext ? ` - ${options.logContext}` : ''}`, {
 							gameId: sessionGameId,
 							score,
 							correctAnswers,
@@ -167,17 +164,16 @@ export const useGameFinalization = () => {
 					onError: error => {
 						// Rollback optimistic update on error
 						if (previousAnalytics) {
-							queryClient.setQueryData(QUERY_KEYS.analytics.user('current'), previousAnalytics);
+							queryClient.setQueryData(QUERY_KEYS.analytics.user('current'), previousAnalytics, {
+								updatedAt: Date.now(),
+							});
 						}
 
 						const message = getErrorMessage(error);
-						const isRetryable =
-							message.includes('network') ||
-							message.includes('timeout') ||
-							message.includes('Network') ||
-							error instanceof TypeError; // Network errors
-
-						if (isRetryable && attempt < RETRY_LIMITS.gameSessionFinalization) {
+						if (
+							(/(network|timeout)/i.test(message) || error instanceof TypeError) &&
+							attempt < RETRY_LIMITS.gameSessionFinalization
+						) {
 							// Retry after exponential backoff
 							const delay = 2 ** attempt * TIME_PERIODS_MS.SECOND; // 1s, 2s, 4s
 							setTimeout(() => {

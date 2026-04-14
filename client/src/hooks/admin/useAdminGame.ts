@@ -25,13 +25,16 @@ export const useGameStatistics = (enabled?: boolean) => {
 export const useAllTriviaQuestions = (enabled?: boolean) => {
 	const { isAdmin } = useUserRole();
 
+	const triviaPageLimit = 500;
+	const triviaPageOffset = 0;
+
 	return useQuery({
-		queryKey: QUERY_KEYS.admin.allTriviaQuestions(),
+		queryKey: [...QUERY_KEYS.admin.allTriviaQuestions(), triviaPageLimit, triviaPageOffset],
 		queryFn: async () => {
 			if (!isAdmin) {
 				throw new Error(ERROR_MESSAGES.validation.ADMIN_ACCESS_DENIED);
 			}
-			return gameService.getAllTriviaQuestions();
+			return gameService.getAllTriviaQuestions({ limit: triviaPageLimit, offset: triviaPageOffset });
 		},
 		enabled: enabled !== undefined ? enabled && isAdmin : isAdmin,
 		...QUERY_CACHE_PRESETS.staleOneHourGcTwoHours,

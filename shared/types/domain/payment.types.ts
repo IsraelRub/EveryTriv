@@ -1,5 +1,5 @@
 // Payment Interfaces.
-import { PaymentClientAction, PaymentMethod, PaymentStatus, PayPalEnvironment, PlanType } from '../../constants';
+import { PaymentClientAction, PaymentMethod, PaymentStatus, PayPalEnvironment } from '../../constants';
 
 export interface PaymentMetadata {
 	subscriptionId?: string;
@@ -63,7 +63,7 @@ export interface PaymentData {
 	currency: string;
 	description: string;
 	method: PaymentMethod;
-	planType?: PlanType;
+	planType?: string;
 	numberOfPayments?: number;
 	manualPayment?: ManualPaymentDetails;
 	paypalOrderId?: string;

@@ -1,3 +1,5 @@
+import { buildPaypalProductIdForCreditPackage } from '@shared/utils';
+
 import { TIME_PERIODS_MS } from '../core/time.constants';
 
 export const GENERATED_PAYMENT_INTENT_ID_PREFIX = 'pi_';
@@ -45,22 +47,16 @@ export enum PaymentClientAction {
 
 export const PAYMENT_METHODS = new Set<string>(Object.values(PaymentMethod));
 
-export enum PlanType {
-	BASIC = 'basic',
-	PREMIUM = 'premium',
-	PRO = 'pro',
-}
-
 export const CREDIT_PURCHASE_PACKAGES = [
-	{ id: 'package_50', credits: 50, price: 2.99, tier: 'basic' },
-	{ id: 'package_100', credits: 100, price: 4.99, tier: 'basic' },
-	{ id: 'package_250', credits: 250, price: 9.99, tier: 'standard' },
-	{ id: 'package_500', credits: 500, price: 18.99, tier: 'premium' },
-	{ id: 'package_1000', credits: 1000, price: 34.99, tier: 'ultimate' },
-	{ id: 'package_2000', credits: 2000, price: 64.99, tier: 'ultimate' },
+	{ id: 'cpkg_def_1', credits: 50, price: 2.99, tier: 'basic' },
+	{ id: 'cpkg_def_2', credits: 100, price: 4.99, tier: 'basic' },
+	{ id: 'cpkg_def_3', credits: 250, price: 9.99, tier: 'standard' },
+	{ id: 'cpkg_def_4', credits: 500, price: 18.99, tier: 'premium' },
+	{ id: 'cpkg_def_5', credits: 1000, price: 34.99, tier: 'ultimate' },
+	{ id: 'cpkg_def_6', credits: 2000, price: 64.99, tier: 'ultimate' },
 ].map(pkg => ({
 	...pkg,
-	paypalProductId: `everytriv_credits_${pkg.credits}`,
+	paypalProductId: buildPaypalProductIdForCreditPackage(pkg.id),
 	paypalPrice: pkg.price.toFixed(2),
 	supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	pricePerCredit: pkg.price / pkg.credits,

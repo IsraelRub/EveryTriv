@@ -32,5 +32,16 @@
 	"paypalSdkFailed": "Failed to load PayPal SDK. Please check your internet connection and try again.",
 	"creditsAddedToAccountShort": "Credits have been added to your account.",
 	"addCredits": "ADD",
-	"grantedCreditsRefillHint": "Refill to {{cap}} credits by {{dateTime}}"
+	"grantedCreditsRefillHint": "Refill to {{cap}} credits by {{dateTime}}",
+	"continueToPaypal": "Continue to PayPal",
+	"manualPaymentConfirmTitle": "Confirm simulated payment",
+	"manualPaymentConfirmDescription": "This path runs a development-style card flow on the server (no real charge). Continue only if you understand this is not a live payment processor.",
+	"manualPaymentConfirmPay": "Confirm and pay",
+	"creditsValueExplainer": "Each credit covers one trivia question in standard modes. Time-limited games use more credits per duration (see game settings).",
+	"bestValue": "Best value",
+	"statusCompleted": "Completed",
+	"statusFailed": "Failed",
+	"statusPending": "Pending",
+	"statusRequiresAction": "Action required",
+	"statusRequiresCapture": "Awaiting capture"
 }

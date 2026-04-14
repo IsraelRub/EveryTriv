@@ -34,7 +34,9 @@ export const LanguageSwitcher = memo(function LanguageSwitcher() {
 			let label: string = code;
 			try {
 				label = new Intl.DisplayNames([code], { type: 'language' }).of(code) ?? code;
-			} catch {}
+			} catch {
+				// Unsupported locale for DisplayNames; keep ISO code
+			}
 			result[code] = label;
 		}
 		return result;

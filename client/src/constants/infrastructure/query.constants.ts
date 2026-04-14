@@ -114,6 +114,8 @@ export const QUERY_KEYS = {
 		systemSecurity: () => [...QUERY_KEYS.admin.all, 'systemSecurity'] as const,
 		systemRecommendations: () => [...QUERY_KEYS.admin.all, 'systemRecommendations'] as const,
 		systemInsights: () => [...QUERY_KEYS.admin.all, 'systemInsights'] as const,
+		/** Bundled admin system health (single fetch / unified loading). */
+		systemHealthDashboard: () => [...QUERY_KEYS.admin.all, 'systemHealthDashboard'] as const,
 		users: (limit: number, offset: number) => [...QUERY_KEYS.admin.all, 'adminUsers', limit, offset] as const,
 		userSearch: (query: string, limit: number) => [...QUERY_KEYS.admin.all, 'userSearch', query, limit] as const,
 		aiProviderStats: () => [...QUERY_KEYS.admin.all, 'aiProviderStats'] as const,

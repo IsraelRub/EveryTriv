@@ -198,5 +198,19 @@
 	"failedToLoadUsers": "טעינת המשתמשים נכשלה. נסה שוב מאוחר יותר.",
 	"healthStatusHealthy": "בריא",
 	"healthStatusUnhealthy": "לא בריא",
-	"healthStatusUnknown": "לא ידוע"
+	"healthStatusUnknown": "לא ידוע",
+	"systemHealthAtAGlance": "מצב במבט חטוף",
+	"overallStatusHealthy": "הכול תקין",
+	"overallStatusAttention": "דורש תשומת לב",
+	"overallStatusCritical": "זוהו בעיות קריטיות",
+	"pricingValidationCredits": "קרדיטים חייבים להיות מספר שלם בין 1 ל-100,000.",
+	"pricingValidationPrice": "המחיר חייב להיות בין ‎$0.01‎ ל-‎$99,999.99‎.",
+	"pricingValidationDuplicateIds": "לכל חבילה חייב להיות מזהה פנימי (SKU) ייחודי.",
+	"pricingValidationPackageCount": "חייבות להיות בין {{min}} ל-{{max}} חבילות קרדיט.",
+	"pricingAddPackage": "הוסף חבילה",
+	"pricingRemovePackage": "הסר חבילה",
+	"pricingActions": "פעולות",
+	"restoreDefaultsConfirmTitle": "לשחזר חבילות ברירת מחדל?",
+	"restoreDefaultsConfirmDesc": "פעולה זו מחליפה את הטבלה בחבילות המובנות. עדיין צריך ללחוץ שמירה כדי לשמור בשרת.",
+	"viewPaymentPage": "פתח את דף התשלום (לשונית חדשה)"
 }

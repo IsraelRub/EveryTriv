@@ -124,10 +124,6 @@ export const LENGTH_RULES: Record<LengthKey, { fieldName: string; required: bool
 
 export const FORBIDDEN_CONTENT_WORDS = ['spam', 'test', 'xxx'] as const;
 
-export const VALIDATION_PAYMENT_LIMITS = {
-	AMOUNT_MIN: 0.5,
-} as const;
-
 export const VALIDATION_COUNT = {
 	TIME_LIMIT: {
 		MIN: TIME_DURATIONS_SECONDS.THIRTY_SECONDS,

@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 
-import { AnalyticsResult, LeaderboardPeriod, TIME_PERIODS_MS } from '@shared/constants';
+import { AnalyticsResult, LeaderboardPeriod, LogLevel, TIME_PERIODS_MS } from '@shared/constants';
 import type {
 	BasicValue,
 	CompleteUserAnalytics,
@@ -98,7 +98,7 @@ export const useTrackAnalyticsEvent = () => {
 		mutationFn: eventData => analyticsService.trackAnalyticsEvent(eventData),
 		onError: error => {
 			// Silent fail - log error but don't throw to prevent app crashes
-			logger.apiDebug('Failed to track analytics event', {
+			logger.analyticsLog('trackAnalyticsEvent', LogLevel.DEBUG, {
 				errorInfo: { message: getErrorMessage(error) },
 			});
 		},

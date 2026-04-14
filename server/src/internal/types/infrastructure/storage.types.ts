@@ -99,6 +99,7 @@ export interface StorageMetrics {
 		clear: number;
 		exists?: number;
 		getKeys?: number;
+		getKeysByRelativePattern?: number;
 		invalidate?: number;
 		getOrSet?: number;
 		getStats?: number;
@@ -122,6 +123,7 @@ export interface StorageMetrics {
 		clear?: number;
 		exists?: number;
 		getKeys?: number;
+		getKeysByRelativePattern?: number;
 		invalidate?: number;
 		getOrSet?: number;
 		getStats?: number;

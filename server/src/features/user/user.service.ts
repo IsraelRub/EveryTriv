@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import {
 	AVATAR_ALLOWED_MIME_TYPES_SET,
 	AVATAR_UPLOAD_MAX_BYTES,
+	CACHE_KEYS,
 	DEFAULT_USER_PREFERENCES,
 	ErrorCode,
 	LogContext,
@@ -29,7 +30,7 @@ import {
 } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { SERVER_CACHE_KEYS, WildcardPattern } from '@internal/constants';
+import { WildcardPattern } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -38,6 +39,7 @@ import {
 	createNotFoundError,
 	createValidationError,
 	getAvatarUrlForUser,
+	getCustomAvatarUrlForUserId,
 	isUserSearchCacheEntry,
 	validateAvatarImageSignature,
 } from '@internal/utils';
@@ -100,8 +102,8 @@ export class UserService {
 
 			const updatedUser = await this.userRepository.save(user);
 
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.STATS(userId));
 
 			const avatarUrl = getAvatarUrlForUser(updatedUser);
 
@@ -149,8 +151,8 @@ export class UserService {
 			});
 			const updatedUser = await this.userRepository.save(user);
 
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.STATS(userId));
 
 			const avatarUrl = getAvatarUrlForUser(updatedUser);
 
@@ -243,10 +245,10 @@ export class UserService {
 		user.preferences = mergeUserPreferences(user.preferences, { avatar: undefined });
 		const updatedUser = await this.userRepository.save(user);
 
-		await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
-		await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
+		await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
+		await this.cacheService.delete(CACHE_KEYS.USER.STATS(userId));
 
-		const avatarUrl = getAvatarUrlForUser(updatedUser);
+		const avatarUrl = getCustomAvatarUrlForUserId(userId, updatedUser.updatedAt);
 
 		return {
 			profile: {
@@ -278,7 +280,7 @@ export class UserService {
 				throw new BadRequestException(ErrorCode.SEARCH_QUERY_TOO_SHORT);
 			}
 
-			const cacheKey = SERVER_CACHE_KEYS.USER.SEARCH(normalizedQuery, limit);
+			const cacheKey = CACHE_KEYS.USER.SEARCH(normalizedQuery, limit);
 
 			return await this.cacheService.getOrSet<UserSearchCacheEntry>(
 				cacheKey,
@@ -347,9 +349,9 @@ export class UserService {
 			await this.userRepository.save(user);
 
 			// Invalidate all user-related cache
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.CREDITS(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.STATS(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.CREDITS(userId));
 
 			return 'Account deleted successfully';
 		} catch (error) {
@@ -375,7 +377,7 @@ export class UserService {
 			await this.userRepository.save(user);
 
 			// Invalidate user profile cache
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
 
 			return {
 				message: 'Preferences updated successfully',
@@ -450,7 +452,7 @@ export class UserService {
 			const updatedUser = await this.userRepository.save(user);
 
 			// Invalidate user profile cache
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
 
 			return updatedUser;
 		} catch (error) {
@@ -478,8 +480,8 @@ export class UserService {
 			const updatedUser = await this.userRepository.save(user);
 
 			// Invalidate user credits cache
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.CREDITS(data.userId));
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(data.userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.CREDITS(data.userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.STATS(data.userId));
 
 			return updatedUser;
 		} catch (error) {
@@ -511,8 +513,8 @@ export class UserService {
 			const updatedUser = await this.userRepository.save(user);
 
 			// Invalidate user cache
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.STATS(userId));
 
 			return updatedUser;
 		} catch (error) {
@@ -547,8 +549,8 @@ export class UserService {
 			await this.userRepository.save(user);
 
 			// Invalidate user credits cache
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.CREDITS(data.userId));
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.STATS(data.userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.CREDITS(data.userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.STATS(data.userId));
 
 			return {
 				success: true,

@@ -2,11 +2,17 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { ERROR_MESSAGES, LeaderboardPeriod, TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
+import {
+	CACHE_KEYS,
+	ERROR_MESSAGES,
+	LeaderboardPeriod,
+	TIME_DURATIONS_SECONDS,
+	VALIDATION_COUNT,
+} from '@shared/constants';
 import type { LeaderboardStats } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { LEADERBOARD_PERIOD_CONFIG, SERVER_CACHE_KEYS } from '@internal/constants';
+import { LEADERBOARD_PERIOD_CONFIG } from '@internal/constants';
 import { GameHistoryEntity, UserStatsEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -32,7 +38,7 @@ export class LeaderboardAnalyticsService {
 	async getGlobalLeaderboard(params: GlobalLeaderboardParams = {}): Promise<UserStatsEntity[]> {
 		const { limit = VALIDATION_COUNT.LEADERBOARD.MAX, offset = 0 } = params;
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.LEADERBOARD.GLOBAL(limit, offset);
+			const cacheKey = CACHE_KEYS.LEADERBOARD.GLOBAL(limit, offset);
 
 			return await this.cacheService.getOrSet<UserStatsEntity[]>(
 				cacheKey,
@@ -76,7 +82,7 @@ export class LeaderboardAnalyticsService {
 
 	async getGlobalLeaderboardTotalCount(): Promise<number> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.LEADERBOARD.GLOBAL(0, 0) + ':total';
+			const cacheKey = CACHE_KEYS.LEADERBOARD.GLOBAL(0, 0) + ':total';
 			return await this.cacheService.getOrSet<number>(
 				cacheKey,
 				async () => {
@@ -102,7 +108,7 @@ export class LeaderboardAnalyticsService {
 	async getLeaderboardByPeriod(params: LeaderboardPeriodParams): Promise<UserStatsEntity[]> {
 		const { period, limit = VALIDATION_COUNT.LEADERBOARD.MAX } = params;
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.LEADERBOARD.PERIOD(period, limit);
+			const cacheKey = CACHE_KEYS.LEADERBOARD.PERIOD(period, limit);
 
 			return await this.cacheService.getOrSet<UserStatsEntity[]>(
 				cacheKey,
@@ -149,7 +155,7 @@ export class LeaderboardAnalyticsService {
 
 	async getLeaderboardStats(period: LeaderboardPeriod): Promise<LeaderboardStats> {
 		try {
-			const cacheKey = SERVER_CACHE_KEYS.LEADERBOARD.STATS(period);
+			const cacheKey = CACHE_KEYS.LEADERBOARD.STATS(period);
 
 			return await this.cacheService.getOrSet<LeaderboardStats>(
 				cacheKey,

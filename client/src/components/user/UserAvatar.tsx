@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 
 import { getDisplayNameFromUserFields } from '@shared/utils';
 
@@ -6,16 +6,7 @@ import { AvatarSize, AvatarVariant, DISPLAY_NAME_FALLBACKS } from '@/constants';
 import type { UserAvatarProps } from '@/types';
 import { ApiConfig, clientLogger as logger } from '@/services';
 import { getAvatarImageSource, toAbsoluteAvatarUrl } from '@/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
-const FALLBACK_TEXT_BY_SIZE: Record<AvatarSize, string> = {
-	[AvatarSize.SM]: 'text-xs',
-	[AvatarSize.NAV]: 'text-sm',
-	[AvatarSize.MD]: 'text-sm',
-	[AvatarSize.LG]: 'text-base',
-	[AvatarSize.XL]: 'text-2xl',
-	[AvatarSize.FULL]: 'text-sm',
-};
+import { Avatar, AvatarFallback, avatarFallbackTextVariants, AvatarImage } from '@/components/ui/avatar';
 
 export const UserAvatar = memo(function UserAvatar({
 	source,
@@ -38,20 +29,30 @@ export const UserAvatar = memo(function UserAvatar({
 	const rawSrc = src ?? getAvatarImageSource(avatarUrl, avatarId);
 	const imageSrc = rawSrc ? (toAbsoluteAvatarUrl(rawSrc, ApiConfig.baseUrl) ?? rawSrc) : undefined;
 
+	useEffect(() => {
+		logger.userDebug('UserAvatar image source', {
+			imageSrc,
+			rawSrc,
+			avatarUrl,
+			avatar: avatarId ?? null,
+			src: src ?? null,
+		});
+	}, [imageSrc, rawSrc, avatarUrl, avatarId, src]);
+
 	const effectiveSize = size ?? AvatarSize.MD;
-	const initials = imageSrc
-		? fallbackLetter
-		: (() => {
-				const name = nameProp ?? getDisplayNameFromUserFields(source);
-				const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
-				const first = parts[0];
-				const last = parts.length >= 2 ? parts[parts.length - 1] : undefined;
-				return first && last
-					? (first.charAt(0) + last.charAt(0)).toUpperCase()
-					: first
-						? first.charAt(0).toUpperCase()
-						: fallbackLetter;
-			})();
+	const initials = useMemo(() => {
+		const name = nameProp ?? getDisplayNameFromUserFields(source);
+		const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+		const first = parts[0];
+		const last = parts.length >= 2 ? parts[parts.length - 1] : undefined;
+		if (first != null && last != null) {
+			return (first.charAt(0) + last.charAt(0)).toUpperCase();
+		}
+		if (first != null) {
+			return first.charAt(0).toUpperCase();
+		}
+		return fallbackLetter;
+	}, [nameProp, source, fallbackLetter]);
 
 	return (
 		<Avatar key={imageSrc ?? 'no-image'} size={effectiveSize} variant={variant} pointerEventsNone={pointerEventsNone}>
@@ -59,7 +60,7 @@ export const UserAvatar = memo(function UserAvatar({
 				<AvatarImage
 					src={imageSrc}
 					onError={() => {
-						logger.apiDebug('Avatar image failed to load', {
+						logger.mediaWarn('Avatar image failed to load', {
 							url: imageSrc,
 							...(avatarId != null && { avatar: avatarId }),
 							baseUrl: avatarUrl,
@@ -67,7 +68,7 @@ export const UserAvatar = memo(function UserAvatar({
 					}}
 				/>
 			)}
-			<AvatarFallback className={FALLBACK_TEXT_BY_SIZE[effectiveSize]}>{initials}</AvatarFallback>
+			<AvatarFallback className={avatarFallbackTextVariants({ size: effectiveSize })}>{initials}</AvatarFallback>
 		</Avatar>
 	);
 });

@@ -68,7 +68,7 @@ class GameService {
 	async getGameStatistics(): Promise<AdminGameStatistics> {
 		try {
 			logger.userInfo('Fetching game statistics');
-			const response = await apiService.get<AdminGameStatistics>(API_ENDPOINTS.GAME.ADMIN.STATISTICS);
+			const response = await apiService.get<AdminGameStatistics>(API_ENDPOINTS.ADMIN.STATISTICS);
 			const result = response.data;
 			logger.userInfo('Game statistics fetched successfully');
 			return result;
@@ -97,10 +97,13 @@ class GameService {
 		}
 	}
 
-	async getAllTriviaQuestions(): Promise<TriviaQuestionsResponse> {
+	async getAllTriviaQuestions(params?: { limit?: number; offset?: number }): Promise<TriviaQuestionsResponse> {
 		try {
-			logger.gameInfo('Fetching all trivia questions');
-			const response = await apiService.get<TriviaQuestionsResponse>(API_ENDPOINTS.GAME.ADMIN.TRIVIA);
+			const limit = params?.limit ?? 500;
+			const offset = params?.offset ?? 0;
+			const query = new URLSearchParams({ limit: String(limit), offset: String(offset) }).toString();
+			logger.gameInfo('Fetching trivia questions (admin)', { limit, offset });
+			const response = await apiService.get<TriviaQuestionsResponse>(`${API_ENDPOINTS.ADMIN.TRIVIA}?${query}`);
 			const result = response.data;
 			logger.gameInfo('All trivia questions fetched successfully', { count: result.totalCount });
 			return result;

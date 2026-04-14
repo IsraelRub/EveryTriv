@@ -2,11 +2,18 @@ import { Controller, Delete, Get, HttpException, HttpStatus, Inject, Param, Req 
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Redis } from 'ioredis';
 
-import { ErrorCode, RATE_LIMIT_DEFAULTS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS, UserRole } from '@shared/constants';
+import {
+	CACHE_KEYS,
+	ErrorCode,
+	RATE_LIMIT_DEFAULTS,
+	TIME_DURATIONS_SECONDS,
+	TIME_PERIODS_MS,
+	UserRole,
+} from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
 import { Cache, Roles } from '@common/decorators';
-import { SERVER_CACHE_KEYS, StorageOperation } from '@internal/constants';
+import { StorageOperation } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
 import type { NestRequest } from '@internal/types';
 import { createCacheError } from '@internal/utils';
@@ -156,8 +163,8 @@ export class CacheController {
 			const ip = req.ip ?? req.connection?.remoteAddress ?? 'unknown';
 			const path = req.path;
 
-			const burstKey = SERVER_CACHE_KEYS.RATE_LIMIT.BURST(ip);
-			const windowKey = SERVER_CACHE_KEYS.RATE_LIMIT.WINDOW(ip, path);
+			const burstKey = CACHE_KEYS.RATE_LIMIT.BURST(ip);
+			const windowKey = CACHE_KEYS.RATE_LIMIT.WINDOW(ip, path);
 
 			const [burstVal, burstTTL, windowVal, windowTTL] = await Promise.all([
 				this.redis.get(burstKey),

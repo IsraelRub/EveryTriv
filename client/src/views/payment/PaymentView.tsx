@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { CheckCircle, Coins, Play, Wallet } from 'lucide-react';
@@ -54,6 +54,36 @@ import {
 	useTrackAnalyticsEvent,
 } from '@/hooks';
 
+function formatPricePerCredit(value: number): string {
+	if (!Number.isFinite(value) || value <= 0) {
+		return '$0.00';
+	}
+	if (value < 0.01) {
+		return `$${value.toFixed(4)}`;
+	}
+	if (value < 0.1) {
+		return `$${value.toFixed(3)}`;
+	}
+	return `$${value.toFixed(2)}`;
+}
+
+function paymentStatusLabelKey(status: string): PaymentKey | null {
+	switch (status) {
+		case PaymentStatus.COMPLETED:
+			return PaymentKey.STATUS_COMPLETED;
+		case PaymentStatus.FAILED:
+			return PaymentKey.STATUS_FAILED;
+		case PaymentStatus.PENDING:
+			return PaymentKey.STATUS_PENDING;
+		case PaymentStatus.REQUIRES_ACTION:
+			return PaymentKey.STATUS_REQUIRES_ACTION;
+		case PaymentStatus.REQUIRES_CAPTURE:
+			return PaymentKey.STATUS_REQUIRES_CAPTURE;
+		default:
+			return null;
+	}
+}
+
 function BalanceCard({ balance, isLoading, t }: { balance: number; isLoading: boolean; t: (key: string) => string }) {
 	return (
 		<Card className='w-fit border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5'>
@@ -81,11 +111,13 @@ function CreditPackageCard({
 	pkg,
 	onPurchase,
 	isPurchasing,
+	isBestValue,
 	t,
 }: {
 	pkg: CreditPurchaseOption;
 	onPurchase: () => void;
 	isPurchasing: boolean;
+	isBestValue: boolean;
 	t: (key: string, opts?: { count?: number }) => string;
 }) {
 	const hasBonus = pkg.bonus && pkg.bonus > 0;
@@ -93,6 +125,13 @@ function CreditPackageCard({
 	return (
 		<motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
 			<Card className='relative overflow-hidden'>
+				{isBestValue && (
+					<div className='absolute top-0 start-0'>
+						<Badge className='rounded-none rounded-ee-lg bg-primary text-primary-foreground'>
+							{t(PaymentKey.BEST_VALUE)}
+						</Badge>
+					</div>
+				)}
 				{hasBonus && (
 					<div className='absolute top-0 end-0'>
 						<Badge className='rounded-none rounded-bl-lg bg-success text-white'>
@@ -114,7 +153,7 @@ function CreditPackageCard({
 				<CardContent>
 					<div className='text-3xl font-bold'>{pkg.priceDisplay}</div>
 					<p className='text-sm text-muted-foreground mt-1'>
-						${pkg.pricePerCredit.toFixed(3)} {t(PaymentKey.PER_CREDIT)}
+						{formatPricePerCredit(pkg.pricePerCredit)} {t(PaymentKey.PER_CREDIT)}
 					</p>
 				</CardContent>
 				<CardFooter>
@@ -134,8 +173,9 @@ export function PaymentView() {
 	const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 	const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 	const [purchasedCredits, setPurchasedCredits] = useState(0);
+	const [postPurchaseTotalCredits, setPostPurchaseTotalCredits] = useState<number | null>(null);
 
-	const { data: creditBalance, isLoading: balanceLoading } = useCreditBalance();
+	const { data: creditBalance, isLoading: balanceLoading, refetch: refetchCreditBalance } = useCreditBalance();
 	const { data: creditPackages, isLoading: packagesLoading } = useCreditPackages();
 	const { data: paymentHistory, isLoading: paymentHistoryLoading } = usePaymentHistory();
 	const trackAnalyticsEvent = useTrackAnalyticsEvent();
@@ -154,6 +194,20 @@ export function PaymentView() {
 			description: t(PaymentKey.CREDITS_PACKAGE, { count: pkg.credits }),
 		}));
 
+	const bestValuePackageId = useMemo((): string | null => {
+		const first = packages[0];
+		if (first == null) {
+			return null;
+		}
+		let best = first;
+		for (const p of packages) {
+			if (p.pricePerCredit < best.pricePerCredit) {
+				best = p;
+			}
+		}
+		return best.id;
+	}, [packages]);
+
 	// Track page view analytics
 	useEffect(() => {
 		trackAnalyticsEvent.mutate({
@@ -163,24 +217,37 @@ export function PaymentView() {
 		});
 	}, [trackAnalyticsEvent]);
 
-	const handlePaymentSuccess = (credits: number, packageId?: string, amount?: number) => {
-		setPurchasedCredits(credits);
-		setShowSuccessDialog(true);
-		// Track analytics event for purchase
-		if (selectedPackage) {
-			trackAnalyticsEvent.mutate({
-				eventType: AnalyticsEventType.PURCHASE_CREDITS,
-				page: AnalyticsPageName.PAYMENT,
-				action: AnalyticsAction.PURCHASE_SUCCESS,
-				value: amount ?? selectedPackage.price,
-				properties: {
-					packageId: packageId ?? selectedPackage.id,
-					credits: credits,
-					price: amount ?? selectedPackage.price,
-				},
-			});
+	const handlePaymentSuccess = useCallback(
+		async (credits: number) => {
+			setPurchasedCredits(credits);
+			const refetched = await refetchCreditBalance();
+			const nextTotal = refetched.data?.totalCredits ?? (creditBalance?.totalCredits ?? 0) + credits;
+			setPostPurchaseTotalCredits(nextTotal);
+			setShowSuccessDialog(true);
+			// Track analytics event for purchase
+			if (selectedPackage) {
+				trackAnalyticsEvent.mutate({
+					eventType: AnalyticsEventType.PURCHASE_CREDITS,
+					page: AnalyticsPageName.PAYMENT,
+					action: AnalyticsAction.PURCHASE_SUCCESS,
+					value: selectedPackage.price,
+					properties: {
+						packageId: selectedPackage.id,
+						credits: credits,
+						price: selectedPackage.price,
+					},
+				});
+			}
+		},
+		[creditBalance?.totalCredits, refetchCreditBalance, selectedPackage, trackAnalyticsEvent]
+	);
+
+	const handleSuccessDialogOpenChange = useCallback((open: boolean) => {
+		setShowSuccessDialog(open);
+		if (!open) {
+			setPostPurchaseTotalCredits(null);
 		}
-	};
+	}, []);
 
 	return (
 		<div className='view-centered-6xl h-full flex flex-col'>
@@ -192,6 +259,9 @@ export function PaymentView() {
 					<CardDescription className='text-center text-sm md:text-base'>
 						{t(PaymentKey.GET_CREDITS_TO_PLAY)}
 					</CardDescription>
+					<p className='text-center text-xs text-muted-foreground max-w-2xl mx-auto mt-2'>
+						{t(PaymentKey.CREDITS_VALUE_EXPLAINER)}
+					</p>
 				</CardHeader>
 				<CardContent className='view-spacing-lg view-scroll-inline'>
 					{/* Balance Card */}
@@ -236,6 +306,7 @@ export function PaymentView() {
 											key={pkg.id}
 											pkg={pkg}
 											t={t}
+											isBestValue={bestValuePackageId != null && pkg.id === bestValuePackageId}
 											onPurchase={() => {
 												setSelectedPackage(pkg);
 												setShowPaymentDialog(true);
@@ -298,7 +369,10 @@ export function PaymentView() {
 																				: VariantBase.SECONDARY
 																	}
 																>
-																	{payment.status}
+																	{(() => {
+																		const labelKey = paymentStatusLabelKey(payment.status);
+																		return labelKey ? t(labelKey) : payment.status;
+																	})()}
 																</Badge>
 															</div>
 														</CardContent>
@@ -335,7 +409,7 @@ export function PaymentView() {
 			)}
 
 			{/* Success Dialog */}
-			<Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+			<Dialog open={showSuccessDialog} onOpenChange={handleSuccessDialogOpenChange}>
 				<DialogContent className='sm:max-w-md'>
 					<DialogHeader>
 						<DialogTitle className={cn('flex items-center gap-2', SEMANTIC_ICON_TEXT.success)}>
@@ -356,19 +430,21 @@ export function PaymentView() {
 								</p>
 								<p className='text-sm text-muted-foreground mt-2'>
 									{t(PaymentKey.NEW_BALANCE)}{' '}
-									<span className='font-semibold text-foreground'>{balance + purchasedCredits}</span>{' '}
+									<span className='font-semibold text-foreground'>
+										{postPurchaseTotalCredits ?? balance + purchasedCredits}
+									</span>{' '}
 									{t(PaymentKey.CREDITS)}
 								</p>
 							</div>
 						</div>
 					</div>
 					<DialogFooter className='gap-2 sm:gap-0'>
-						<Button variant={VariantBase.OUTLINE} onClick={() => setShowSuccessDialog(false)}>
+						<Button variant={VariantBase.OUTLINE} onClick={() => handleSuccessDialogOpenChange(false)}>
 							{t(PaymentKey.STAY_HERE)}
 						</Button>
 						<Button
 							onClick={() => {
-								setShowSuccessDialog(false);
+								handleSuccessDialogOpenChange(false);
 								handleClose();
 							}}
 						>

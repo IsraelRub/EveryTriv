@@ -15,7 +15,7 @@ import {
 } from '@/constants';
 import type { LegalDocumentModalProps } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { LegalDocumentPage } from './LegalDocumentPage';
 import { buildPrivacyPolicySections } from './PrivacyPolicySections';
 import { buildTermsOfServiceSections } from './TermsOfServiceSections';
@@ -50,7 +50,6 @@ export function LegalDocumentModal({ open, onOpenChange, document }: LegalDocume
 			>
 				{document != null ? (
 					<>
-						<DialogDescription className='sr-only'>{t(titleKey)}</DialogDescription>
 						<div className='flex min-h-0 flex-1 flex-col px-4 pt-4'>
 							<LegalDocumentPage
 								variant={LegalDocumentLayoutVariant.EMBEDDED}

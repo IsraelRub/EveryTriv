@@ -12,6 +12,7 @@ import {
 	ButtonSize,
 	CommonKey,
 	ComponentSize,
+	isManualCreditPaymentMethodEnabledInClient,
 	LoadingKey,
 	PaymentKey,
 	SEMANTIC_ICON_TEXT,
@@ -23,6 +24,14 @@ import { cn, getTranslatedErrorMessage } from '@/utils';
 import {
 	Alert,
 	AlertDescription,
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
 	Button,
 	Card,
 	CardContent,
@@ -51,8 +60,17 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 	const paypalButtonRef = useRef<PayPalButtonInstance | null>(null);
 	const paypalScriptRef = useRef<HTMLScriptElement | null>(null);
 	const [paypalOrderRequest, setPaypalOrderRequest] = useState<PayPalOrderRequest | null>(null);
+	const [paypalCheckoutStarted, setPaypalCheckoutStarted] = useState(false);
+	const [paypalWidgetReady, setPaypalWidgetReady] = useState(false);
+	const [manualConfirmOpen, setManualConfirmOpen] = useState(false);
 
-	// Memoize total credits calculation
+	const manualMethodAvailable = useMemo(
+		() =>
+			isManualCreditPaymentMethodEnabledInClient() &&
+			(pkg.supportedMethods?.includes(PaymentMethod.MANUAL_CREDIT) ?? false),
+		[pkg.supportedMethods]
+	);
+
 	const totalCredits = useMemo(() => pkg.credits + (pkg.bonus ?? 0), [pkg.credits, pkg.bonus]);
 
 	const handlePaymentSuccess = useCallback(
@@ -67,8 +85,8 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 		[totalCredits, pkg.id, onSuccess, onOpenChange, t]
 	);
 
-	// Cleanup PayPal button and script
 	const cleanupPayPal = useCallback(() => {
+		setPaypalWidgetReady(false);
 		if (paypalButtonRef.current) {
 			paypalButtonRef.current.close();
 			paypalButtonRef.current = null;
@@ -79,14 +97,12 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 		}
 	}, []);
 
-	// Render PayPal button - must be defined before loadPayPalScript
 	const renderPayPalButton = useCallback(() => {
 		if (!window.paypal || !paypalButtonContainer) {
 			setIsProcessing(false);
 			return;
 		}
 
-		// Clean up existing button before creating new one
 		if (paypalButtonRef.current) {
 			paypalButtonRef.current.close();
 			paypalButtonRef.current = null;
@@ -167,7 +183,9 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 		});
 
 		if (paypalButtonContainer) {
-			button.render(paypalButtonContainer);
+			void button.render(paypalButtonContainer).then(() => {
+				setPaypalWidgetReady(true);
+			});
 			paypalButtonRef.current = button;
 			setIsProcessing(false);
 		}
@@ -182,24 +200,19 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 		t,
 	]);
 
-	// Load PayPal SDK script - must be defined before initializePayPal
 	const loadPayPalScript = useCallback(
 		(clientId: string, environment: string) => {
-			// Check if PayPal SDK is already loaded
 			if (window.paypal) {
 				renderPayPalButton();
 				return;
 			}
 
-			// Check if script is already being loaded - wait for it to complete
 			if (paypalScriptRef.current) {
-				// Script is loading, attach listener to existing script
 				const existingScript = paypalScriptRef.current;
 				const originalOnload = existingScript.onload;
 				existingScript.onload = (event: Event) => {
 					if (originalOnload && typeof originalOnload === 'function') {
 						try {
-							// Call original handler with event (HTMLScriptElement.onload always expects Event parameter)
 							originalOnload.call(existingScript, event);
 						} catch {
 							// Ignore errors from original handler
@@ -226,6 +239,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 				});
 				setErrorMessage(errorMsg);
 				setIsProcessing(false);
+				setPaypalCheckoutStarted(false);
 				paypalScriptRef.current = null;
 			};
 			document.body.appendChild(script);
@@ -234,7 +248,6 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 		[pkg.id, renderPayPalButton, t]
 	);
 
-	// Initialize PayPal payment flow
 	const initializePayPal = useCallback(async () => {
 		try {
 			setIsProcessing(true);
@@ -260,10 +273,10 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 			});
 			setErrorMessage(errorMsg);
 			setIsProcessing(false);
+			setPaypalCheckoutStarted(false);
 		}
 	}, [pkg.id, purchaseCredits, handlePaymentSuccess, loadPayPalScript, t]);
 
-	// Handle manual payment method
 	const handleManualPayment = useCallback(async () => {
 		setIsProcessing(true);
 		try {
@@ -291,139 +304,218 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 		}
 	}, [pkg.id, purchaseCredits, handlePaymentSuccess, t]);
 
-	// Handle payment method selection change
-	const handlePaymentMethodChange = useCallback((value: string) => {
-		if (isPaymentMethod(value)) {
+	const handlePaymentMethodChange = useCallback(
+		(value: string) => {
+			if (!isPaymentMethod(value)) {
+				return;
+			}
+			setErrorMessage(null);
+			if (value !== PaymentMethod.PAYPAL) {
+				cleanupPayPal();
+				setPaypalOrderRequest(null);
+				setPaypalCheckoutStarted(false);
+			}
 			setSelectedMethod(value);
-			setErrorMessage(null); // Clear error when changing payment method
-		}
-	}, []);
+		},
+		[cleanupPayPal]
+	);
 
-	// Effect to manage PayPal initialization and cleanup
+	useEffect(() => {
+		if (!manualMethodAvailable && selectedMethod === PaymentMethod.MANUAL_CREDIT) {
+			setSelectedMethod(PaymentMethod.PAYPAL);
+		}
+	}, [manualMethodAvailable, selectedMethod]);
+
 	useEffect(() => {
 		if (!open) {
-			// Cleanup when dialog closes
 			cleanupPayPal();
 			setPaypalOrderRequest(null);
 			setIsProcessing(false);
 			setErrorMessage(null);
 			setSelectedMethod(PaymentMethod.PAYPAL);
+			setPaypalCheckoutStarted(false);
+			setPaypalWidgetReady(false);
+			setManualConfirmOpen(false);
 			return;
 		}
 
-		// Initialize PayPal when dialog opens and PayPal method is selected
-		if (selectedMethod === PaymentMethod.PAYPAL && paypalButtonContainer && !paypalOrderRequest) {
-			initializePayPal();
+		if (
+			selectedMethod !== PaymentMethod.PAYPAL ||
+			!paypalCheckoutStarted ||
+			paypalButtonContainer == null ||
+			paypalOrderRequest != null
+		) {
+			return;
 		}
 
-		// Cleanup on unmount
+		void initializePayPal();
+	}, [
+		open,
+		selectedMethod,
+		paypalCheckoutStarted,
+		paypalButtonContainer,
+		paypalOrderRequest,
+		initializePayPal,
+		cleanupPayPal,
+	]);
+
+	useEffect(() => {
 		return () => {
 			cleanupPayPal();
 		};
-	}, [open, selectedMethod, paypalButtonContainer, paypalOrderRequest, initializePayPal, cleanupPayPal]);
+	}, [cleanupPayPal]);
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='sm:max-w-lg max-h-[90vh] flex flex-col'>
-				<DialogHeader className='flex-shrink-0'>
-					<DialogTitle>{t(PaymentKey.COMPLETE_PAYMENT)}</DialogTitle>
-					<DialogDescription>
-						{t(PaymentKey.CHOOSE_PAYMENT_METHOD_TO_PURCHASE, { count: totalCredits })}
-					</DialogDescription>
-				</DialogHeader>
+		<>
+			<Dialog open={open} onOpenChange={onOpenChange}>
+				<DialogContent className='sm:max-w-lg max-h-[90vh] flex flex-col'>
+					<DialogHeader className='flex-shrink-0'>
+						<DialogTitle>{t(PaymentKey.COMPLETE_PAYMENT)}</DialogTitle>
+						<DialogDescription>
+							{t(PaymentKey.CHOOSE_PAYMENT_METHOD_TO_PURCHASE, { count: totalCredits })}
+						</DialogDescription>
+					</DialogHeader>
 
-				<div className='dialog-body'>
-					{/* Error Message */}
-					{errorMessage && (
-						<Alert variant={AlertVariant.DESTRUCTIVE}>
-							<AlertDescription>{errorMessage}</AlertDescription>
-						</Alert>
-					)}
+					<div className='dialog-body'>
+						{errorMessage && (
+							<Alert variant={AlertVariant.DESTRUCTIVE}>
+								<AlertDescription>{errorMessage}</AlertDescription>
+							</Alert>
+						)}
 
-					{/* Package Summary */}
-					<Card>
-						<CardHeader>
-							<CardTitle className='text-lg'>{t(PaymentKey.ORDER_SUMMARY)}</CardTitle>
-						</CardHeader>
-						<CardContent className='space-y-2'>
-							<div className='flex justify-between'>
-								<span className='text-muted-foreground'>{t(PaymentKey.PACKAGE_LABEL)}</span>
-								<span className='font-medium'>
-									{pkg.description ?? t(PaymentKey.CREDITS_PACKAGE, { count: pkg.credits })}
-								</span>
-							</div>
-							{pkg.bonus && pkg.bonus > 0 && (
-								<div className={cn('flex justify-between', SEMANTIC_ICON_TEXT.success)}>
-									<span>{t(PaymentKey.BONUS_LABEL)}</span>
-									<span className='font-medium'>+{pkg.bonus} credits</span>
+						<Card>
+							<CardHeader>
+								<CardTitle className='text-lg'>{t(PaymentKey.ORDER_SUMMARY)}</CardTitle>
+							</CardHeader>
+							<CardContent className='space-y-2'>
+								<div className='flex justify-between'>
+									<span className='text-muted-foreground'>{t(PaymentKey.PACKAGE_LABEL)}</span>
+									<span className='font-medium'>
+										{pkg.description ?? t(PaymentKey.CREDITS_PACKAGE, { count: pkg.credits })}
+									</span>
 								</div>
-							)}
-							<div className='flex justify-between text-lg font-bold pt-2 border-t'>
-								<span>{t(PaymentKey.TOTAL_LABEL)}</span>
-								<span>{pkg.priceDisplay}</span>
-							</div>
-						</CardContent>
-					</Card>
+								{pkg.bonus && pkg.bonus > 0 && (
+									<div className={cn('flex justify-between', SEMANTIC_ICON_TEXT.success)}>
+										<span>{t(PaymentKey.BONUS_LABEL)}</span>
+										<span className='font-medium'>+{pkg.bonus} credits</span>
+									</div>
+								)}
+								<div className='flex justify-between text-lg font-bold pt-2 border-t'>
+									<span>{t(PaymentKey.TOTAL_LABEL)}</span>
+									<span>{pkg.priceDisplay}</span>
+								</div>
+							</CardContent>
+						</Card>
 
-					{/* Payment Method Selection */}
-					<div className='space-y-4'>
-						<Label className='text-base font-semibold'>{t(PaymentKey.PAYMENT_METHOD)}</Label>
-						<RadioGroup value={selectedMethod} onValueChange={handlePaymentMethodChange} className='space-y-2'>
-							<Card className='flex items-center space-x-2 p-4 hover:bg-accent cursor-pointer'>
-								<RadioGroupItem value={PaymentMethod.PAYPAL} id='paypal' />
-								<Label className='flex-1 cursor-pointer flex items-center gap-2'>
-									<FaPaypal className='h-5 w-5 text-white' />
-									<span>PayPal</span>
-								</Label>
-							</Card>
-							<Card className='flex items-center space-x-2 p-4 hover:bg-accent cursor-pointer'>
-								<RadioGroupItem value={PaymentMethod.MANUAL_CREDIT} id='manual' />
-								<Label className='flex-1 cursor-pointer flex items-center gap-2'>
-									<CreditCard className='h-5 w-5' />
-									<span>{t(PaymentKey.CREDIT_CARD_MANUAL)}</span>
-								</Label>
-							</Card>
-						</RadioGroup>
+						<div className='space-y-4'>
+							<Label className='text-base font-semibold'>{t(PaymentKey.PAYMENT_METHOD)}</Label>
+							{manualMethodAvailable ? (
+								<RadioGroup value={selectedMethod} onValueChange={handlePaymentMethodChange} className='space-y-2'>
+									<Card className='flex items-center space-x-2 p-4 hover:bg-accent cursor-pointer'>
+										<RadioGroupItem value={PaymentMethod.PAYPAL} id='paypal' />
+										<Label htmlFor='paypal' className='flex-1 cursor-pointer flex items-center gap-2'>
+											<FaPaypal className='h-5 w-5 text-white' />
+											<span>PayPal</span>
+										</Label>
+									</Card>
+									<Card className='flex items-center space-x-2 p-4 hover:bg-accent cursor-pointer'>
+										<RadioGroupItem value={PaymentMethod.MANUAL_CREDIT} id='manual' />
+										<Label htmlFor='manual' className='flex-1 cursor-pointer flex items-center gap-2'>
+											<CreditCard className='h-5 w-5' />
+											<span>{t(PaymentKey.CREDIT_CARD_MANUAL)}</span>
+										</Label>
+									</Card>
+								</RadioGroup>
+							) : (
+								<p className='text-sm text-muted-foreground'>
+									<span className='inline-flex items-center gap-2 font-medium text-foreground'>
+										<FaPaypal className='h-5 w-5' />
+										PayPal
+									</span>
+								</p>
+							)}
+						</div>
+
+						{selectedMethod === PaymentMethod.PAYPAL && (
+							<div className='space-y-2'>
+								<Label>{t(PaymentKey.PAYPAL_PAYMENT)}</Label>
+								{!paypalCheckoutStarted ? (
+									<Button
+										type='button'
+										className='w-full'
+										onClick={() => {
+											setPaypalWidgetReady(false);
+											setPaypalCheckoutStarted(true);
+										}}
+										disabled={isProcessing}
+										size={ButtonSize.LG}
+									>
+										{t(PaymentKey.CONTINUE_TO_PAYPAL)}
+									</Button>
+								) : (
+									<div className='relative min-h-[52px] rounded-md border border-border p-2'>
+										<div ref={setPaypalButtonContainer} className='min-h-[45px]' />
+										{isProcessing && !paypalWidgetReady && (
+											<div className='absolute inset-0 flex items-center justify-center rounded-md bg-background/80'>
+												<Spinner size={ComponentSize.XL} className='text-primary' message={t(LoadingKey.PROCESSING)} />
+											</div>
+										)}
+									</div>
+								)}
+							</div>
+						)}
+
+						{selectedMethod === PaymentMethod.MANUAL_CREDIT && manualMethodAvailable && (
+							<div className='space-y-2'>
+								<Label>{t(PaymentKey.CREDIT_CARD_PAYMENT)}</Label>
+								<Button
+									type='button'
+									className='w-full'
+									onClick={() => setManualConfirmOpen(true)}
+									disabled={isProcessing}
+									size={ButtonSize.LG}
+								>
+									{isProcessing ? (
+										<Spinner size={ComponentSize.SM} message={t(LoadingKey.PROCESSING)} messageInline />
+									) : (
+										<>
+											<CreditCard className='mr-2 h-4 w-4' />
+											{t(PaymentKey.PAY_AMOUNT, { amount: pkg.priceDisplay })}
+										</>
+									)}
+								</Button>
+							</div>
+						)}
 					</div>
 
-					{/* PayPal Button Container */}
-					{selectedMethod === PaymentMethod.PAYPAL && (
-						<div className='space-y-2'>
-							<Label>{t(PaymentKey.PAYPAL_PAYMENT)}</Label>
-							{isProcessing ? (
-								<Card className='flex items-center justify-center p-8'>
-									<Spinner size={ComponentSize.XL} className='text-primary' message={t(LoadingKey.PROCESSING)} />
-								</Card>
-							) : (
-								<div ref={setPaypalButtonContainer} className='min-h-[50px]' />
-							)}
-						</div>
-					)}
+					<DialogFooter className='flex-shrink-0'>
+						<Button variant={VariantBase.OUTLINE} onClick={() => onOpenChange(false)} disabled={isProcessing}>
+							{t(CommonKey.CANCEL)}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
-					{/* Manual Payment Button */}
-					{selectedMethod === PaymentMethod.MANUAL_CREDIT && (
-						<div className='space-y-2'>
-							<Label>{t(PaymentKey.CREDIT_CARD_PAYMENT)}</Label>
-							<Button className='w-full' onClick={handleManualPayment} disabled={isProcessing} size={ButtonSize.LG}>
-								{isProcessing ? (
-									<Spinner size={ComponentSize.SM} message={t(LoadingKey.PROCESSING)} messageInline />
-								) : (
-									<>
-										<CreditCard className='mr-2 h-4 w-4' />
-										{t(PaymentKey.PAY_AMOUNT, { amount: pkg.priceDisplay })}
-									</>
-								)}
-							</Button>
-						</div>
-					)}
-				</div>
-
-				<DialogFooter className='flex-shrink-0'>
-					<Button variant={VariantBase.OUTLINE} onClick={() => onOpenChange(false)} disabled={isProcessing}>
-						{t(CommonKey.CANCEL)}
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+			<AlertDialog open={manualConfirmOpen} onOpenChange={setManualConfirmOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>{t(PaymentKey.MANUAL_PAYMENT_CONFIRM_TITLE)}</AlertDialogTitle>
+						<AlertDialogDescription>{t(PaymentKey.MANUAL_PAYMENT_CONFIRM_DESCRIPTION)}</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isProcessing}>{t(CommonKey.CANCEL)}</AlertDialogCancel>
+						<AlertDialogAction
+							disabled={isProcessing}
+							onClick={() => {
+								setManualConfirmOpen(false);
+								void handleManualPayment();
+							}}
+						>
+							{t(PaymentKey.MANUAL_PAYMENT_CONFIRM_PAY)}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }

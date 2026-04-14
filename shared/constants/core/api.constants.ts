@@ -18,9 +18,8 @@ export const API_ENDPOINTS = {
 		PROFILE: '/users/profile',
 		AVATAR: '/users/avatar',
 		AVATAR_UPLOAD: '/users/avatar/upload',
-		AVATAR_IMAGE: (id: string) => `/users/${id}/avatar`,
+		AVATAR_IMAGE: '/users/:userId/avatar',
 		SEARCH: '/users/search',
-		ACCOUNT: '/users/account',
 		CHANGE_PASSWORD: '/users/change-password',
 		PREFERENCES: '/users/preferences',
 		ADMIN: {
@@ -28,15 +27,9 @@ export const API_ENDPOINTS = {
 			STATUS_BY_USER_ID: '/users/admin/:userId/status',
 		},
 	},
-	GAME_HISTORY: {
-		DELETE: (id: string) => `/game-history/${id}`,
-		CLEAR: '/game-history',
-		BY_ID: (id: string) => `/game-history/${id}`,
-	},
 	PAYMENT: {
 		BASE: '/payment',
 		HISTORY: '/payment/history',
-		WEBHOOK_PAYPAL: '/payment/webhooks/paypal',
 		PURCHASE_CREDITS: '/payment/purchase-credits',
 	},
 	CREDITS: {
@@ -56,10 +49,6 @@ export const API_ENDPOINTS = {
 		SESSION_FINALIZE: '/game/session/finalize',
 		SURPRISE_PICK: '/game/surprise-pick',
 		VALIDATE_SESSION: '/game/validate-session/:gameId',
-		ADMIN: {
-			STATISTICS: '/admin/statistics',
-			TRIVIA: '/admin/trivia',
-		},
 	},
 	MULTIPLAYER: {
 		BASE: '/multiplayer',
@@ -76,11 +65,8 @@ export const API_ENDPOINTS = {
 		USER: '/analytics/user',
 		USER_STATS: '/analytics/user/statistics/:userId',
 		USER_PERFORMANCE: '/analytics/user/performance/:userId',
-		USER_PROGRESS: '/analytics/user/progress/:userId',
-		USER_ACTIVITY: '/analytics/user/activity/:userId',
 		USER_INSIGHTS: '/analytics/user/insights/:userId',
 		USER_RECOMMENDATIONS: '/analytics/user/recommendations/:userId',
-		USER_TRENDS: '/analytics/user/trends/:userId',
 		USER_COMPARISON: '/analytics/user/comparison/:userId',
 		USER_SUMMARY: '/analytics/user/summary/:userId',
 		TOPICS_POPULAR: '/analytics/global/topics/popular',
@@ -94,7 +80,6 @@ export const API_ENDPOINTS = {
 		SYSTEM_RECOMMENDATIONS: '/analytics/system/recommendations',
 		SYSTEM_INSIGHTS: '/analytics/system/insights',
 		LEADERBOARD: {
-			BASE: '/analytics/leaderboard',
 			STATS: '/analytics/leaderboard/stats',
 			GLOBAL: '/analytics/leaderboard/global',
 			PERIOD: '/analytics/leaderboard/period/:period',
@@ -122,8 +107,6 @@ export const API_ENDPOINTS = {
 		HEALTH: '/ai-providers/health',
 	},
 } as const;
-
-export const API_VERSION = 'v1';
 
 export const VITE_API_BUNDLE_USE_ORIGIN_PREFIX = 'USE_ORIGIN_API_PREFIX';
 

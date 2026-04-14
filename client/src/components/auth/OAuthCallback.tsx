@@ -13,6 +13,7 @@ import {
 	ButtonSize,
 	ComponentSize,
 	getRegisterOptionalAvatarSearch,
+	QUERY_KEYS,
 	ROUTES,
 	SEMANTIC_ICON_TEXT,
 	STORAGE_KEYS,
@@ -119,7 +120,17 @@ export function OAuthCallback() {
 					}
 
 					logger.authDebug('Setting user in React Query cache');
-					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), user);
+					try {
+						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.auth.all, exact: false });
+						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
+					} catch (cancelError) {
+						logger.userDebug('OAuth callback: cancelQueries before cache write failed (ignored)', {
+							errorInfo: { message: getErrorMessage(cancelError) },
+						});
+					}
+					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), user, {
+						updatedAt: Date.now(),
+					});
 					await queryInvalidationService.invalidateAuthQueries(queryClient);
 
 					logger.authLogin('User authenticated successfully', { userId: user.id });

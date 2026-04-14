@@ -21,5 +21,5 @@
 
 ## קישורים
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
-- [docs/README.md](./README.md)
+- [README — סקירת המונורפו](../README.md)
+- [ארכיטקטורת Hooks (Frontend)](./frontend/HOOKS_ARCHITECTURE.md)

@@ -73,8 +73,7 @@ services:
       context: .
       dockerfile: client/Dockerfile
       args:
-        # Single public URL (tunnel to 3000): USE_ORIGIN_API_PREFIX — nginx proxies /api, /auth, /multiplayer to server.
-        # Two-tunnel demos: set VITE_API_BASE_URL to the API tunnel (same as SERVER_URL).
+        # Baked at build from root `.env`. Tunnel/public demo: USE_ORIGIN_API_PREFIX — nginx proxies /api, /auth, /multiplayer to server.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-USE_ORIGIN_API_PREFIX}
     container_name: everytriv-client
     restart: unless-stopped
@@ -86,7 +85,7 @@ services:
       - everytriv-network
 
   # Cloudflare Quick Tunnel → public https URL to the client container (same Docker network as nginx :3000).
-  # Start with: docker compose --profile demo-tunnel up -d   (or pnpm run start:docker:demo)
+  # Start with: docker compose --profile demo-tunnel up -d   (or pnpm run start:demo:up; full demo+sync: pnpm run start:demo)
   # Read the printed URL: docker compose logs cloudflared | findstr https
   cloudflared:
     image: cloudflare/cloudflared:latest

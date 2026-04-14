@@ -44,7 +44,8 @@ export function MultiplayerGameView() {
 	const answerCountsForQuestionId = useAppSelector(state => state.multiplayer.answerCountsForQuestionId);
 
 	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-	const [answered, setAnswered] = useState(false);
+	/** When true, answer buttons are disabled (timer ended or reveal phase). */
+	const [selectionLocked, setSelectionLocked] = useState(false);
 
 	const selectedAnswerRef = useRef<number | null>(null);
 	selectedAnswerRef.current = selectedAnswer;
@@ -94,12 +95,12 @@ export function MultiplayerGameView() {
 	// Reset local UI state when question changes
 	useEffect(() => {
 		setSelectedAnswer(null);
-		setAnswered(false);
+		setSelectionLocked(false);
 	}, [gameState?.currentQuestionIndex]);
 
 	// Lock selection when reveal phase starts (server ended question)
 	useEffect(() => {
-		if (revealPhase) setAnswered(true);
+		if (revealPhase) setSelectionLocked(true);
 	}, [revealPhase]);
 
 	// Navigate to summary after feedback sound has time to play (revealPhase triggers sound; then game ends)
@@ -126,15 +127,14 @@ export function MultiplayerGameView() {
 	}, [revealPhase, currentQuestion, displayedSelectedAnswer]);
 
 	const handleAnswerSelect = (answerIndex: number) => {
-		if (answered || !roomId || !currentQuestion?.id) return;
+		if (selectionLocked || revealPhase || !roomId || !currentQuestion?.id) return;
 		const timeSpent = questionStartTime ? Math.max(1, calculateElapsedSeconds(questionStartTime)) : 0;
-		setAnswered(true);
 		setSelectedAnswer(answerIndex);
 		submitAnswer(roomId, currentQuestion.id, answerIndex, timeSpent);
 	};
 
 	const handleTimerTimeout = useCallback(() => {
-		setAnswered(true);
+		setSelectionLocked(true);
 	}, []);
 
 	if (!room || !gameState) {
@@ -209,7 +209,7 @@ export function MultiplayerGameView() {
 								<div className='relative'>
 									<AnswerButton
 										answers={currentQuestion?.answers}
-										answered={answered}
+										answered={selectionLocked}
 										selectedAnswer={displayedSelectedAnswer}
 										currentQuestion={currentQuestion}
 										onAnswerClick={handleAnswerSelect}
@@ -219,16 +219,6 @@ export function MultiplayerGameView() {
 									/>
 								</div>
 							</div>
-
-							{answered && (
-								<motion.div
-									initial={{ opacity: 0, y: 10 }}
-									animate={{ opacity: 1, y: 0 }}
-									className='mt-4 text-center text-sm text-muted-foreground flex-shrink-0'
-								>
-									{t(LoadingMessages.WAITING_FOR_OTHER_PLAYERS)}
-								</motion.div>
-							)}
 
 							<div className='mt-4 flex justify-center flex-shrink-0'>
 								<ExitGameButton

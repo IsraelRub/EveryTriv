@@ -60,8 +60,10 @@ pnpm run build         # בנייה לכל החבילות הרלוונטיות
 pnpm run lint          # בדיקות ESLint
 pnpm run format        # עיצוב קוד
 pnpm run tunnel:cloudflared       # Quick Tunnel מול localhost:3000 (דורש cloudflared ב-PATH)
-pnpm run start:docker:demo        # docker compose + פרופיל demo-tunnel (טונל בתוך Docker)
-pnpm run tunnel:cloudflared:logs  # לוגים של קונטיינר cloudflared (אחרי start:docker:demo)
+pnpm run start:demo               # דמו מלא: up + URL + .env + everytriv-link + בילד client + דחיפת Git ל-Pages + restart server/client
+pnpm run start:demo:local         # כמו start:demo בלי commit/push ל-GitHub
+pnpm run start:demo:up            # רק docker compose + פרופיל demo-tunnel (בלי סנכרון .env / everytriv-link)
+pnpm run tunnel:cloudflared:logs  # לוגים של קונטיינר cloudflared (אחרי start:demo:up או אם מריצים רק את הטונל)
 ```
 
 סקריפטים מפורטים נוספים: ראה תיקיית `scripts/` ותיעוד ייעודי ב-`docs/DEVELOPMENT.md`.
@@ -76,63 +78,29 @@ docker compose up -d
 
 ברירת מחדל: שרת על פורט `3002`, לקוח (nginx) על `3000`; `VITE_API_BASE_URL=USE_ORIGIN_API_PREFIX` גורם ל־REST דרך אותו מארח כמו ה־SPA (`/api` מאחורי nginx).
 
-### דמו ציבורי — טונל אחד
+#### `.env` ובניית הקליינט (Docker)
 
-טונל הוא **שירות חיצוני** שפותח את מה שרץ אצלך ב־`localhost` (או בקונטיינר `client`) לכתובת `https` ציבורית. **התקנת `cloudflared` על המחשב** אינה חלק מ־`pnpm install`; עם זאת הפרויקט כולל **סקריפטים ב־`package.json`** ושירות **אופציונלי ב־Docker Compose** (פרופיל `demo-tunnel`) — ראה גם `docs/deployment/CLOUDFLARED.md`.
+- תבנית מלאה: **`.env.example`** — העתק ל־**`.env`** בשורש הריפו (הקובץ האמיתי לא ב־git).
+- שירות `server` קורא את `.env` בזמן ריצה; אימות חובה: `server/src/config/environment.validation.ts`.
+- משתני **`VITE_*`** נכנסים ל־**בילד** של תמונת הקליינט (`docker compose build client`), לא נטענים דינמית בקונטיינר. אחרי שינוי `VITE_API_BASE_URL` או כתובות ציבוריות לדמו — **בנה מחדש** את `client` ואז `docker compose up -d client` (או `up -d` לכל ה־stack).
 
-#### מה כדאי להתקין
+### דמו ציבורי (Cloudflare Quick Tunnel)
 
-| כלי | מתאים כש… | יתרונות | חסרונות |
-|-----|-----------|---------|---------|
-| **Cloudflare Tunnel (`cloudflared`)** | רוצים דמו חינמי עם פקודה אחת, בלי מנוי | Quick Tunnel חינמי, ללא הגבלת זמן סשן כמו ב־ngrok חינמי, תעבורה HTTP בדרך כלל בלי תשלום | כתובת ה־URL **משתנה** בכל הרצה של Try Cloudflare; אין לובי בדיקות מתקדם כמו ב־ngrok |
-| **ngrok** | רוצים ממשק אתר לבקשות, חיבור מהיר אחרי `authtoken` | חוויית מפתח ויזואלית, תיעוד רחב | חשבון חובה; בשכבה החינמית יש **הגבלות** (אורך סשן, תהליך אחד, וכו' לפי מדיניות ngrok) |
+טונל פותח את מה שרץ אצלך על פורט **3000** (קונטיינר `client` / nginx) לכתובת **`https` ציבורית** (`*.trycloudflare.com` ב־Quick Tunnel). **`cloudflared` אינו חלק מ־`pnpm install`** (CLI חיצוני). בפרויקט: סקריפטים ב־`package.json`, שירות Docker אופציונלי (פרופיל `demo-tunnel`), ו־`scripts/deployment/sync-demo-redirect.ps1`. **התקנת CLI על ה־host, טונל בדוקר, ופקודות מלאות:** `docs/deployment/CLOUDFLARED.md`.
 
-**המלצה ברירת מחדל לדמו אישי חד־פעמי:** התקן **`cloudflared`** והרץ Quick Tunnel לפורט `3000`. אם כבר משתמש ב־ngrok או צריך את לוח הבקשות — השתמש ב־ngrok.
+#### צעדים (טונל יחיד — מומלץ)
 
-#### התקנה ב־Windows
+1. `.env` בשורש המונוריפו (העתק מ־`.env.example` והשלם סודות).
+2. **`pnpm run start:demo`** — מרים stack כולל `demo-tunnel`, מחכה ל־URL בלוגי cloudflared, מעדכן `.env` (כולל `COOKIE_SECURE` לטונל HTTPS), `everytriv-link/index.html`, בונה `client`, מריץ `docker compose up -d server client`, ודוחף ל־GitHub Pages (ברירת מחדל). בלי דחיפה: `pnpm run start:demo:local`.  
+   **חלופות:** רק קונטיינרים + טונל בלי סנכרון — `pnpm run start:demo:up`; טונל מה־host — `pnpm run tunnel:cloudflared` אחרי ש־`client` על `3000`; סנכרון ידני — `.\scripts\deployment\sync-demo-redirect.ps1` (ראה `docs/deployment/CLOUDFLARED.md`).
+3. **Google OAuth (אם בשימוש):** ב־Google Cloud Console — origins + redirect `…/auth/google/callback` על אותו host כמו כתובת הטונל.
 
-**Cloudflared (מומלץ להתחלה):**
+#### אימות
 
-```text
-winget install --id Cloudflare.cloudflared
-```
+- `scripts/deployment/verify-demo-remote.ps1 -TunnelBaseUrl 'https://…'` — אופציונלי `-PagesUrl` (everytriv-link) ו־`-SkipLocal` אם אין לקוח על `127.0.0.1:3000`. עזר: `DemoDeployment.Common.ps1`.
+- דפדפן: כתובת הטונל; `/api/health/liveness` על אותו host.
 
-פתח טרמינל חדש ובדוק: `cloudflared --version`.
-
-**ngrok:** הורדה מ־[ngrok.com/download](https://ngrok.com/download), הרשמה, ואז `ngrok config add-authtoken <הטוקן מהדשבורד>`.
-
-#### צעדים מלאים (מצב tunnel יחיד לפורט 3000)
-
-1. **הרץ את המערכת:** משרש הריפו — `docker compose up -d` (וודא שהקונטיינר `client` מקשיב על `3000` וה־stack בריא).
-2. **הרץ טונל** (בחר אחת):
-   - **CLI מהשורש:** `pnpm run tunnel:cloudflared` (שקול ל־`cloudflared tunnel --no-autoupdate --url http://127.0.0.1:3000`).
-   - **Docker (בלי cloudflared על ה־host):** `pnpm run start:docker:demo` — מפעיל את כל ה־stack כולל קונטיינר `cloudflared` (פרופיל `demo-tunnel`). את ה־`https://…` רואים ב־`pnpm run tunnel:cloudflared:logs` או `docker compose logs cloudflared`.
-   - **ידני:** `cloudflared tunnel --no-autoupdate --url http://127.0.0.1:3000` או `ngrok http 3000`.
-3. **העתק את כתובת ה־`https://…`** מהפלט (זו כתובת הציבור של הדמו לסשן הזה).
-4. **עדכן את `.env` בשורש הריפו** (אותה כתובת בשני השדות, בלי סלאש בסוף):
-   - `SERVER_URL=<https://…>`
-   - `CLIENT_URL=<https://…>`
-   - `VITE_API_BASE_URL=USE_ORIGIN_API_PREFIX`
-5. **הטמע את ה־URL בבילד של הקליינט:**  
-   `docker compose build client`  
-   ואז `docker compose up -d client`.
-6. **דף הקישור הקבוע (GitHub Pages — ריפו `everytriv-link`):** בקובץ `index.html` עדכן את השורה  
-   `var FRONTEND_DEMO_URL = "";`  
-   ל־  
-   `var FRONTEND_DEMO_URL = "https://…";`  
-   (אותה כתובת כמו ב־`CLIENT_URL`), commit ו־push ל־`main`.
-7. **Google OAuth (אם בשימוש):** ב־Google Cloud Console — **Authorized JavaScript origins** ו־**Authorized redirect URIs** (`…/auth/google/callback`) על אותו host כמו כתובת הטונל.
-
-#### אימות שזה עובד
-
-- בדפדפן (אפשר מכשיר אחר או חלון גלישה בסתר): פתיחת כתובת הטונל — אמור להיטען האפליקציה; בדיקה ש־`/api/health/liveness` דרך אותו host מחזירה תשובה תקינה (למשל מהדפדפן או כלי HTTP).
-- פתיחת כתובת ה־Pages של `everytriv-link` — אמורה להפנות לטונל (אם `FRONTEND_DEMO_URL` עודכן ונדחף).
-
-#### מצב ישן: שני טונלים (3000 + 3002)
-
-אם בוחרים טונל נפרד ל־API: ב־`.env` — `CLIENT_URL` = טונל ל־3000, `SERVER_URL` ו־`VITE_API_BASE_URL` = טונל ל־3002, ובניית client מחדש אחרי שינוי.
-
-מצביעים טכניים: `docs/deployment/CLOUDFLARED.md` (מלא), `scripts/deployment/DEMO_STATIC_LINK.md` (קישור ל־README).
+מצביע: `scripts/deployment/DEMO_STATIC_LINK.md`.
 
 ## 💾 מסד נתונים
 

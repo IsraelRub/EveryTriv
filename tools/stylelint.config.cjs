@@ -1,9 +1,3 @@
-/**
- * Stylelint configuration for client CSS (Tailwind-compatible).
- * @see https://stylelint.io/user-guide/configure/
- */
-
-/** @type {import('stylelint').Config} */
 module.exports = {
 	extends: ['stylelint-config-standard'],
 	ignoreFiles: ['**/node_modules/**', '**/dist/**'],

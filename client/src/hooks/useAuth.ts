@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type { AuthCredentials, BasicUser, ChangePasswordData } from '@shared/types';
 
-import { AUTH_TOKEN_CHANGED_EVENT, STORAGE_KEYS } from '@/constants';
+import { AUTH_TOKEN_CHANGED_EVENT, QUERY_KEYS, STORAGE_KEYS } from '@/constants';
 import type { UseUserRoleReturn } from '@/types';
 import { authService, clientLogger as logger, queryInvalidationService } from '@/services';
 import { getAuthCurrentUserQueryKey, readAuthTokenSnapshotForQueryKey } from '@/utils';
@@ -63,7 +63,15 @@ export const useLogin = () => {
 						emails: { current: data.user.email },
 					});
 
-					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), data.user);
+					try {
+						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.auth.all, exact: false });
+						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
+					} catch {
+						// ignore cancel failures
+					}
+					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), data.user, {
+						updatedAt: Date.now(),
+					});
 
 					await queryInvalidationService.invalidateAuthQueries(queryClient);
 				} else {
@@ -109,7 +117,15 @@ export const useRegister = () => {
 						emails: { current: data.user.email },
 					});
 
-					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), data.user);
+					try {
+						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.auth.all, exact: false });
+						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
+					} catch {
+						// ignore cancel failures
+					}
+					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), data.user, {
+						updatedAt: Date.now(),
+					});
 
 					await queryInvalidationService.invalidateAuthQueries(queryClient);
 				} else {

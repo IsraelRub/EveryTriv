@@ -37,6 +37,12 @@ import {
 } from '@/components';
 import { useSetAvatar, useUploadAvatar } from '@/hooks';
 
+function revokePreview(url: string | null): void {
+	if (url?.startsWith('blob:')) {
+		URL.revokeObjectURL(url);
+	}
+}
+
 export function AvatarSelector({
 	open,
 	onOpenChange,
@@ -46,21 +52,79 @@ export function AvatarSelector({
 }: AvatarSelectorProps) {
 	const { t } = useTranslation(['auth', 'loading', 'common']);
 	const [selectedAvatarId, setSelectedAvatarId] = useState<number>(currentAvatarId ?? AVATAR_ID_CLEAR);
-	const [localAvatarUrl, setLocalAvatarUrl] = useState<string | undefined>(currentAvatarUrl ?? undefined);
+	const [pendingFile, setPendingFile] = useState<File | null>(null);
+	const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
 	const setAvatar = useSetAvatar();
 	const uploadAvatar = useUploadAvatar();
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const wasOpenRef = useRef(false);
 
 	useEffect(() => {
-		if (open) {
+		if (open && !wasOpenRef.current) {
 			setSelectedAvatarId(currentAvatarId ?? AVATAR_ID_CLEAR);
-			setLocalAvatarUrl(currentAvatarUrl ?? undefined);
+			setPendingFile(null);
+			setPreviewObjectUrl(prev => {
+				revokePreview(prev);
+				return null;
+			});
 		}
+		if (!open && wasOpenRef.current) {
+			setPendingFile(null);
+			setPreviewObjectUrl(prev => {
+				revokePreview(prev);
+				return null;
+			});
+		}
+		wasOpenRef.current = open;
 	}, [open, currentAvatarId, currentAvatarUrl]);
 
-	const displayCustomPhotoUrl = localAvatarUrl ?? currentAvatarUrl;
+	useEffect(() => {
+		return () => {
+			revokePreview(previewObjectUrl);
+		};
+	}, [previewObjectUrl]);
+
+	const clearPendingUpload = useCallback(() => {
+		setPendingFile(null);
+		setPreviewObjectUrl(prev => {
+			revokePreview(prev);
+			return null;
+		});
+	}, []);
+
+	const selectPreset = useCallback(
+		(avatarId: number) => {
+			clearPendingUpload();
+			setSelectedAvatarId(avatarId);
+		},
+		[clearPendingUpload]
+	);
+
+	const showYourPhotoStrip =
+		previewObjectUrl != null ||
+		pendingFile != null ||
+		(selectedAvatarId === AVATAR_ID_CLEAR && currentAvatarUrl != null && currentAvatarUrl !== '');
+
+	const displayPhotoSrc = previewObjectUrl ?? (selectedAvatarId === AVATAR_ID_CLEAR ? currentAvatarUrl : undefined);
+	const resolvedPhotoSrc =
+		displayPhotoSrc != null && displayPhotoSrc !== ''
+			? (toAbsoluteAvatarUrl(displayPhotoSrc, ApiConfig.baseUrl) ?? displayPhotoSrc)
+			: undefined;
 
 	const handleSave = async () => {
+		if (pendingFile != null) {
+			try {
+				await uploadAvatar.mutateAsync(pendingFile);
+				logger.userSuccess('Avatar uploaded successfully');
+				onAvatarSaved?.();
+				onOpenChange(false);
+			} catch (error) {
+				const errorMessage = getErrorMessage(error) || t(AuthKey.AVATAR_UPLOAD_FAILED);
+				logger.userError(errorMessage, { errorInfo: { message: errorMessage } });
+			}
+			return;
+		}
+
 		if (!isAvatarIdOrClear(selectedAvatarId)) {
 			logger.userError('Please select an avatar', { avatar: selectedAvatarId });
 			return;
@@ -77,48 +141,36 @@ export function AvatarSelector({
 		}
 	};
 
-	const handleFileChange = useCallback(
-		async (e: ChangeEvent<HTMLInputElement>) => {
-			const file = e.target.files?.[0];
-			if (!file) return;
-			if (file.size > AVATAR_UPLOAD_MAX_BYTES) {
-				logger.userError('Image is too large. Maximum size is 2MB.', {
-					errorInfo: { message: 'File size exceeds 2MB limit' },
-				});
-				return;
-			}
-			const mime = (file.type ?? '').toLowerCase();
-			if (!AVATAR_ALLOWED_MIME_TYPES_SET.has(mime)) {
-				logger.userError('Invalid image type. Use JPEG, PNG, or WebP.', {
-					errorInfo: { message: 'Invalid MIME type' },
-				});
-				return;
-			}
-			const objectUrl = URL.createObjectURL(file);
-			setLocalAvatarUrl(objectUrl);
-			try {
-				const result = await uploadAvatar.mutateAsync(file);
-				logger.userSuccess('Avatar uploaded successfully');
-				const nextUrl = result.profile.avatarUrl;
-				if (nextUrl != null && nextUrl !== '') {
-					setLocalAvatarUrl(nextUrl);
-					URL.revokeObjectURL(objectUrl);
-				}
-				onAvatarSaved?.();
-				onOpenChange(false);
-			} catch (error) {
-				setLocalAvatarUrl(currentAvatarUrl ?? undefined);
-				URL.revokeObjectURL(objectUrl);
-				const errorMessage = getErrorMessage(error) || t(AuthKey.AVATAR_UPLOAD_FAILED);
-				logger.userError(errorMessage, { errorInfo: { message: errorMessage } });
-			} finally {
-				e.target.value = '';
-			}
-		},
-		[uploadAvatar, onOpenChange, onAvatarSaved, currentAvatarUrl, t]
-	);
+	const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		if (file.size > AVATAR_UPLOAD_MAX_BYTES) {
+			logger.userError('Image is too large. Maximum size is 2MB.', {
+				errorInfo: { message: 'File size exceeds 2MB limit' },
+			});
+			return;
+		}
+		const mime = (file.type ?? '').toLowerCase();
+		if (!AVATAR_ALLOWED_MIME_TYPES_SET.has(mime)) {
+			logger.userError('Invalid image type. Use JPEG, PNG, or WebP.', {
+				errorInfo: { message: 'Invalid MIME type' },
+			});
+			return;
+		}
+		setSelectedAvatarId(AVATAR_ID_CLEAR);
+		setPendingFile(file);
+		setPreviewObjectUrl(prev => {
+			revokePreview(prev);
+			return URL.createObjectURL(file);
+		});
+		e.target.value = '';
+	}, []);
 
 	const handleRemoveCustom = useCallback(async () => {
+		if (pendingFile != null) {
+			clearPendingUpload();
+			return;
+		}
 		try {
 			await setAvatar.mutateAsync(AVATAR_ID_CLEAR);
 			logger.userSuccess('Custom avatar removed');
@@ -127,7 +179,7 @@ export function AvatarSelector({
 			const errorMessage = getErrorMessage(error) || t(AuthKey.AVATAR_REMOVE_FAILED);
 			logger.userError(errorMessage, { errorInfo: { message: errorMessage } });
 		}
-	}, [setAvatar, t]);
+	}, [pendingFile, clearPendingUpload, setAvatar, t]);
 
 	const ringClass = (isCurrent: boolean, isSelected: boolean) =>
 		cn(
@@ -139,6 +191,8 @@ export function AvatarSelector({
 					: 'hover:ring-2 hover:ring-muted-foreground/50'
 		);
 
+	const isBusy = setAvatar.isPending || uploadAvatar.isPending;
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className='max-w-2xl max-h-[90vh] flex flex-col'>
@@ -149,24 +203,21 @@ export function AvatarSelector({
 				<div className='space-y-4 py-4 view-scroll-inline'>
 					<Card className='bg-muted/30 p-4 space-y-3'>
 						<h3 className='text-sm font-semibold text-foreground'>{t(AuthKey.YOUR_PHOTO)}</h3>
-						{displayCustomPhotoUrl ? (
+						{showYourPhotoStrip ? (
 							<div className='flex flex-wrap items-center gap-3'>
 								<Avatar size={AvatarSize.XL} variant={AvatarVariant.RING}>
-									<AvatarImage
-										src={toAbsoluteAvatarUrl(displayCustomPhotoUrl, ApiConfig.baseUrl) ?? displayCustomPhotoUrl}
-										alt={t(AuthKey.YOUR_PHOTO)}
-									/>
+									<AvatarImage src={resolvedPhotoSrc} alt={t(AuthKey.YOUR_PHOTO)} />
 								</Avatar>
 								<Button
 									type='button'
 									variant={VariantBase.OUTLINE}
 									size={ButtonSize.SM}
 									onClick={handleRemoveCustom}
-									disabled={setAvatar.isPending}
+									disabled={isBusy}
 									className='gap-1'
 								>
 									<Trash2 className='h-4 w-4' />
-									{t(AuthKey.REMOVE_PHOTO)}
+									{pendingFile != null ? t(CommonKey.CANCEL) : t(AuthKey.REMOVE_PHOTO)}
 								</Button>
 							</div>
 						) : (
@@ -183,11 +234,11 @@ export function AvatarSelector({
 									variant={VariantBase.OUTLINE}
 									size={ButtonSize.SM}
 									onClick={() => fileInputRef.current?.click()}
-									disabled={uploadAvatar.isPending}
+									disabled={isBusy}
 									className='gap-2'
 								>
 									<Upload className='h-4 w-4' />
-									{!uploadAvatar.isPending ? t(AuthKey.UPLOAD_PHOTO) : t(LoadingKey.SAVING)}
+									{t(AuthKey.UPLOAD_PHOTO)}
 								</Button>
 								<p className='text-xs text-muted-foreground'>{t(AuthKey.IMAGE_FORMAT_HINT)}</p>
 							</>
@@ -199,7 +250,7 @@ export function AvatarSelector({
 							<motion.button
 								key={AVATAR_ID_CLEAR}
 								type='button'
-								onClick={() => setSelectedAvatarId(AVATAR_ID_CLEAR)}
+								onClick={() => selectPreset(AVATAR_ID_CLEAR)}
 								className={ringClass(
 									currentAvatarId == null || currentAvatarId === AVATAR_ID_CLEAR,
 									selectedAvatarId === AVATAR_ID_CLEAR
@@ -231,7 +282,7 @@ export function AvatarSelector({
 									<motion.button
 										key={avatarId}
 										type='button'
-										onClick={() => setSelectedAvatarId(avatarId)}
+										onClick={() => selectPreset(avatarId)}
 										className={ringClass(isCurrent, isSelected)}
 										initial={{ opacity: 0, scale: 0.8 }}
 										animate={{ opacity: 1, scale: 1 }}
@@ -255,15 +306,11 @@ export function AvatarSelector({
 					</section>
 				</div>
 				<DialogFooter className='flex-shrink-0'>
-					<Button
-						variant={VariantBase.OUTLINE}
-						onClick={() => onOpenChange(false)}
-						disabled={setAvatar.isPending || uploadAvatar.isPending}
-					>
+					<Button variant={VariantBase.OUTLINE} onClick={() => onOpenChange(false)} disabled={isBusy}>
 						{t(CommonKey.CANCEL)}
 					</Button>
-					<Button onClick={handleSave} disabled={setAvatar.isPending || uploadAvatar.isPending}>
-						{!setAvatar.isPending ? t(CommonKey.SAVE) : t(LoadingKey.SAVING)}
+					<Button onClick={() => void handleSave()} disabled={isBusy}>
+						{isBusy ? t(LoadingKey.SAVING) : t(CommonKey.SAVE)}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

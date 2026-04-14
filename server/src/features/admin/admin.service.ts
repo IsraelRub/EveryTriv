@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
+import { CACHE_KEYS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
 import type { AdminGameStatistics, AdminTriviaQuestion, CountRecord, TriviaQuestionsResponse } from '@shared/types';
 import { buildCountRecord, calculateScoreRate, getErrorMessage } from '@shared/utils';
 
 import { restoreGameDifficulty } from '@common/validation';
-import { SERVER_CACHE_KEYS, SQL_CONDITIONS } from '@internal/constants';
+import { SQL_CONDITIONS } from '@internal/constants';
 import { GameHistoryEntity, TriviaEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -27,7 +27,7 @@ export class AdminService {
 	async getAdminStatistics(): Promise<AdminGameStatistics> {
 		try {
 			return await this.cacheService.getOrSet<AdminGameStatistics>(
-				SERVER_CACHE_KEYS.ADMIN.STATISTICS,
+				CACHE_KEYS.ADMIN.STATISTICS,
 				async () => this.fetchAdminStatistics(),
 				TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES,
 				isAdminGameStatistics
@@ -122,10 +122,15 @@ export class AdminService {
 		};
 	}
 
-	async getAllTriviaQuestions(): Promise<TriviaQuestionsResponse> {
+	async getAllTriviaQuestions(params: { limit: number; offset: number }): Promise<TriviaQuestionsResponse> {
 		try {
-			const questionEntities = await this.triviaRepository.find({
+			const take = Math.min(Math.max(params.limit, 1), 1000);
+			const skip = Math.max(params.offset, 0);
+
+			const [questionEntities, totalCount] = await this.triviaRepository.findAndCount({
 				order: { createdAt: 'DESC' },
+				take,
+				skip,
 			});
 
 			return {
@@ -145,7 +150,7 @@ export class AdminService {
 					};
 					return triviaQuestion;
 				}),
-				totalCount: questionEntities.length,
+				totalCount,
 			};
 		} catch (error) {
 			logger.gameError('Failed to get all trivia questions', {

@@ -1,6 +1,5 @@
 import type { ValidationResult } from '../../types';
-import { isNonEmptyString } from '../../utils';
-import { sanitizeCardNumber } from '../../utils/infrastructure/sanitization.utils';
+import { isNonEmptyString, sanitizeCardNumber } from '../../utils';
 
 export function isValidCardNumber(rawNumber: string): boolean {
 	const digits = sanitizeCardNumber(rawNumber);

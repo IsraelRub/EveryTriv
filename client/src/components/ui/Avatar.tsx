@@ -34,6 +34,32 @@ const avatarVariants = cva('relative flex shrink-0 overflow-hidden rounded-full'
 	},
 });
 
+export const avatarFallbackTextVariants = cva('', {
+	variants: {
+		size: {
+			[AvatarSize.SM]: 'text-xs',
+			[AvatarSize.NAV]: '',
+			[AvatarSize.MD]: '',
+			[AvatarSize.LG]: 'text-base',
+			[AvatarSize.XL]: '',
+			[AvatarSize.FULL]: '',
+		},
+	},
+	compoundVariants: [
+		{
+			size: [AvatarSize.NAV, AvatarSize.MD],
+			class: 'text-sm',
+		},
+		{
+			size: [AvatarSize.XL, AvatarSize.FULL],
+			class: 'text-2xl',
+		},
+	],
+	defaultVariants: {
+		size: AvatarSize.MD,
+	},
+});
+
 export const Avatar = forwardRef<ElementRef<typeof AvatarPrimitive.Root>, AvatarProps>(
 	({ size = AvatarSize.MD, variant = AvatarVariant.DEFAULT, pointerEventsNone = false, ...props }, ref) => (
 		<AvatarPrimitive.Root ref={ref} className={avatarVariants({ size, variant, pointerEventsNone })} {...props} />

@@ -33,19 +33,19 @@ const topicChipVariants = cva(
 		variants: {
 			type: {
 				[TopicBadgeType.MOST_PLAYED]: 'w-full justify-start px-3 font-medium text-sm',
-				[TopicBadgeType.BASIC]: 'text-xs px-2 gap-1.5',
-				[TopicBadgeType.YOUR]: 'text-xs px-2 gap-1.5',
-				[TopicBadgeType.POPULAR]: 'text-xs px-2 gap-1.5',
+				[TopicBadgeType.BASIC]: '',
+				[TopicBadgeType.YOUR]: '',
+				[TopicBadgeType.POPULAR]: '',
 			},
 			selected: {
 				true: '',
-				false: '',
+				false: 'bg-muted/40 hover:bg-primary/20',
 			},
 		},
 		compoundVariants: [
 			{
-				selected: false,
-				class: 'bg-muted/40 hover:bg-primary/20',
+				type: [TopicBadgeType.BASIC, TopicBadgeType.YOUR, TopicBadgeType.POPULAR],
+				class: 'text-xs px-2 gap-1.5',
 			},
 		],
 		defaultVariants: {

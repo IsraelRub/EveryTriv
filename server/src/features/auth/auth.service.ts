@@ -3,13 +3,19 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { ErrorCode, LogContext, TIME_DURATIONS_SECONDS, UserRole, VALIDATION_LENGTH } from '@shared/constants';
+import {
+	CACHE_KEYS,
+	ErrorCode,
+	LogContext,
+	TIME_DURATIONS_SECONDS,
+	UserRole,
+	VALIDATION_LENGTH,
+} from '@shared/constants';
 import type { ChangePasswordData } from '@shared/types';
 import { getErrorMessage, isNonEmptyString, sanitizeEmail, truncateWithEllipsis } from '@shared/utils';
 
 import { AppConfig } from '@config';
 import { AuthenticationManager, JwtTokenService, PasswordService } from '@common/auth';
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { CacheInvalidationService, CacheService, StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -133,7 +139,8 @@ export class AuthService {
 		user.lastLogin = new Date();
 		await this.userRepository.save(user);
 
-		// Store user session data
+		// Optional Redis fingerprint for support/ops (last login + truncated token preview). JWT auth does not read
+		// this record — access is validated by signature, not by server-side session lookup.
 		const sessionKey = `user_session:${user.id}`;
 		const sessionResult = await this.storageService.set(
 			sessionKey,
@@ -198,8 +205,10 @@ export class AuthService {
 			| 'role'
 			| 'preferences'
 			| 'customAvatar'
+			| 'customAvatarMime'
 			| 'createdAt'
 			| 'emailVerified'
+			| 'updatedAt'
 		>
 	> {
 		logger.authDebug('getCurrentUser called', {
@@ -218,8 +227,10 @@ export class AuthService {
 				'role',
 				'preferences',
 				'customAvatar',
+				'customAvatarMime',
 				'createdAt',
 				'emailVerified',
+				'updatedAt',
 			],
 		});
 
@@ -249,8 +260,8 @@ export class AuthService {
 
 		// Clear user-specific cache entries to prevent stale data on re-login
 		try {
-			await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.AUTH.USER_LOGOUT_PATTERN_1(userId));
-			await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.AUTH.USER_LOGOUT_PATTERN_2(userId));
+			await this.cacheService.invalidatePattern(CACHE_KEYS.AUTH.USER_LOGOUT_PATTERN_1(userId));
+			await this.cacheService.invalidatePattern(CACHE_KEYS.AUTH.USER_LOGOUT_PATTERN_2(userId));
 			logger.authInfo('User cache cleared on logout', { userId });
 		} catch (error) {
 			logger.authError('Failed to clear user cache on logout', {
@@ -501,7 +512,7 @@ export class AuthService {
 			await this.userRepository.save(user);
 
 			// Clear user cache
-			await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
+			await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
 
 			return 'Password changed successfully';
 		} catch (error) {
@@ -514,6 +525,10 @@ export class AuthService {
 		}
 	}
 
+	/**
+	 * Generates a verification token and returns a link in the API response. There is no outbound email yet —
+	 * integrate SES/SendGrid/SMTP for production, or consume the returned link in development tools.
+	 */
 	async requestVerificationEmail(userId: string): Promise<{ verificationLink: string }> {
 		const user = await this.userRepository.findOne({
 			where: { id: userId },
@@ -526,7 +541,7 @@ export class AuthService {
 			throw new BadRequestException(ErrorCode.EMAIL_ALREADY_VERIFIED);
 		}
 		const token = randomUUID();
-		const cacheKey = SERVER_CACHE_KEYS.AUTH.EMAIL_VERIFY(token);
+		const cacheKey = CACHE_KEYS.AUTH.EMAIL_VERIFY(token);
 		await this.cacheService.set(cacheKey, userId, TIME_DURATIONS_SECONDS.DAY);
 		const baseUrl =
 			process.env.SERVER_PUBLIC_URL ?? process.env.SERVER_URL ?? `http://${AppConfig.domain}:${AppConfig.port}`;
@@ -536,7 +551,7 @@ export class AuthService {
 	}
 
 	async verifyEmail(token: string): Promise<{ verified: boolean }> {
-		const cacheKey = SERVER_CACHE_KEYS.AUTH.EMAIL_VERIFY(token);
+		const cacheKey = CACHE_KEYS.AUTH.EMAIL_VERIFY(token);
 		const result = await this.cacheService.get(cacheKey);
 		if (!result.success || result.data == null) {
 			throw new BadRequestException(ErrorCode.VERIFICATION_TOKEN_INVALID_OR_EXPIRED);
@@ -553,7 +568,7 @@ export class AuthService {
 		user.emailVerified = true;
 		await this.userRepository.save(user);
 		await this.cacheService.delete(cacheKey);
-		await this.cacheService.delete(SERVER_CACHE_KEYS.USER.PROFILE(userId));
+		await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
 		logger.authInfo('Email verified', { userId });
 		return { verified: true };
 	}

@@ -108,6 +108,7 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 									<div className='relative'>
 										{(profile ?? currentUser) && (
 											<UserAvatar
+												key={profile?.avatarUrl ?? currentUser?.avatarUrl ?? 'no-avatar-url'}
 												size={AvatarSize.XL}
 												source={{
 													firstName: profile?.firstName ?? currentUser?.firstName,

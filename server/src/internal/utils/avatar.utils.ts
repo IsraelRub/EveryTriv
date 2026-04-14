@@ -21,7 +21,8 @@ export function validateAvatarImageSignature(buffer: Buffer, claimedMime: string
 	return false;
 }
 
-function tryAvatarVersionTimestamp(updatedAt: Date | string): number | undefined {
+function tryAvatarVersionTimestamp(updatedAt: Date | string | null | undefined): number | undefined {
+	if (updatedAt == null) return undefined;
 	if (updatedAt instanceof Date && !Number.isNaN(updatedAt.getTime())) {
 		return updatedAt.getTime();
 	}
@@ -34,11 +35,18 @@ function tryAvatarVersionTimestamp(updatedAt: Date | string): number | undefined
 	return undefined;
 }
 
+export function getCustomAvatarUrlForUserId(userId: string, updatedAt: Date | string | null | undefined): string {
+	const basePath = API_ENDPOINTS.USER.AVATAR_IMAGE.replace(':userId', userId);
+	const version = tryAvatarVersionTimestamp(updatedAt) ?? Date.now();
+	return `${basePath}?v=${version}`;
+}
+
 export function getAvatarUrlForUser(
 	user:
 		| {
 				id?: string;
 				customAvatar?: unknown;
+				customAvatarMime?: string | null;
 				updatedAt?: Date | string | null;
 		  }
 		| null
@@ -47,8 +55,9 @@ export function getAvatarUrlForUser(
 	const hasAvatarData =
 		(Buffer.isBuffer(user?.customAvatar) && user.customAvatar.length > 0) ||
 		(user?.customAvatar instanceof Uint8Array && user.customAvatar.length > 0);
-	if (!user?.id || !hasAvatarData) return undefined;
-	const basePath = API_ENDPOINTS.USER.AVATAR_IMAGE(user.id);
+	const hasAvatarMime = typeof user?.customAvatarMime === 'string' && user.customAvatarMime.trim() !== '';
+	if (!user?.id || (!hasAvatarData && !hasAvatarMime)) return undefined;
+	const basePath = API_ENDPOINTS.USER.AVATAR_IMAGE.replace(':userId', user.id);
 	if (user.updatedAt == null) {
 		return basePath;
 	}

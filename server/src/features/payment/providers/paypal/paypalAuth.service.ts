@@ -2,10 +2,9 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 
-import { TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { CACHE_KEYS, TIME_DURATIONS_SECONDS } from '@shared/constants';
 
 import { AppConfig } from '@config';
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { PayPalAccessTokenResponse } from '@internal/types';
@@ -49,7 +48,7 @@ export class PayPalAuthService {
 			const tokenData = response.data;
 			const ttl = Math.max(0, tokenData.expires_in - TIME_DURATIONS_SECONDS.MINUTE);
 
-			await this.cacheService.set(SERVER_CACHE_KEYS.PAYPAL.ACCESS_TOKEN, tokenData.access_token, ttl);
+			await this.cacheService.set(CACHE_KEYS.PAYPAL.ACCESS_TOKEN, tokenData.access_token, ttl);
 
 			logger.apiCreate('paypal_token_refresh', {
 				expiresIn: String(tokenData.expires_in),
@@ -70,7 +69,7 @@ export class PayPalAuthService {
 	private async getCachedToken(): Promise<string | null> {
 		try {
 			const cached = await this.cacheService.get<string>(
-				SERVER_CACHE_KEYS.PAYPAL.ACCESS_TOKEN,
+				CACHE_KEYS.PAYPAL.ACCESS_TOKEN,
 				(value): value is string => typeof value === 'string'
 			);
 			if (cached.success && cached.data) {
@@ -78,7 +77,7 @@ export class PayPalAuthService {
 			}
 			return null;
 		} catch (error) {
-			logger.cacheError('get PayPal access token', SERVER_CACHE_KEYS.PAYPAL.ACCESS_TOKEN, {
+			logger.cacheError('get PayPal access token', CACHE_KEYS.PAYPAL.ACCESS_TOKEN, {
 				errorInfo: {
 					message: error instanceof Error ? error.message : 'Unknown error',
 				},

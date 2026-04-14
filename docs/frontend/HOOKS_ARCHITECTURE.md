@@ -4,45 +4,45 @@
 
 | תיקייה | תפקיד |
 |--------|--------|
-| `hooks/` (שורש) | אימות (`useAuth.ts`), קרדיטים (`useCredits.ts`), משתמש (`useUser.ts`), מרובה משתתפים (`useMultiplayer.ts`), אתחול (`useAppInitialization.ts`), אנליטיקה (`useAnalyticsDashboard.ts`) |
-| `hooks/game/` | סשן משחק, טריוויה, סיכום |
-| `hooks/admin/` | ניהול — תיקיית admin (מספר hooks לסטטיסטיקות ומשחק) |
+| `hooks/` (שורש) | אימות, קרדיטים, משתמש, מרובה משתתפים, אנליטיקה — קבצי `use*.ts` לפי תחום |
+| `hooks/game/` | סשן משחק, הגדרות משחק, סיכום, היסטוריה |
+| `hooks/admin/` | ניהול (סטטיסטיקות משחק, שאלות טריוויה) |
 | `hooks/audio/` | הגדרות ומצב אודיו |
 | `hooks/ui/` | Toast, מודל, ניווט, טבלאות |
 
-## Hooks מיוצאים מ־`hooks/index.ts` (דוגמאות)
+## ייבוא מרוכז — `client/src/hooks/index.ts`
 
-אימות: `useLogin`, `useRegister`, `useCurrentUser`, `useHasToken`, `useIsAuthenticated`, `useUserRole`, `useCurrentUserData`, `useAuthLogoutHandler`, `useChangePassword`
+רשימת הייצוא הציבורית (לעדכן לפי הקובץ במונורפו):
 
-קרדיטים: `useCanPlay`, `useCreditBalance`, `useCreditPackages`, `useDeductCredits`, `usePaymentHistory`, `usePurchaseCredits`
+**אימות** (`./useAuth`): `useLogin`, `useRegister`, `useCurrentUser`, `useHasToken`, `useIsAuthenticated`, `useUserRole`, `useCurrentUserData`, `useChangePassword`
 
-משחק: `useGameHistory`, `useGameSettingsForm`, `useTriviaQuestionMutation`, `useClearGameHistory`, `useDeleteGameHistory`, `useGameFinalization`, `useSingleSession`
+**קרדיטים** (`./useCredits`): `useCanPlay`, `useCreditBalance`, `useCreditPackages`, `useDeductCredits`, `usePaymentHistory`, `usePurchaseCredits`
 
-משתמש: `useSetAvatar`, `useUploadAvatar`, `useUpdateUserProfile`, `useUserProfile`, `useUpdateUserPreferences`
+**משחק** (`./game`): `useGameHistory`, `useGameSettingsForm`, `useGameFinalization`, `useSingleSession`
 
-אנליטיקה: `useGlobalDifficultyStats`, `useGlobalStats`, `useGlobalTrends`, `useGlobalLeaderboard`, `useLeaderboardByPeriod`, `useLeaderboardStats`, `usePopularTopics`, `useTrackAnalyticsEvent`, `useUnifiedUserAnalytics`, `useUserAnalytics`
+**משתמש** (`./useUser`): `useSetAvatar`, `useUploadAvatar`, `useUpdateUserProfile`, `useUserProfile`, `useUpdateUserPreferences`
 
-אדמין (מ־`./admin`): `useAdminPricing`, `useBusinessMetrics`, `useClearAllLeaderboard`, `useUpdateAdminPricing`, `useClearAllUserStats`, `useSystemInsights`, `useSystemPerformanceMetrics`, `useSystemRecommendations`, `useSystemSecurityMetrics`, `useUserInsightsById`, `useUserPerformanceById`, `useUserRecommendationsById`, `useUserStatisticsById`, `useUserSummaryById`, `useAllTriviaQuestions`, `useClearAllGameHistory`, `useClearAllTrivia`, `useGameStatistics`, `useAllUsers`, `useUserSearch`, `useAiProviderStats`, `useAiProviderHealth`, `useCheckAllUsersConsistency`, `useCheckUserStatsConsistency`, `useFixUserStatsConsistency`
+**אנליטיקה** (`./useAnalyticsDashboard`): `useGlobalDifficultyStats`, `useGlobalStats`, `useGlobalTrends`, `useGlobalLeaderboard`, `useLeaderboardByPeriod`, `useLeaderboardStats`, `usePopularTopics`, `useTrackAnalyticsEvent`, `useUserAnalytics`
 
-Redux: `useAppDispatch`, `useAppSelector`
+**אדמין** (`./admin`): `useAllTriviaQuestions`, `useGameStatistics`
 
-אודיו: `useAudioSettings`, `useRouteBasedMusic`
+**Redux** (`./useRedux`): `useAppDispatch`, `useAppSelector`
 
-מרובה משתתפים: `useMultiplayer`
+**אודיו** (`./audio`): `useAudioSettings`, `useRouteBasedMusic`
 
-UI: `useToast`, `useModalRoute`, `useNavigationAnalytics`, `useNavigationClose`, `useCountUp`, `usePagination`, `useClientTableState`
+**מרובה משתתפים** (`./useMultiplayer`): `useMultiplayer`
 
-אתחול: `useAppInitialization`
+**UI** (`./ui`): `useToast`, `toast`, `useModalRoute`, `useNavigationAnalytics`, `useNavigationClose`, `useCountUp`, `useClientTableState`, `usePagination`
 
-## Hooks נוספים בקבצים (לא בהכרח ב-barrel)
+## Hooks פנימיים / לא ב־barrel
 
-ב־`useTrivia.ts`: `useStartGameSession`, `useSubmitAnswerToSession`, `useFinalizeGameSession` — לייבא מקובץ המקור כשצריך.
+לוגיקת משחק (טריוויה, סשן, שליחת תשובות) ממומשת בשירותים (`client/src/services/domain/game.service.ts` וכו') וב־views; hooks נוספים לפי צורך בקבצים תחת `hooks/` — לייבא מהמודול המקורי ולא להניח שם מ־barrel אם אין ייצוא.
 
 ## שכבת React / ספריות
 
-React (`useState`, `useEffect`, …), React Query (`useQuery`, `useMutation`), Redux (`useSelector`, `useDispatch`) משמשים בתוך ה-hooks למעלה.
+React (מצב מקומי), TanStack React Query (`useQuery`, `useMutation`), Redux (`useSelector`, `useDispatch` דרך `useAppSelector` / `useAppDispatch`) משמשים בתוך ה-hooks.
 
 ## קישורים
 
 - [STATE.md](./STATE.md)
-- [SERVICES.md](./SERVICES.md)
+- [רכיבי UI](./COMPONENTS.md)

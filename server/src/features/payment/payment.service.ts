@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 
 import {
+	CACHE_KEYS,
 	ERROR_MESSAGES,
 	ErrorCode,
 	PAYMENT_METHODS,
@@ -16,15 +17,13 @@ import { generatePaymentIntentId, getErrorMessage, sanitizeCardNumber } from '@s
 import { isValidCardNumber } from '@shared/validation';
 
 import { AppConfig } from '@config';
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { PaymentHistoryEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { PayPalConfig } from '@internal/types';
-import { createServerError, createValidationError } from '@internal/utils';
+import { createServerError, createValidationError, detectCardBrand, extractLastFourDigits } from '@internal/utils';
 
 import { PayPalApiService } from './providers/paypal';
-import { detectCardBrand, extractLastFourDigits } from './utils/payment.utils';
 
 @Injectable()
 export class PaymentService {
@@ -422,8 +421,8 @@ export class PaymentService {
 
 	private async invalidatePaymentHistoryCache(userId: string): Promise<void> {
 		try {
-			await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.PAYMENT.HISTORY(userId));
-			await this.cacheService.invalidatePattern(SERVER_CACHE_KEYS.PAYMENT.HISTORY_PATTERN);
+			await this.cacheService.invalidatePattern(CACHE_KEYS.PAYMENT.HISTORY(userId));
+			await this.cacheService.invalidatePattern(CACHE_KEYS.PAYMENT.HISTORY_PATTERN);
 		} catch (error) {
 			logger.cacheError('invalidate payment history cache', `payment:history:${userId}`, {
 				errorInfo: { message: getErrorMessage(error) },

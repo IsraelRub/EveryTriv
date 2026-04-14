@@ -32,5 +32,16 @@
 	"paypalSdkFailed": "טעינת PayPal נכשלה. בדוק את החיבור לאינטרנט ונסה שוב.",
 	"creditsAddedToAccountShort": "הקרדיטים נוספו לחשבונך.",
 	"addCredits": "הוסף",
-	"grantedCreditsRefillHint": "מילוי ל-{{cap}} קרדיטים עד {{dateTime}}"
+	"grantedCreditsRefillHint": "מילוי ל-{{cap}} קרדיטים עד {{dateTime}}",
+	"continueToPaypal": "המשך ל-PayPal",
+	"manualPaymentConfirmTitle": "אישור תשלום מדומה",
+	"manualPaymentConfirmDescription": "מסלול זה מריץ בשרת זרימת כרטיס בסגנון פיתוח (ללא חיוב אמיתי). המשך רק אם אתה מבין שזו לא מערכת תשלום חיה.",
+	"manualPaymentConfirmPay": "אשר ושלם",
+	"creditsValueExplainer": "כל קרדיט מכסה שאלת טריוויה אחת במצבים הרגילים. במצב עם מגבלת זמן נגבים יותר קרדיטים לפי משך (ראה הגדרות משחק).",
+	"bestValue": "הכי משתלם",
+	"statusCompleted": "הושלם",
+	"statusFailed": "נכשל",
+	"statusPending": "ממתין",
+	"statusRequiresAction": "נדרשת פעולה",
+	"statusRequiresCapture": "ממתין ללכידה"
 }

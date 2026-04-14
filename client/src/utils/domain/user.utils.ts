@@ -1,14 +1,14 @@
-import type { BasicUser, UserProfileResponseType } from '@shared/types';
+import type { BasicUser, UserProfile } from '@shared/types';
 
-export function profileResponseToBasicUser(profileResponse: UserProfileResponseType): BasicUser {
-	const p = profileResponse.profile;
+export function userProfileToBasicUser(profile: UserProfile): BasicUser {
 	return {
-		id: p.id,
-		email: p.email,
-		role: p.role,
-		firstName: p.firstName,
-		lastName: p.lastName,
-		avatar: p.avatar,
-		avatarUrl: p.avatarUrl,
+		id: profile.id,
+		email: profile.email,
+		role: profile.role,
+		firstName: profile.firstName,
+		lastName: profile.lastName,
+		avatar: profile.avatar,
+		avatarUrl: profile.avatarUrl,
+		emailVerified: profile.emailVerified,
 	};
 }

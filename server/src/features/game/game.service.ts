@@ -1,8 +1,9 @@
 import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import {
+	CACHE_KEYS,
 	DifficultyLevel,
 	ERROR_MESSAGES,
 	ErrorCode,
@@ -40,16 +41,17 @@ import {
 	delay,
 	getErrorMessage,
 	isAnswerCorrect,
+	isNonEmptyString,
+	isStringArray,
 	normalizeGameData,
 	shuffle,
 	sumBy,
 	truncateWithEllipsis,
 } from '@shared/utils';
-import { isNonEmptyString, isStringArray } from '@shared/utils/core/data.utils';
 import { isLocale, isRegisteredDifficulty, isUuid, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { restoreGameDifficulty } from '@common/validation';
-import { GAME_STATUSES, GameStatus, SERVER_CACHE_KEYS } from '@internal/constants';
+import { GAME_STATUSES, GameStatus } from '@internal/constants';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
 import { CacheService, StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -81,6 +83,15 @@ export class GameService {
 		private readonly triviaGenerationService: TriviaGenerationService,
 		private readonly userStatsUpdateService: UserStatsUpdateService
 	) {}
+
+	private triviaEntityToTriviaQuestion(questionEntity: TriviaEntity): TriviaQuestion {
+		const restoredDifficulty = restoreGameDifficulty(questionEntity.difficulty, questionEntity.metadata?.difficulty);
+		const { userId: _userId, user: _user, isCorrect: _isCorrect, difficulty: _difficulty, ...rest } = questionEntity;
+		return {
+			...rest,
+			difficulty: restoredDifficulty,
+		};
+	}
 
 	private collectNonEmptyQuestionStrings(rows: { question: unknown }[]): string[] {
 		const out: string[] = [];
@@ -126,7 +137,7 @@ export class GameService {
 	}
 
 	private async getUserSeenQuestions(userId: string): Promise<Set<string>> {
-		const cacheKey = SERVER_CACHE_KEYS.GAME_HISTORY.SEEN_QUESTIONS(userId);
+		const cacheKey = CACHE_KEYS.GAME_HISTORY.SEEN_QUESTIONS(userId);
 
 		try {
 			// Try to get from cache first
@@ -143,6 +154,7 @@ export class GameService {
 				 FROM game_history gh,
 				 LATERAL jsonb_array_elements(gh.questions_data) AS elem
 				 WHERE gh.user_id = $1
+				   AND gh.created_at >= NOW() - INTERVAL '6 months'
 				   AND gh.questions_data IS NOT NULL
 				   AND jsonb_array_length(gh.questions_data) > 0
 				   AND elem->>'question' IS NOT NULL`,
@@ -427,7 +439,7 @@ export class GameService {
 
 			// Store question snapshots in session when gameId and userId provided (for consistent answer evaluation on submit)
 			if (userId && gameId && isNonEmptyString(gameId) && isUuid(gameId) && questions.length > 0) {
-				const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
+				const sessionKey = CACHE_KEYS.GAME.SESSION(userId, gameId);
 				const sessionResult = await this.storageService.get(sessionKey);
 				if (sessionResult.success && sessionResult.data && isGameSessionState(sessionResult.data)) {
 					const session = sessionResult.data;
@@ -483,15 +495,7 @@ export class GameService {
 				throw createNotFoundError('Question');
 			}
 
-			// Convert TriviaEntity to TriviaQuestion
-			const restoredDifficulty = restoreGameDifficulty(questionEntity.difficulty, questionEntity.metadata?.difficulty);
-
-			const { userId: _userId, user: _user, isCorrect: _isCorrect, difficulty: _difficulty, ...rest } = questionEntity;
-
-			return {
-				...rest,
-				difficulty: restoredDifficulty,
-			};
+			return this.triviaEntityToTriviaQuestion(questionEntity);
 		} catch (error) {
 			if (error instanceof HttpException) {
 				throw error;
@@ -508,7 +512,7 @@ export class GameService {
 		gameMode: GameMode
 	): Promise<GameSessionStartResponse> {
 		try {
-			const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
+			const sessionKey = CACHE_KEYS.GAME.SESSION(userId, gameId);
 			const sessionState: ServerGameSessionState = {
 				gameId,
 				userId,
@@ -602,7 +606,7 @@ export class GameService {
 				);
 			}
 
-			const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
+			const sessionKey = CACHE_KEYS.GAME.SESSION(userId, gameId);
 			const sessionResult = await this.storageService.get(sessionKey);
 
 			if (!sessionResult.success || !sessionResult.data) {
@@ -668,7 +672,7 @@ export class GameService {
 
 	async validateGameSession(userId: string, gameId: string): Promise<GameSessionValidationResponse> {
 		try {
-			const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
+			const sessionKey = CACHE_KEYS.GAME.SESSION(userId, gameId);
 			const sessionResult = await this.storageService.get(sessionKey);
 
 			if (!sessionResult.success || !sessionResult.data) {
@@ -725,7 +729,7 @@ export class GameService {
 				};
 			}
 
-			const sessionKey = SERVER_CACHE_KEYS.GAME.SESSION(userId, gameId);
+			const sessionKey = CACHE_KEYS.GAME.SESSION(userId, gameId);
 			const sessionResult = await this.storageService.get(sessionKey);
 
 			if (!sessionResult.success || !sessionResult.data) {
@@ -744,32 +748,37 @@ export class GameService {
 			// Calculate total time spent
 			const totalTimeSpent = sumBy(session.questions, q => q.timeSpent ?? 0);
 
-			// Create AnswerHistory from session questions
-			// Handle cases where question might be deleted (fallback to text-based data)
-			const answerHistory = await Promise.all(
-				session.questions.map(async q => {
-					try {
-						const question = await this.getQuestionById(q.questionId);
-						return createAnswerHistory(question, q.answer, q.isCorrect, q.timeSpent);
-					} catch (error) {
-						// Question was deleted or not found - create fallback data with text
-						// Note: We don't have the original question text/answers, so we use indices as fallback
-						// In a real scenario, you might want to store the question text in the session
-						logger.gameError('Question not found when finalizing session', {
-							errorInfo: { message: getErrorMessage(error) },
-							questionId: q.questionId,
-						});
-						const fallbackData: AnswerHistoryFallback = {
-							question: `Question ${truncateWithEllipsis(q.questionId, VALIDATION_LENGTH.STRING_TRUNCATION.ID_PREVIEW)} (deleted)`,
-							isCorrect: q.isCorrect,
-							timeSpent: q.timeSpent,
-							userAnswerText: `Answer ${String.fromCharCode(65 + (q.answer >= 0 ? q.answer : 0))}`,
-							correctAnswerText: 'Unknown (question deleted)',
-						};
-						return fallbackData;
-					}
-				})
+			// Batch-load trivia rows once (avoids N+1 selects per session question)
+			const rawQuestionIds = session.questions.map(q => q.questionId);
+			const uniqueValidIds = [...new Set(rawQuestionIds.filter((id): id is string => isUuid(id)))];
+			const questionEntities =
+				uniqueValidIds.length > 0
+					? await this.triviaRepository.find({
+							where: { id: In(uniqueValidIds) },
+						})
+					: [];
+			const questionById = new Map(
+				questionEntities.map(entity => [entity.id, this.triviaEntityToTriviaQuestion(entity)])
 			);
+
+			const answerHistory = session.questions.map(q => {
+				const question = questionById.get(q.questionId);
+				if (question) {
+					return createAnswerHistory(question, q.answer, q.isCorrect, q.timeSpent);
+				}
+				logger.gameError('Question not found when finalizing session', {
+					errorInfo: { message: 'missing_or_invalid_question_id' },
+					questionId: q.questionId,
+				});
+				const fallbackData: AnswerHistoryFallback = {
+					question: `Question ${truncateWithEllipsis(q.questionId, VALIDATION_LENGTH.STRING_TRUNCATION.ID_PREVIEW)} (deleted)`,
+					isCorrect: q.isCorrect,
+					timeSpent: q.timeSpent,
+					userAnswerText: `Answer ${String.fromCharCode(65 + (q.answer >= 0 ? q.answer : 0))}`,
+					correctAnswerText: 'Unknown (question deleted)',
+				};
+				return fallbackData;
+			});
 
 			// Validate difficulty is a valid GameDifficulty
 			if (!isValidGameDifficulty(session.difficulty)) {
@@ -893,7 +902,7 @@ export class GameService {
 			}
 
 			// Invalidate seen questions cache to include new questions from this game
-			const seenQuestionsCacheKey = SERVER_CACHE_KEYS.GAME_HISTORY.SEEN_QUESTIONS(userId);
+			const seenQuestionsCacheKey = CACHE_KEYS.GAME_HISTORY.SEEN_QUESTIONS(userId);
 			this.invalidateSeenQuestionsCacheAsync(seenQuestionsCacheKey, userId);
 
 			const { user: _user, answerHistory: _AnswerHistory, updatedAt: _updatedAt, ...rest } = savedHistory;
@@ -1016,7 +1025,7 @@ export class GameService {
 				});
 			}
 
-			await this.cacheService.delete(SERVER_CACHE_KEYS.GAME_HISTORY.USER(userId));
+			await this.cacheService.delete(CACHE_KEYS.GAME_HISTORY.USER(userId));
 
 			return {
 				success: true,
@@ -1058,7 +1067,7 @@ export class GameService {
 				});
 			}
 
-			await this.cacheService.delete(SERVER_CACHE_KEYS.GAME_HISTORY.USER(userId));
+			await this.cacheService.delete(CACHE_KEYS.GAME_HISTORY.USER(userId));
 
 			return {
 				success: true,

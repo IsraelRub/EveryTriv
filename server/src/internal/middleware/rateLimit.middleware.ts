@@ -2,11 +2,10 @@ import { HttpException, HttpStatus, Inject, Injectable, NestMiddleware } from '@
 import type { NextFunction, Response } from 'express';
 import type { Redis } from 'ioredis';
 
-import { RATE_LIMIT_DEFAULTS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
+import { CACHE_KEYS, RATE_LIMIT_DEFAULTS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
 import { calculateDuration, ensureErrorObject, getCurrentTimestampInSeconds } from '@shared/utils';
 
 import { AppConfig } from '@config';
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { serverLogger as logger, metricsService } from '@internal/services';
 import type { NestRequest } from '@internal/types';
 
@@ -78,8 +77,8 @@ export class RateLimitMiddleware implements NestMiddleware {
 			return next();
 		}
 
-		const key = SERVER_CACHE_KEYS.RATE_LIMIT.WINDOW(ipDisplay, req.path);
-		const burstKey = SERVER_CACHE_KEYS.RATE_LIMIT.BURST(ipDisplay);
+		const key = CACHE_KEYS.RATE_LIMIT.WINDOW(ipDisplay, req.path);
+		const burstKey = CACHE_KEYS.RATE_LIMIT.BURST(ipDisplay);
 
 		const maxRequests = this.MAX_REQUESTS_PER_WINDOW;
 		const burstLimit = this.BURST_LIMIT;

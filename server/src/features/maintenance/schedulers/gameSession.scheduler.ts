@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
-import { TIME_PERIODS_MS } from '@shared/constants';
+import { CACHE_KEYS, TIME_PERIODS_MS } from '@shared/constants';
 import { getErrorMessage, isRecord } from '@shared/utils';
 
 import { StorageService } from '@internal/modules';
@@ -22,8 +22,7 @@ export class GameSessionScheduler {
 		try {
 			logger.gameInfo('Checking for stale game sessions');
 
-			// Get all session keys matching the pattern
-			const keysResult = await this.storageService.getKeys();
+			const keysResult = await this.storageService.getKeysByRelativePattern(CACHE_KEYS.GAME.SESSION_PATTERN);
 
 			if (!keysResult.success || !keysResult.data) {
 				logger.gameError('Failed to get session keys for stale check', {
@@ -32,8 +31,7 @@ export class GameSessionScheduler {
 				return;
 			}
 
-			// Filter to only session keys
-			const sessionKeys = keysResult.data.filter(key => key.includes('active_game_session:'));
+			const sessionKeys = keysResult.data;
 
 			if (sessionKeys.length === 0) {
 				logger.gameInfo('No active sessions found');

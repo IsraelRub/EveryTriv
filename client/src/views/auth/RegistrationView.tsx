@@ -403,8 +403,6 @@ export function RegistrationView() {
 											}}
 											disabled={isLoading}
 											className='mt-0.5'
-											aria-invalid={!!termsPrivacyError}
-											aria-describedby={termsPrivacyError ? 'terms-privacy-error' : undefined}
 										/>
 										<label
 											htmlFor='terms-privacy'
@@ -440,7 +438,7 @@ export function RegistrationView() {
 										</label>
 									</div>
 									{termsPrivacyError ? (
-										<p id='terms-privacy-error' className='text-sm text-destructive flex items-center gap-1'>
+										<p className='text-sm text-destructive flex items-center gap-1'>
 											<AlertIcon size={AlertIconSize.SM} />
 											{termsPrivacyError}
 										</p>

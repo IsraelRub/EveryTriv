@@ -3,8 +3,7 @@ import Redis from 'ioredis';
 
 import { StorageType, TIME_PERIODS_MS } from '@shared/constants';
 import type { StorageOperationResult, StorageValue, TypeGuard } from '@shared/types';
-import { calculatePercentage, getErrorMessage } from '@shared/utils';
-import { createTimedResult } from '@shared/utils/infrastructure/storage.utils';
+import { calculatePercentage, createTimedResult, getErrorMessage } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import { SERVER_STORAGE_CONFIG, StorageOperation } from '@internal/constants';
@@ -211,6 +210,28 @@ export class StorageService implements IStorageService {
 			this.trackOperationWithTiming('getKeys', startTime, false, StorageType.PERSISTENT);
 			return StorageUtils.createErrorResult<string[]>(
 				`Failed to get keys: ${getErrorMessage(error)}`,
+				this.config.type
+			);
+		}
+	}
+
+	/**
+	 * Lists keys under this storage prefix matching a relative glob (e.g. `active_game_session:*`).
+	 * Uses SCAN via `scanKeys`; prefer over `getKeys` when only a subset of keys is needed.
+	 */
+	async getKeysByRelativePattern(relativePattern: string): Promise<StorageOperationResult<string[]>> {
+		const startTime = Date.now();
+		try {
+			const fullPattern = `${this.config.prefix}${relativePattern}`;
+			const keys = await scanKeys(this.redisClient, fullPattern);
+			const unprefixedKeys = keys.map((key: string) => key.replace(this.config.prefix, ''));
+
+			this.trackOperationWithTiming('getKeysByRelativePattern', startTime, true, StorageType.PERSISTENT);
+			return StorageUtils.createSuccessResult<string[]>(unprefixedKeys, this.config.type);
+		} catch (error) {
+			this.trackOperationWithTiming('getKeysByRelativePattern', startTime, false, StorageType.PERSISTENT);
+			return StorageUtils.createErrorResult<string[]>(
+				`Failed to get keys by pattern: ${getErrorMessage(error)}`,
 				this.config.type
 			);
 		}

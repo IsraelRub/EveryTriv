@@ -37,7 +37,7 @@ import type {
 } from '@shared/types';
 import { calculateScoreRate, getErrorMessage, isNonEmptyString, mean } from '@shared/utils';
 
-import type { CheckAllUsersConsistencyResponse, CurrentGameStats } from '@/types';
+import type { AdminSystemHealthDashboardBundle, CheckAllUsersConsistencyResponse, CurrentGameStats } from '@/types';
 import { apiService, clientLogger as logger } from '@/services';
 
 class AnalyticsService {
@@ -446,6 +446,26 @@ class AnalyticsService {
 			return result;
 		} catch (error) {
 			logger.userError('Failed to get system insights', { errorInfo: { message: getErrorMessage(error) } });
+			throw error;
+		}
+	}
+
+	async getAdminSystemHealthDashboard(): Promise<AdminSystemHealthDashboardBundle> {
+		try {
+			logger.userInfo('Fetching bundled admin system health dashboard');
+			const [performance, security, recommendations, insights] = await Promise.all([
+				this.getSystemPerformanceMetrics(),
+				this.getSystemSecurityMetrics(),
+				this.getSystemRecommendations(),
+				this.getSystemInsights(),
+			]);
+			const bundle: AdminSystemHealthDashboardBundle = { performance, security, recommendations, insights };
+			logger.userInfo('Admin system health dashboard loaded');
+			return bundle;
+		} catch (error) {
+			logger.userError('Failed to load admin system health dashboard', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
 			throw error;
 		}
 	}

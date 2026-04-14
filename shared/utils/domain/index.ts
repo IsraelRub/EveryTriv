@@ -1,5 +1,6 @@
 export * from './answer.utils';
 export * from './credits.utils';
+export * from './payment.utils';
 export * from './game.utils';
 export * from './gameMode.utils';
 export * from './question.utils';

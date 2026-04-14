@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import {
+	CACHE_KEYS,
 	ERROR_MESSAGES,
 	ErrorCode,
 	PlayerStatus,
@@ -17,7 +18,6 @@ import {
 import type { MultiplayerRoom, Player, RoomConfig } from '@shared/types';
 import { delay, getDisplayNameFromUserFields, getErrorMessage, isMultiplayerRoom } from '@shared/utils';
 
-import { SERVER_CACHE_KEYS } from '@internal/constants';
 import { UserEntity } from '@internal/entities';
 import { StorageService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
@@ -42,7 +42,7 @@ export class RoomService {
 			const existingRoom = this.getCachedRoom(roomId);
 			if (!existingRoom) {
 				// Also check Redis storage
-				const result = await this.storageService.get(SERVER_CACHE_KEYS.MULTIPLAYER.ROOM(roomId));
+				const result = await this.storageService.get(CACHE_KEYS.MULTIPLAYER.ROOM(roomId));
 				if (!result.success || !result.data) {
 					return roomId;
 				}
@@ -155,7 +155,7 @@ export class RoomService {
 			}
 
 			// Check Redis storage
-			const result = await this.storageService.get(SERVER_CACHE_KEYS.MULTIPLAYER.ROOM(normalizedId));
+			const result = await this.storageService.get(CACHE_KEYS.MULTIPLAYER.ROOM(normalizedId));
 			if (result.success && result.data && isMultiplayerRoom(result.data)) {
 				this.cacheRoom(result.data);
 				return result.data;
@@ -576,11 +576,7 @@ export class RoomService {
 
 		for (let attempt = 0; attempt < maxRetries; attempt++) {
 			try {
-				const result = await this.storageService.set(
-					SERVER_CACHE_KEYS.MULTIPLAYER.ROOM(room.roomId),
-					room,
-					this.ROOM_TTL
-				);
+				const result = await this.storageService.set(CACHE_KEYS.MULTIPLAYER.ROOM(room.roomId), room, this.ROOM_TTL);
 				if (result.success) {
 					return;
 				}
@@ -614,7 +610,7 @@ export class RoomService {
 
 	private async deleteRoomSnapshot(roomId: string): Promise<void> {
 		this.inMemoryRooms.delete(roomId);
-		const result = await this.storageService.delete(SERVER_CACHE_KEYS.MULTIPLAYER.ROOM(roomId));
+		const result = await this.storageService.delete(CACHE_KEYS.MULTIPLAYER.ROOM(roomId));
 		if (!result.success) {
 			logger.gameError('Failed to delete multiplayer room snapshot', {
 				roomId,
