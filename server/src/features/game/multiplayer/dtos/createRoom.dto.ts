@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 import { DEFAULT_GAME_CONFIG, DifficultyLevel, Locale, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
@@ -71,4 +71,12 @@ export class CreateRoomDto {
 	@IsOptional()
 	@IsEnum(Locale)
 	outputLanguage?: Locale;
+
+	@ApiPropertyOptional({
+		description: 'When true, the waiting room is listed on the public home lobby',
+		default: false,
+	})
+	@IsOptional()
+	@IsBoolean()
+	isPublicLobby?: boolean;
 }

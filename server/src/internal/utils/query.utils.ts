@@ -1,5 +1,7 @@
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
+import { VALIDATORS } from '@shared/validation';
+
 import { SQL_CONDITIONS, WildcardPattern } from '@internal/constants';
 
 export function addDateRangeConditions<T extends ObjectLiteral>(
@@ -37,7 +39,7 @@ export function createGroupByQuery<T extends ObjectLiteral>(
 	if (whereConditions) {
 		Object.entries(whereConditions).forEach(([key, value]) => {
 			if (value != null) {
-				if (key === 'userId' && typeof value === 'string') {
+				if (key === 'userId' && VALIDATORS.string(value)) {
 					queryBuilder.andWhere(`${alias}.${key} = :${key}`, { [key]: value });
 				} else if (key === 'topics' && Array.isArray(value)) {
 					queryBuilder.andWhere(`${alias}.${groupByField} IN (:...topics)`, {

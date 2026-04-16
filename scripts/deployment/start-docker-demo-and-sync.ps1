@@ -3,7 +3,7 @@
 	Starts the demo-tunnel Docker stack, waits until cloudflared logs contain a Quick Tunnel URL, then runs sync-demo-redirect.ps1.
 
 .DESCRIPTION
-	`pnpm run start:demo` maps here. Equivalent to: docker compose --profile demo-tunnel up -d, poll logs until https://*.trycloudflare.com appears, then update .env / everytriv-link, client rebuild, git push to Pages (default), and compose restart. Use `pnpm run start:demo:local` to skip git push (`-NoGitPush`).
+	`pnpm run start:demo` maps here. Equivalent to: docker compose --profile demo-tunnel up --build -d (same as docker:start plus demo-tunnel profile), poll logs until https://*.trycloudflare.com appears, then update .env / everytriv-link, client rebuild, git push to Pages (default), and compose restart. Use `pnpm run start:demo:local` to skip git push (`-NoGitPush`).
 
 .PARAMETER RebuildClient
 	Passed to sync-demo-redirect.ps1 (default: true).
@@ -112,8 +112,8 @@ function Wait-ForTryCloudflareUrlInLogs {
 if (-not $SkipUp) {
 	Push-Location $repoRoot
 	try {
-		Write-Host "Running: docker compose --profile demo-tunnel up -d"
-		& docker compose --profile demo-tunnel up -d
+		Write-Host "Running: docker compose --profile demo-tunnel up --build -d"
+		& docker compose --profile demo-tunnel up --build -d
 		if ($LASTEXITCODE -ne 0) {
 			throw "docker compose exited with code $LASTEXITCODE"
 		}

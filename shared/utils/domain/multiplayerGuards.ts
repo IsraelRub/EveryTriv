@@ -1,14 +1,16 @@
-import { MultiplayerEvent, RoomStatus } from '@shared/constants';
+import { MultiplayerEvent, PlayerStatus, RoomStatus } from '@shared/constants';
 import type {
 	CreateRoomResponse,
 	GameEvent,
 	GameState,
 	MultiplayerRoom,
 	Player,
+	PublicLobbyListPlayer,
+	PublicWaitingRoomDto,
 	RoomConfig,
 	RoomStateResponse,
 } from '@shared/types';
-import { isGameDifficulty, VALIDATORS } from '@shared/validation';
+import { isGameDifficulty, isRegisteredDifficulty, VALIDATORS } from '@shared/validation';
 
 import { hasProperty, hasPropertyOfType, isRecord } from '../core';
 
@@ -103,7 +105,74 @@ export function isMultiplayerRoom(value: unknown): value is MultiplayerRoom {
 		return false;
 	}
 
+	if (!VALIDATORS.boolean(value.isPublicLobby)) {
+		return false;
+	}
+
 	return true;
+}
+
+function isPlayerStatusValue(value: unknown): value is PlayerStatus {
+	return (
+		VALIDATORS.string(value) &&
+		(value === PlayerStatus.WAITING ||
+			value === PlayerStatus.PLAYING ||
+			value === PlayerStatus.ANSWERED ||
+			value === PlayerStatus.DISCONNECTED ||
+			value === PlayerStatus.FINISHED)
+	);
+}
+
+export function isPublicLobbyListPlayer(value: unknown): value is PublicLobbyListPlayer {
+	if (!isRecord(value)) {
+		return false;
+	}
+	if (
+		!VALIDATORS.string(value.displayName) ||
+		!VALIDATORS.boolean(value.isHost) ||
+		!isPlayerStatusValue(value.status)
+	) {
+		return false;
+	}
+	if (value.firstName !== undefined && !VALIDATORS.string(value.firstName)) {
+		return false;
+	}
+	if (value.lastName !== undefined && !VALIDATORS.string(value.lastName)) {
+		return false;
+	}
+	if (value.avatar !== undefined && !VALIDATORS.number(value.avatar)) {
+		return false;
+	}
+	if (value.avatarUrl !== undefined && !VALIDATORS.string(value.avatarUrl)) {
+		return false;
+	}
+	return true;
+}
+
+export function isPublicWaitingRoomDto(value: unknown): value is PublicWaitingRoomDto {
+	if (!isRecord(value)) {
+		return false;
+	}
+	if (!VALIDATORS.string(value.roomId) || !isRoomStatus(value.status)) {
+		return false;
+	}
+	if (!VALIDATORS.string(value.createdAt) || !VALIDATORS.string(value.updatedAt)) {
+		return false;
+	}
+	if (!isRoomConfig(value.config)) {
+		return false;
+	}
+	if (!isRecord(value.config) || !isRegisteredDifficulty(value.config.mappedDifficulty)) {
+		return false;
+	}
+	if (!Array.isArray(value.players) || !value.players.every(isPublicLobbyListPlayer)) {
+		return false;
+	}
+	return true;
+}
+
+export function isPublicWaitingRoomList(value: unknown): value is PublicWaitingRoomDto[] {
+	return Array.isArray(value) && value.every(isPublicWaitingRoomDto);
 }
 
 export function isCreateRoomResponse(value: unknown): value is CreateRoomResponse {

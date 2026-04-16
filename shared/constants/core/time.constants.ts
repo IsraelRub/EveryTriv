@@ -71,4 +71,5 @@ export const TIME_PERIODS_MS = {
 	readonly TWO_HUNDRED_MILLISECONDS: number;
 	readonly THREE_HUNDRED_MILLISECONDS: number;
 	readonly FOUR_HUNDRED_MILLISECONDS: number;
+	readonly SERVER_SEARCH_QUERY_DEBOUNCE_MS: number;
 };

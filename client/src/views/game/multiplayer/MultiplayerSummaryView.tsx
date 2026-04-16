@@ -16,9 +16,7 @@ import {
 	AvatarVariant,
 	GameKey,
 	getMultiplayerSummaryStorageKey,
-	MULTIPLAYER_SUMMARY_ANSWER_HISTORY_KEY,
-	MULTIPLAYER_SUMMARY_LEADERBOARD_KEY,
-	MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY,
+	MultiplayerSummaryPayloadKey,
 	PODIUM_SLOTS,
 	ROUTES,
 	SEMANTIC_ICON_TEXT,
@@ -53,9 +51,9 @@ function isBreakdownEntry(value: unknown): value is MultiplayerAnswerBreakdownEn
 		isRecord(value) &&
 		VALIDATORS.string(value.question) &&
 		typeof value.isCorrect === 'boolean' &&
-		(value.questionId === undefined || typeof value.questionId === 'string') &&
-		(value.correctAnswerText === undefined || typeof value.correctAnswerText === 'string') &&
-		(value.userAnswerText === undefined || typeof value.userAnswerText === 'string')
+		(value.questionId === undefined || VALIDATORS.string(value.questionId)) &&
+		(value.correctAnswerText === undefined || VALIDATORS.string(value.correctAnswerText)) &&
+		(value.userAnswerText === undefined || VALIDATORS.string(value.userAnswerText))
 	);
 }
 
@@ -72,12 +70,12 @@ function parsePersistedSummary(roomId: string): {
 		let leaderboard: Player[] = [];
 		let questionCount: number | null = null;
 		let personalAnswerHistory: MultiplayerAnswerBreakdownEntry[] = [];
-		if (isRecord(parsed) && MULTIPLAYER_SUMMARY_LEADERBOARD_KEY in parsed) {
-			const arr = parsed[MULTIPLAYER_SUMMARY_LEADERBOARD_KEY];
+		if (isRecord(parsed) && MultiplayerSummaryPayloadKey.Leaderboard in parsed) {
+			const arr = parsed[MultiplayerSummaryPayloadKey.Leaderboard];
 			if (Array.isArray(arr) && arr.length > 0 && arr.every(isPlayerLike)) leaderboard = arr;
-			if (VALIDATORS.number(parsed[MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY]))
-				questionCount = parsed[MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY];
-			const history = parsed[MULTIPLAYER_SUMMARY_ANSWER_HISTORY_KEY];
+			if (VALIDATORS.number(parsed[MultiplayerSummaryPayloadKey.QuestionCount]))
+				questionCount = parsed[MultiplayerSummaryPayloadKey.QuestionCount];
+			const history = parsed[MultiplayerSummaryPayloadKey.PersonalAnswerHistory];
 			if (Array.isArray(history) && history.every(isBreakdownEntry)) personalAnswerHistory = history;
 			return { leaderboard, questionCount, personalAnswerHistory };
 		}

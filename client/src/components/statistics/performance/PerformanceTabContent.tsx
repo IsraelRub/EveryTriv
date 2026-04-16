@@ -120,8 +120,9 @@ export function PerformanceTabContent() {
 				icon={Brain}
 				description={t(StatisticsPerformanceKey.CORE_METRICS)}
 			>
-				<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+				<div className='grid grid-cols-4 gap-4'>
 					<StatCard
+						stackIconLabel
 						icon={GamepadIcon}
 						label={t(StatisticsPerformanceKey.TOTAL_GAMES)}
 						value={gameStats?.totalGames ?? 0}
@@ -129,6 +130,7 @@ export function PerformanceTabContent() {
 						isLoading={analyticsLoading}
 					/>
 					<StatCard
+						stackIconLabel
 						icon={Medal}
 						label={t(StatisticsPerformanceKey.BEST_SCORE)}
 						value={gameStats?.bestScore ?? 0}
@@ -136,6 +138,7 @@ export function PerformanceTabContent() {
 						isLoading={analyticsLoading}
 					/>
 					<StatCard
+						stackIconLabel
 						icon={Timer}
 						label={t(StatisticsPerformanceKey.TOTAL_PLAY_TIME)}
 						value={formatPlayTime(gameStats?.totalPlayTime ?? 0, PlayTimeUnit.SECONDS)}
@@ -143,6 +146,7 @@ export function PerformanceTabContent() {
 						isLoading={analyticsLoading}
 					/>
 					<StatCard
+						stackIconLabel
 						icon={CalendarDays}
 						label={t(StatisticsPerformanceKey.CURRENT_STREAK)}
 						value={formatNumericValue(performanceStats?.streakDays, 0, ` ${t(CommonKey.DAYS)}`)}
@@ -158,7 +162,7 @@ export function PerformanceTabContent() {
 					icon={TrendingUp}
 					description={t(StatisticsPerformanceKey.COMPARISON_DESCRIPTION)}
 				>
-					<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+					<div className='grid grid-cols-2 gap-6'>
 						<div className='space-y-4'>
 							<h4 className='text-sm font-medium text-muted-foreground mb-3'>
 								{t(StatisticsPerformanceKey.SUCCESS_RATE)}
@@ -260,11 +264,11 @@ export function PerformanceTabContent() {
 						</div>
 
 						{processedComparison.userMetrics?.rank != null && processedComparison.userMetrics?.percentile != null && (
-							<div className='space-y-4 md:col-span-2'>
+							<div className='col-span-2 space-y-4'>
 								<h4 className='text-sm font-medium text-muted-foreground mb-3'>
 									{t(StatisticsPerformanceKey.RANKING)}
 								</h4>
-								<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+								<div className='grid grid-cols-2 gap-4'>
 									<StatCard
 										icon={Hash}
 										label={t(StatisticsPerformanceKey.YOUR_RANK)}
@@ -299,7 +303,7 @@ export function PerformanceTabContent() {
 				</SectionCard>
 			)}
 
-			<div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+			<div className='grid grid-cols-2 gap-8'>
 				<PerformanceAnalysis
 					mainData={userDifficultyData?.difficulties}
 					isLoading={analyticsLoading}

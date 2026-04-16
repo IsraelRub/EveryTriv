@@ -147,5 +147,7 @@
 	"shareMultiplayerShortWon": "I just played {{appName}} multiplayer! I won!",
 	"shareMultiplayerShortScored": "I just played {{appName}} multiplayer! Final score: {{points}} points.",
 	"shareSingleScore": "I scored {{score}}/{{total}} ({{percentage}}%) on {{topic}} {{difficulty}} difficulty in {{appName}}!",
+	"publicLobbyListHomeLabel": "List this room on the home page",
+	"publicLobbyListHomeDescription": "Anyone can see the topic, settings, and room code while you are waiting for players.",
 	"backgroundWords": ["History", "Science", "Sports", "Geography", "Art", "Music", "Cinema", "Literature", "Technology", "Mathematics", "Biology", "Physics", "Chemistry", "Politics", "Economics", "Philosophy", "Psychology", "Astronomy", "Mythology", "Culture", "Nature", "Animals", "Food", "Fashion", "Architecture", "Medicine", "Engineering", "Space", "Ocean", "Ecology", "Anthropology", "Archaeology", "Linguistics", "Geology", "Botany", "Zoology", "Anatomy", "Genetics", "Robotics", "Programming", "Gaming", "Comics", "Television", "Theater", "Dance", "Photography", "Sculpture", "Painting", "Poetry", "Novels", "Biography", "Military", "Aviation"]
 }

@@ -119,6 +119,7 @@ export interface ServerGameSessionState {
 	startedAt: string;
 	lastHeartbeat?: string;
 	questions: GameSessionQuestion[];
+	sessionExcludeQuestionTexts?: string[];
 
 	questionSnapshots?: Record<string, GameSessionQuestionSnapshot>;
 	currentScore: number;

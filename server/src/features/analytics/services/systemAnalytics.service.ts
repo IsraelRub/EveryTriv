@@ -9,6 +9,7 @@ import {
 } from '@shared/constants';
 import type { SecurityMetrics, SystemInsights, SystemPerformanceMetrics, SystemRecommendation } from '@shared/types';
 import { calculatePercentage, getErrorMessage, mean, sum } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger, metricsService } from '@internal/services';
 
@@ -172,7 +173,7 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 			totalOps > 0 ? `Cache miss rate: ${(missRate * 100).toFixed(1)}%` : null,
 			totalOps > 0 ? `Storage success rate: ${successRate.toFixed(1)}%` : null,
 			`Total storage ops: ${totalOps}`,
-		].filter((s): s is string => typeof s === 'string');
+		].filter((s): s is string => VALIDATORS.string(s));
 
 		const status =
 			perf.errorRate > SYSTEM_HEALTH_THRESHOLDS.ERROR_RATE_ATTENTION_PERCENT ||

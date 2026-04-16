@@ -8,6 +8,7 @@ import {
 	VALIDATION_LENGTH,
 } from '@shared/constants';
 import { executeRetry, getErrorMessage, isProviderAuthError, isRecord, truncateWithEllipsis } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import {
 	GROQ_API_BASE_URL,
@@ -91,15 +92,14 @@ export class GroqApiClient {
 		if ('messages' in sanitizedBody && Array.isArray(sanitizedBody.messages)) {
 			sanitizedBody.messages = sanitizedBody.messages.map((msg: GroqMessageForLog) => ({
 				role: msg.role,
-				content:
-					typeof msg.content === 'string'
-						? truncateWithEllipsis(msg.content, VALIDATION_LENGTH.STRING_TRUNCATION.CONTENT_PREVIEW)
-						: '[content]',
+				content: VALIDATORS.string(msg.content)
+					? truncateWithEllipsis(msg.content, VALIDATION_LENGTH.STRING_TRUNCATION.CONTENT_PREVIEW)
+					: '[content]',
 			}));
 		}
 
 		const modelValue =
-			config.body && isRecord(config.body) && 'model' in config.body && typeof config.body.model === 'string'
+			config.body && isRecord(config.body) && 'model' in config.body && VALIDATORS.string(config.body.model)
 				? config.body.model
 				: undefined;
 

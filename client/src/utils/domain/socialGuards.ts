@@ -1,12 +1,9 @@
 import { isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-export function isSocialLinkItem(value: unknown): value is {
-	name: string;
-	url: string;
-	hoverColor: string;
-	icon?: unknown;
-} {
+import type { SocialLinkItem, SocialSharePlatform } from '../../types/ui/social.types';
+
+export function isSocialLinkItem(value: unknown): value is SocialLinkItem {
 	if (!isRecord(value)) {
 		return false;
 	}
@@ -19,13 +16,7 @@ export function isSocialLinkItem(value: unknown): value is {
 	);
 }
 
-export function isSocialSharePlatform(value: unknown): value is {
-	name: string;
-	url: string;
-	hoverColor: string;
-	shareColor: string;
-	getShareUrl: (text: string, url: string) => string;
-} {
+export function isSocialSharePlatform(value: unknown): value is SocialSharePlatform {
 	if (!isRecord(value)) {
 		return false;
 	}

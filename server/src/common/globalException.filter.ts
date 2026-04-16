@@ -19,6 +19,7 @@ import {
 	isValidationErrorResponse,
 	parseValidationErrorResponse,
 } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 import type { NestRequest } from '@internal/types';
@@ -43,7 +44,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
 				if (validationError) {
 					// Debug: Log validation error details
-					const errorMessage = typeof validationError.message === 'string' ? validationError.message : undefined;
+					const errorMessage = VALIDATORS.string(validationError.message) ? validationError.message : undefined;
 					const errorArray = Array.isArray(validationError.errors) ? validationError.errors : undefined;
 					logger.validationError('global_validation_error', '[REDACTED]', 'validation_failed', {
 						path: request.url ?? 'unknown',

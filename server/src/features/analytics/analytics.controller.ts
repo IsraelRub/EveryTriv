@@ -21,7 +21,7 @@ import {
 } from '@shared/constants';
 import type { AnalyticsEventData, LeaderboardEntry, LeaderboardResponse } from '@shared/types';
 import { getErrorMessage, hasProperty, isRecord } from '@shared/utils';
-import { isLeaderboardPeriod } from '@shared/validation';
+import { isLeaderboardPeriod, VALIDATORS } from '@shared/validation';
 
 import { Cache, CurrentUser, CurrentUserId, Public, Roles } from '@common/decorators';
 import { LEADERBOARD_PERIOD_CONFIG, LEADERBOARD_SCORE_FIELDS } from '@internal/constants';
@@ -331,7 +331,7 @@ export class AnalyticsController {
 			for (const t of topicsArray) {
 				if (isRecord(t) && hasProperty(t, 'topic') && hasProperty(t, 'totalGames')) {
 					const topic = String(t.topic ?? '');
-					const totalGames = typeof t.totalGames === 'number' ? t.totalGames : Number(t.totalGames) || 0;
+					const totalGames = VALIDATORS.number(t.totalGames) ? t.totalGames : Number(t.totalGames) || 0;
 					if (topic) topicNames.push(topic);
 					topicsByCount[topic || 'unknown'] = totalGames;
 				}

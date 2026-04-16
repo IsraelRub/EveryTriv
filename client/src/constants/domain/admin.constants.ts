@@ -87,3 +87,14 @@ export enum SystemInsightAccordion {
 	HEALTH = 'si-health',
 	TRENDS = 'si-trends',
 }
+
+export const ADMIN_PRICING_PACKAGE = {
+	credits: {
+		min: 1,
+		max: 100_000,
+	},
+	price: {
+		min: 0.01,
+		max: 99_999.99,
+	},
+} as const;

@@ -105,11 +105,21 @@ export class LanguageToolService {
 		} as const;
 
 		if ('outputLanguage' in params) {
-			const ltLang =
-				params.outputLanguage === Locale.HE
-					? LANGUAGE_TOOL_CONSTANTS.LANGUAGES.HEBREW
-					: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.ENGLISH;
-			const result = await this.checkText(trimmed, { ...base, language: ltLang, detectLanguage: false });
+			if (params.outputLanguage === Locale.HE) {
+				const result = await this.checkText(trimmed, {
+					...base,
+					useExternalAPI: false,
+					language: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.HEBREW,
+					detectLanguage: false,
+				});
+				return this.enforceExpectedLocale(result, trimmed, params.outputLanguage);
+			}
+
+			const result = await this.checkText(trimmed, {
+				...base,
+				language: LANGUAGE_TOOL_CONSTANTS.LANGUAGES.ENGLISH,
+				detectLanguage: false,
+			});
 			return this.enforceExpectedLocale(result, trimmed, params.outputLanguage);
 		}
 

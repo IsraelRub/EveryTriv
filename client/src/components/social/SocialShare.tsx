@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Hash, Share2 } from 'lucide-react';
 
-import { APP_NAME, TIME_PERIODS_MS } from '@shared/constants';
+import { APP_NAME } from '@shared/constants';
 import { calculatePercentage, formatTitle, getErrorMessage } from '@shared/utils';
 
 import {
@@ -28,11 +28,11 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components';
+import { useClipboardCopy } from '@/hooks';
 
 export function SocialShare({ score, total, topic, difficulty, mode, shareText: shareTextOverride }: SocialShareProps) {
 	const { t } = useTranslation(['social', 'game']);
 	const [isOpen, setIsOpen] = useState(false);
-	const [copied, setCopied] = useState(false);
 
 	const percentage = calculatePercentage(score ?? 0, total ?? 0);
 	const difficultyDisplay = getDifficultyDisplayLabel(difficulty, t);
@@ -48,6 +48,18 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 			difficulty: difficultyDisplay,
 			appName: APP_NAME,
 		});
+
+	const { copied, copy: copyShareText } = useClipboardCopy({
+		text: scoreText,
+		onSuccess: () => {
+			logger.userSuccess('Link copied to clipboard');
+		},
+		onError: (error: unknown) => {
+			logger.userError('Failed to copy link to clipboard', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+		},
+	});
 
 	// Share URL: home page
 	const shareUrl = window.location.origin;
@@ -68,20 +80,6 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 		window.open(url, '_blank', 'width=600,height=400');
 		setIsOpen(false);
 		logger.userInfo(`Sharing score on ${platformName}`, { platform: platformName, score, gameQuestionCount: total });
-	};
-
-	const handleCopyLink = async () => {
-		try {
-			// Copy only the text without URL (platforms handle URLs separately)
-			await navigator.clipboard.writeText(scoreText);
-			setCopied(true);
-			setTimeout(() => setCopied(false), TIME_PERIODS_MS.TWO_SECONDS);
-			logger.userSuccess('Link copied to clipboard');
-		} catch (error) {
-			logger.userError('Failed to copy link to clipboard', {
-				errorInfo: { message: getErrorMessage(error) },
-			});
-		}
 	};
 
 	return (
@@ -137,7 +135,7 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 					<Button
 						variant={VariantBase.SECONDARY}
 						className='mb-4 flex w-full items-center justify-center gap-2'
-						onClick={handleCopyLink}
+						onClick={() => void copyShareText()}
 					>
 						<AnimatedCopyFeedbackIcon success={copied} />
 						{copied ? t(SocialKey.COPIED) : t(SocialKey.COPY_TO_CLIPBOARD)}

@@ -21,7 +21,12 @@ import {
 } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { getMultiplayerSummaryStorageKey, LoadingMessages, STORAGE_KEYS } from '@/constants';
+import {
+	getMultiplayerSummaryStorageKey,
+	LoadingMessages,
+	MultiplayerSummaryPayloadKey,
+	STORAGE_KEYS,
+} from '@/constants';
 import type { MultiplayerUnsubscribe } from '@/types';
 import { clientLogger as logger, multiplayerService, storageService } from '@/services';
 import {
@@ -240,7 +245,7 @@ export const useMultiplayer = (roomId?: string) => {
 				const userId = currentUserIdRef.current;
 				const questionText = currentGameState.currentQuestion?.question;
 				const results = event.data.results;
-				if (userId && typeof questionText === 'string' && Array.isArray(results)) {
+				if (userId && VALIDATORS.string(questionText) && Array.isArray(results)) {
 					const myResult = results.find(r => r.userId === userId);
 					if (myResult !== undefined) {
 						const currentQuestion = currentGameState.currentQuestion;
@@ -300,9 +305,11 @@ export const useMultiplayer = (roomId?: string) => {
 					const payload =
 						questionCount > 0 || personalAnswerHistory.length > 0
 							? {
-									leaderboard: finalLeaderboard,
-									...(questionCount > 0 && { questionCount }),
-									...(personalAnswerHistory.length > 0 && { personalAnswerHistory }),
+									[MultiplayerSummaryPayloadKey.Leaderboard]: finalLeaderboard,
+									...(questionCount > 0 && { [MultiplayerSummaryPayloadKey.QuestionCount]: questionCount }),
+									...(personalAnswerHistory.length > 0 && {
+										[MultiplayerSummaryPayloadKey.PersonalAnswerHistory]: personalAnswerHistory,
+									}),
 								}
 							: finalLeaderboard;
 					sessionStorage.setItem(key, JSON.stringify(payload));
@@ -446,6 +453,19 @@ export const useMultiplayer = (roomId?: string) => {
 		}
 	}, [room]);
 
+	const updatePublicLobbyVisibility = useCallback(
+		(nextIsPublic: boolean) => {
+			if (!room?.roomId) {
+				return;
+			}
+			multiplayerService.emit(MultiplayerEvent.UPDATE_ROOM_LOBBY_VISIBILITY, {
+				roomId: room.roomId,
+				isPublicLobby: nextIsPublic,
+			});
+		},
+		[room?.roomId]
+	);
+
 	const startGame = useCallback(() => {
 		const roomIdToStart = room?.roomId;
 		if (roomIdToStart) {
@@ -559,6 +579,7 @@ export const useMultiplayer = (roomId?: string) => {
 		createRoom,
 		joinRoom,
 		leaveRoom,
+		updatePublicLobbyVisibility,
 		startGame,
 		submitAnswer,
 		loadingStep,

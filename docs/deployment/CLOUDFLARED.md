@@ -45,7 +45,7 @@ cloudflared tunnel --no-autoupdate --url http://127.0.0.1:3000
 
 ```text
 docker compose up -d
-docker compose --profile demo-tunnel up -d
+docker compose --profile demo-tunnel up --build -d
 ```
 
 **רק קונטיינרים + טונל (בלי סנכרון `.env` / everytriv-link):**

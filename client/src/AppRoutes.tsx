@@ -82,7 +82,7 @@ export default function AppRoutes() {
 				mode,
 				topic: isNonEmptyString(game.defaultTopic) ? game.defaultTopic : DEFAULT_GAME_CONFIG.defaultTopic,
 				difficulty:
-					typeof game.defaultDifficulty === 'string' && isRegisteredDifficulty(game.defaultDifficulty)
+					VALIDATORS.string(game.defaultDifficulty) && isRegisteredDifficulty(game.defaultDifficulty)
 						? toDifficultyLevel(game.defaultDifficulty)
 						: DEFAULT_GAME_CONFIG.defaultDifficulty,
 				timeLimit: VALIDATORS.number(game.timeLimit) ? game.timeLimit : defaults.timeLimit,

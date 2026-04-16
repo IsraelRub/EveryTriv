@@ -5,6 +5,7 @@ import { Calendar, CheckCircle, FileQuestion, GamepadIcon, Gauge, Tag } from 'lu
 import { EMPTY_VALUE } from '@shared/constants';
 import type { AdminTriviaQuestion } from '@shared/types';
 import { formatTitle, getCorrectAnswerIndex, namesMatch } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import {
 	AdminKey,
@@ -104,7 +105,7 @@ export const TriviaManagementTable = memo(function TriviaManagementTable() {
 				id: 'topic',
 				type: DataTableColumnType.BADGE,
 				getValue: row => row.topic,
-				format: v => formatTitle(typeof v === 'string' ? v : undefined),
+				format: v => formatTitle(VALIDATORS.string(v) ? v : undefined),
 				headerIcon: <Tag />,
 				sortField: TriviaSortField.TOPIC,
 			},

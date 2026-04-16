@@ -1,6 +1,10 @@
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
 import type { UserRole } from '@shared/constants';
+
+export interface AppAuthBootstrapProps {
+	children: ReactNode;
+}
 
 export interface ProtectedRouteProps {
 	children: ReactElement | ReactElement[];

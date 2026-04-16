@@ -13,7 +13,16 @@ import {
 } from '@shared/constants';
 import { generateCreditPackageId } from '@shared/utils';
 
-import { AdminKey, ButtonSize, CommonKey, QUERY_KEYS, ROUTES, SkeletonVariant, VariantBase } from '@/constants';
+import {
+	ADMIN_PRICING_PACKAGE,
+	AdminKey,
+	ButtonSize,
+	CommonKey,
+	QUERY_KEYS,
+	ROUTES,
+	SkeletonVariant,
+	VariantBase,
+} from '@/constants';
 import type { AdminPricingResponse, AdminPricingUpdatePayload, CreditPackageEditItem } from '@/types';
 import { adminService } from '@/services';
 import {
@@ -44,11 +53,6 @@ import {
 } from '@/components';
 import { useUserRole } from '@/hooks';
 
-const MIN_PACKAGE_CREDITS = 1;
-const MAX_PACKAGE_CREDITS = 100_000;
-const MIN_PACKAGE_PRICE = 0.01;
-const MAX_PACKAGE_PRICE = 99_999.99;
-
 function toLocalPackages(packages: AdminPricingResponse['packages']): CreditPackageEditItem[] {
 	return packages.map(p => ({
 		id: p.id,
@@ -59,11 +63,13 @@ function toLocalPackages(packages: AdminPricingResponse['packages']): CreditPack
 }
 
 function validatePackageCredits(value: number): boolean {
-	return Number.isInteger(value) && value >= MIN_PACKAGE_CREDITS && value <= MAX_PACKAGE_CREDITS;
+	return (
+		Number.isInteger(value) && value >= ADMIN_PRICING_PACKAGE.credits.min && value <= ADMIN_PRICING_PACKAGE.credits.max
+	);
 }
 
 function validatePackagePrice(value: number): boolean {
-	return Number.isFinite(value) && value >= MIN_PACKAGE_PRICE && value <= MAX_PACKAGE_PRICE;
+	return Number.isFinite(value) && value >= ADMIN_PRICING_PACKAGE.price.min && value <= ADMIN_PRICING_PACKAGE.price.max;
 }
 
 function validatePackagesForSave(packages: CreditPackageEditItem[]): AdminKey | null {
@@ -284,8 +290,8 @@ export function PricingConfigurationSection() {
 										<TableCell>
 											<Input
 												type='number'
-												min={MIN_PACKAGE_CREDITS}
-												max={MAX_PACKAGE_CREDITS}
+												min={ADMIN_PRICING_PACKAGE.credits.min}
+												max={ADMIN_PRICING_PACKAGE.credits.max}
 												step={1}
 												value={pkg.credits}
 												onChange={e => handleCreditsChange(index, e.target.value)}
@@ -296,8 +302,8 @@ export function PricingConfigurationSection() {
 										<TableCell>
 											<Input
 												type='number'
-												min={MIN_PACKAGE_PRICE}
-												max={MAX_PACKAGE_PRICE}
+												min={ADMIN_PRICING_PACKAGE.price.min}
+												max={ADMIN_PRICING_PACKAGE.price.max}
 												step={0.01}
 												value={pkg.price}
 												onChange={e => handlePriceChange(index, e.target.value)}

@@ -155,7 +155,6 @@ Shared code:
 - Use camelCase for variables and functions
 - Use UPPER_CASE for constants
 - Use camelCase for file names
-- Add JSDoc comments for public APIs
 - Follow NestJS naming conventions
 
 ## 🔄 State Management
@@ -167,7 +166,6 @@ Shared code:
 
 ## 📝 Documentation
 
-- Use JSDoc comments for all public methods
 - Document environment variables
 - Keep README.md up to date
 - Use OpenAPI/Swagger for API documentation

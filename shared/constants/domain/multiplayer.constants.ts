@@ -40,6 +40,7 @@ export enum MultiplayerEvent {
 
 	// Emit events (client to server)
 	CREATE_ROOM = 'create-room',
+	UPDATE_ROOM_LOBBY_VISIBILITY = 'update-room-lobby-visibility',
 	JOIN_ROOM = 'join-room',
 	LEAVE_ROOM = 'leave-room',
 	START_GAME = 'start-game',

@@ -34,5 +34,14 @@
 	"emptyStatsDescription": "שחק משחקים כדי לראות כאן את הסטטיסטיקות",
 	"popularTopicsTitle": "נושאים פופולריים",
 	"popularTopicsDesc": "הנושאים הכי משוחקים",
-	"gamesPlayedTooltip": "{{count}} משחקים שוחקו"
+	"gamesPlayedTooltip": "{{count}} משחקים שוחקו",
+	"tabOverview": "סקירה",
+	"tabPublicLobbies": "חדרי מולטיפלייר פתוחים",
+	"publicLobbySearchLabel": "חיפוש לפי נושא",
+	"publicLobbySearchPlaceholder": "הקלד חלק מהנושא…",
+	"publicLobbyJoin": "הצטרף לחדר",
+	"publicLobbyLoginToJoin": "התחבר כדי להצטרף",
+	"publicLobbyEmpty": "אין כרגע חדרים ציבוריים במצב המתנה.",
+	"publicLobbyLoadError": "לא ניתן לטעון את רשימת החדרים",
+	"publicLobbyRefreshing": "מעדכן…"
 }

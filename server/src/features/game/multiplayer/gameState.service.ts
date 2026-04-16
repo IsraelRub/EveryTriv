@@ -17,7 +17,7 @@ import type {
 	TriviaQuestion,
 } from '@shared/types';
 import { calculateAnswerScore, getErrorMessage, isAnswerCorrect } from '@shared/utils';
-import { toDifficultyLevel } from '@shared/validation';
+import { toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 
@@ -65,7 +65,7 @@ export class GameStateService {
 		const playersAnswers: PlayerAnswerMap = Object.fromEntries(
 			room.players
 				.filter((player): player is typeof player & { currentAnswer: number } => {
-					return typeof player.currentAnswer === 'number' && Number.isFinite(player.currentAnswer);
+					return VALIDATORS.number(player.currentAnswer);
 				})
 				.map(player => [player.userId, player.currentAnswer])
 		);

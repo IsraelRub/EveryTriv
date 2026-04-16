@@ -6,7 +6,7 @@ import { getErrorMessage } from '@shared/utils';
 
 import { serverLogger as logger } from '@internal/services';
 
-import { TriviaGenerationService } from './triviaGeneration/triviaGeneration.service';
+import { TriviaGenerationService } from './triviaGeneration.service';
 
 @Controller(API_ENDPOINTS.AI_PROVIDERS.BASE)
 export class AiProvidersController {

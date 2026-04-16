@@ -98,6 +98,9 @@ export const VALIDATION_LENGTH = {
 	},
 } as const;
 
+/** Debounce before calling text language / spelling validation from the game settings form. */
+export const LANGUAGE_VALIDATION_DEBOUNCE_MS = 500;
+
 export enum LengthKey {
 	TOPIC = 'TOPIC',
 	CUSTOM_DIFFICULTY = 'CUSTOM_DIFFICULTY',
@@ -168,17 +171,50 @@ export const VALIDATION_COUNT = {
 		MIN: 1,
 		MAX: 15,
 	},
-
 	LIST_QUERY: {
 		LIMIT_MIN: 1,
 		LIMIT_MAX: 1000,
 		OFFSET_MIN: 0,
+		/** Default page size for client admin tables and other paginated UI lists */
+		DEFAULT_PAGE_SIZE: 10,
+	},
+	MULTIPLAYER_PUBLIC_LOBBY_LIST: {
+		/** Default page size for `GET /multiplayer/rooms/public-waiting` */
+		LIMIT: 30,
+		LIMIT_MIN: 1,
+		LIMIT_MAX: 50,
+	},
+	/** Admin `GET /user/admin/all` pagination (aligned with `UserCoreService.getAllUsers` clamp) */
+	ADMIN_USERS_LIST: {
+		LIMIT_MIN: 1,
+		LIMIT_MAX: 200,
+		DEFAULT_LIMIT: 50,
+		DEFAULT_OFFSET: 0,
+	},
+	/** Admin `GET /admin/trivia` pagination (aligned with `AdminService.getAllTriviaQuestions` clamp) */
+	ADMIN_TRIVIA_LIST: {
+		LIMIT_MIN: 1,
+		LIMIT_MAX: 1000,
+		DEFAULT_LIMIT: 500,
+		DEFAULT_OFFSET: 0,
 	},
 } as const;
 
 export const LANGUAGE_VALIDATION_THRESHOLDS = {
 	EXCESSIVE_PUNCTUATION: 0.3, // 30% of words
 	EXCESSIVE_CAPITALIZATION: 0.2, // 20% of words
+	/** Minimum non-space/non-punct length before gibberish heuristics apply */
+	GIBBERISH_MIN_CLEANED_LENGTH: 4,
+	/** Flag when (unique characters / cleaned length) is at or below this (e.g. "ababab" → 2/6 ≈ 0.33) */
+	GIBBERISH_MAX_UNIQUE_TO_LENGTH_RATIO: 0.35,
+	/** Same character repeated this many times in a row (e.g. 3 → "aaa") */
+	GIBBERISH_MAX_SAME_CHAR_STREAK: 3,
+	GIBBERISH_MAX_CONSONANT_STREAK_EN: 5,
+	GIBBERISH_LATIN_MIN_LETTERS_FOR_CONSONANT_CHECK: 4,
+	GIBBERISH_HEBREW_MIN_LETTERS_FOR_MATRES_CHECK: 5,
+	GIBBERISH_HEBREW_MAX_STREAK_WITHOUT_MATRES: 6,
+	/** Word-level: minimum number of whitespace-separated tokens for the "all single-letter" check */
+	GIBBERISH_MIN_SINGLE_CHAR_WORD_COUNT: 3,
 } as const;
 
 export const LANGUAGE_TOOL_CONSTANTS = {
@@ -232,7 +268,7 @@ export const COMMON_MISSPELLINGS = {
 
 export const LLM_PARSER = {
 	SMART_DOUBLE_QUOTES_REGEX: /[""„‟«»＂]/g,
-	ALLOWED_KEYS: new Set(['question', 'answers']),
+	ALLOWED_KEYS: new Set(['question', 'answers', 'generationDeclinedReason']),
 } as const;
 
 export const GRAMMAR_PATTERNS = [

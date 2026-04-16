@@ -9,12 +9,20 @@ import {
 	NotFoundException,
 	Param,
 	Post,
+	Query,
 } from '@nestjs/common';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { API_ENDPOINTS, DEFAULT_LANGUAGE, ErrorCode, Locale, LOCALHOST_CONFIG } from '@shared/constants';
-import type { CreateRoomResponse, MultiplayerRoom, RoomConfig, RoomStateResponse } from '@shared/types';
+import { API_ENDPOINTS, DEFAULT_LANGUAGE, ErrorCode, LOCALHOST_CONFIG } from '@shared/constants';
+import type {
+	CreateRoomResponse,
+	MultiplayerRoom,
+	PublicWaitingRoomDto,
+	RoomConfig,
+	RoomStateResponse,
+} from '@shared/types';
 import { getErrorMessage, isRecord } from '@shared/utils';
-import { isLocale, isRoomId, toDifficultyLevel, VALIDATORS } from '@shared/validation';
+import { isRoomId, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { CurrentUserId, Public } from '@common/decorators';
 import { GameTextLanguageGateService } from '@common/validation';
@@ -26,10 +34,17 @@ import type {
 	SubmitAnswerHttpResponse,
 } from '@internal/types';
 
-import { CreateRoomDto, JoinRoomDto, MultiplayerSubmitAnswerDto, RoomActionDto } from './dtos';
+import {
+	CreateRoomDto,
+	JoinRoomDto,
+	MultiplayerSubmitAnswerDto,
+	PublicWaitingRoomsQueryDto,
+	RoomActionDto,
+} from './dtos';
 import { MultiplayerService } from './multiplayer.service';
 import { RoomService } from './room.service';
 
+@ApiTags('Multiplayer')
 @Controller(API_ENDPOINTS.MULTIPLAYER.BASE)
 export class MultiplayerController {
 	private readonly roomCache = new Map<string, MultiplayerRoom>();
@@ -65,8 +80,7 @@ export class MultiplayerController {
 		this.ensureAuthenticated(userId);
 
 		try {
-			const outputLanguage: Locale =
-				body.outputLanguage != null && isLocale(body.outputLanguage) ? body.outputLanguage : DEFAULT_LANGUAGE;
+			const outputLanguage = body.outputLanguage ?? DEFAULT_LANGUAGE;
 			await this.gameTextLanguageGate.assertTriviaGameInputValid(body.topic, body.difficulty, outputLanguage);
 
 			const config: RoomConfig = {
@@ -76,8 +90,9 @@ export class MultiplayerController {
 				maxPlayers: body.maxPlayers,
 				answerCount: body.answerCount,
 				mappedDifficulty: body.mappedDifficulty ?? toDifficultyLevel(body.difficulty),
+				outputLanguage,
 			};
-			const result = await this.multiplayerService.createRoom(userId, config);
+			const result = await this.multiplayerService.createRoom(userId, config, body.isPublicLobby ?? false);
 
 			logger.apiCreate('multiplayer_room_create', {
 				userId,
@@ -250,6 +265,20 @@ export class MultiplayerController {
 			});
 			throw error;
 		}
+	}
+
+	@Get('rooms/public-waiting')
+	@Public()
+	@ApiOperation({ summary: 'List public multiplayer rooms currently in waiting state' })
+	async listPublicWaitingRooms(@Query() query: PublicWaitingRoomsQueryDto): Promise<PublicWaitingRoomDto[]> {
+		const outputLanguage = query.lang ?? DEFAULT_LANGUAGE;
+		const rooms = await this.multiplayerService.listPublicWaitingLobbies(query.q, query.limit, outputLanguage);
+
+		logger.apiRead('multiplayer_public_waiting_lobbies', {
+			count: rooms.length,
+		});
+
+		return rooms;
 	}
 
 	@Get('rooms/:roomId')

@@ -363,6 +363,8 @@ export interface LogMeta {
 	gameMode?: GameMode;
 	overrideGameId?: string | null;
 	gameModes?: GameMode[];
+	/** LLM declined to generate (machine reason from trivia pipeline) */
+	generationDeclinedReason?: string;
 	gameQuestionCount?: number;
 	googleId?: string;
 	hasAuthAlgo?: boolean;

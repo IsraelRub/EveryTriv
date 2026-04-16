@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 
 import { GameKey } from '@/constants';
 import type { SingleSessionDialogsProps } from '@/types';
+import { getTranslatedErrorMessage } from '@/utils';
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -15,7 +16,7 @@ import {
 export function SingleSessionDialogs({
 	showErrorDialog,
 	setShowErrorDialog,
-	errorMessage,
+	sessionError,
 	showCreditsWarning,
 	setShowCreditsWarning,
 	onSafeExitFromLoading,
@@ -27,7 +28,9 @@ export function SingleSessionDialogs({
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>{t(GameKey.ERROR)}</AlertDialogTitle>
-						<AlertDialogDescription>{errorMessage}</AlertDialogDescription>
+						<AlertDialogDescription>
+							{sessionError != null ? getTranslatedErrorMessage(t, sessionError) : ''}
+						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogAction onClick={onSafeExitFromLoading}>{t(GameKey.OK)}</AlertDialogAction>

@@ -44,7 +44,7 @@ export function MultiplayerGameView() {
 	const answerCountsForQuestionId = useAppSelector(state => state.multiplayer.answerCountsForQuestionId);
 
 	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-	/** When true, answer buttons are disabled (timer ended or reveal phase). */
+
 	const [selectionLocked, setSelectionLocked] = useState(false);
 
 	const selectedAnswerRef = useRef<number | null>(null);

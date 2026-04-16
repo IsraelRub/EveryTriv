@@ -2,6 +2,12 @@ import { LeaderboardPeriod, TIME_PERIODS_MS } from '@shared/constants';
 
 import type { GroqModelConfig } from '@internal/types';
 
+/** Server-side LLM trivia pipeline parse outcome (not exposed to client API types). */
+export enum LLMResponseStatus {
+	SUCCESS = 'success',
+	ERROR = 'error',
+}
+
 export enum GameStatus {
 	IN_PROGRESS = 'in_progress',
 	COMPLETED = 'completed',
@@ -106,3 +112,36 @@ export const GROQ_DEFAULT_MAX_TOKENS = 512;
 export const GROQ_PROVIDER_MAX_TOKENS = 8192;
 
 export const GROQ_PROVIDER_VERSION = '1.0';
+
+/**
+ * Machine-only values returned by the LLM in `generationDeclinedReason` when it cannot generate a question.
+ * Always English snake_case so parsing is locale-independent; user-facing copy comes from ERROR_MESSAGES + i18n.
+ */
+export const TRIVIA_GENERATION_DECLINED_REASON = {
+	UNCLEAR_TOPIC: 'unclear_topic',
+	UNCLEAR_DIFFICULTY: 'unclear_difficulty',
+	UNCLEAR_TOPIC_AND_DIFFICULTY: 'unclear_topic_and_difficulty',
+	INSUFFICIENT_VERIFIABLE_FACTS: 'insufficient_verifiable_facts',
+} as const;
+
+export type TriviaGenerationDeclinedReason =
+	(typeof TRIVIA_GENERATION_DECLINED_REASON)[keyof typeof TRIVIA_GENERATION_DECLINED_REASON];
+
+const TRIVIA_DECLINED_REASON_SET: ReadonlySet<string> = new Set<string>(
+	Object.values(TRIVIA_GENERATION_DECLINED_REASON)
+);
+
+export function isTriviaGenerationDeclinedReason(value: string): value is TriviaGenerationDeclinedReason {
+	return TRIVIA_DECLINED_REASON_SET.has(value);
+}
+
+export function parseTriviaGenerationDeclinedReason(raw: unknown): TriviaGenerationDeclinedReason {
+	if (typeof raw !== 'string') {
+		return TRIVIA_GENERATION_DECLINED_REASON.INSUFFICIENT_VERIFIABLE_FACTS;
+	}
+	const trimmed = raw.trim();
+	if (isTriviaGenerationDeclinedReason(trimmed)) {
+		return trimmed;
+	}
+	return TRIVIA_GENERATION_DECLINED_REASON.INSUFFICIENT_VERIFIABLE_FACTS;
+}

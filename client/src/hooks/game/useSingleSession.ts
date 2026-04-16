@@ -24,6 +24,7 @@ import {
 	isRecord,
 	shouldChargeAfterGame,
 } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { AudioKey, ExitReason, LoadingMessages, QUERY_KEYS, ROUTES } from '@/constants';
 import type { TriviaRequestWithSignal, UseSingleSessionReturn } from '@/types';
@@ -34,6 +35,7 @@ import {
 	getSingleSessionExpectedQuestionCount,
 	getSingleSessionGameModeFlags,
 	getSingleSessionQuestionsPerRequest,
+	isTriviaGenerationDeclinedLoadError,
 } from '@/utils';
 import {
 	useAppDispatch,
@@ -151,13 +153,33 @@ export function useSingleSession(): UseSingleSessionReturn {
 		}
 	}, [gameId, loading, dispatch]);
 
-	const handleSafeExitFromLoading = useCallback(() => {
-		dispatch(resetGameSession());
-		handleClose();
-	}, [dispatch, handleClose]);
+	const lastSessionErrorRef = useRef<unknown>(null);
 
 	const [showErrorDialog, setShowErrorDialog] = useState(false);
-	const [errorMessage, setErrorMessage] = useState('');
+	const [sessionError, setSessionError] = useState<unknown | null>(null);
+
+	const setDialogError = useCallback((error: unknown) => {
+		lastSessionErrorRef.current = error;
+		setSessionError(error);
+	}, []);
+
+	const clearDialogError = useCallback(() => {
+		lastSessionErrorRef.current = null;
+		setSessionError(null);
+	}, []);
+
+	const handleSafeExitFromLoading = useCallback(() => {
+		const err = lastSessionErrorRef.current;
+		lastSessionErrorRef.current = null;
+		setSessionError(null);
+		setShowErrorDialog(false);
+		dispatch(resetGameSession());
+		if (isTriviaGenerationDeclinedLoadError(err)) {
+			navigate(ROUTES.GAME_SINGLE);
+			return;
+		}
+		handleClose();
+	}, [dispatch, handleClose, navigate]);
 	const [showCreditsWarning, setShowCreditsWarning] = useState(false);
 
 	const questionsLoadedRef = useRef(false);
@@ -212,12 +234,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 			const validationErrors = extractValidationErrors(error);
 
 			let statusCode: number | undefined;
-			if (
-				isRecord(error) &&
-				'statusCode' in error &&
-				typeof error.statusCode === 'number' &&
-				Number.isFinite(error.statusCode)
-			) {
+			if (isRecord(error) && 'statusCode' in error && VALIDATORS.number(error.statusCode)) {
 				statusCode = error.statusCode;
 			}
 
@@ -334,7 +351,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 					const message = getErrorMessage(error);
 					logger.gameError('Failed to deduct credits', { errorInfo: { message } });
 					audioService.play(AudioKey.ERROR);
-					setErrorMessage(message);
+					setDialogError(error);
 					setShowErrorDialog(true);
 				},
 			}
@@ -353,6 +370,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		deductCredits,
 		dispatch,
 		gameId,
+		setDialogError,
 	]);
 
 	useEffect(() => {
@@ -406,7 +424,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 			try {
 				if (ignore) return;
 				dispatch(setLoading({ loading: true, loadingStep: LoadingMessages.CONNECTING }));
-				setErrorMessage('');
+				clearDialogError();
 				setShowErrorDialog(false);
 
 				let sessionGameId = urlGameId ?? gameId;
@@ -606,7 +624,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 					const isClientTimeout =
 						message.toLowerCase().includes('timeout') || message.toLowerCase().includes('timed out');
 					if (isClientTimeout) {
-						setErrorMessage(ERROR_MESSAGES.api.TRIVIA_GENERATION_SLOW_OR_RATE_LIMIT);
+						setDialogError(new Error(ERROR_MESSAGES.api.TRIVIA_GENERATION_SLOW_OR_RATE_LIMIT));
 						setShowErrorDialog(true);
 					}
 					return;
@@ -617,7 +635,9 @@ export function useSingleSession(): UseSingleSessionReturn {
 					message.includes('QUESTION_GENERATION_TIMEOUT') ||
 					message.toLowerCase().includes('timed out') ||
 					message.toLowerCase().includes('timeout');
-				const displayMessage = isRateLimitOrTimeout ? ERROR_MESSAGES.api.TRIVIA_GENERATION_SLOW_OR_RATE_LIMIT : message;
+				const dialogError: unknown = isRateLimitOrTimeout
+					? new Error(ERROR_MESSAGES.api.TRIVIA_GENERATION_SLOW_OR_RATE_LIMIT)
+					: error;
 
 				if (fetchingQuestionsHintTimeoutRef.current) {
 					clearTimeout(fetchingQuestionsHintTimeoutRef.current);
@@ -625,7 +645,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 				}
 				logger.gameError('Failed to load questions', { errorInfo: { message } });
 				audioService.play(AudioKey.ERROR);
-				setErrorMessage(displayMessage);
+				setDialogError(dialogError);
 				setShowErrorDialog(true);
 				dispatch(setLoading({ loading: false, loadingStep: LoadingMessages.CONNECTING }));
 				serverSessionGameIdRef.current = null;
@@ -635,8 +655,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 					clearTimeout(errorTimeoutRef.current);
 				}
 				errorTimeoutRef.current = setTimeout(() => {
-					dispatch(resetGameSession());
-					handleClose();
+					handleSafeExitFromLoading();
 				}, TIME_PERIODS_MS.THREE_SECONDS);
 			} finally {
 				isLoadingRef.current = false;
@@ -734,7 +753,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 			logger.gameError('Failed to load more questions for time-limited game', { errorInfo: { message } });
 			setIsFetchingMoreQuestions(false);
 			audioService.play(AudioKey.ERROR);
-			setErrorMessage(message);
+			setDialogError(err);
 			setShowErrorDialog(true);
 			dispatch(finalizeGame());
 			if (serverSessionGameIdRef.current) {
@@ -756,6 +775,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		locale,
 		triviaMutation,
 		finalizeGameSession,
+		setDialogError,
 	]);
 
 	const recordAnswerHistory = useCallback(
@@ -840,9 +860,8 @@ export function useSingleSession(): UseSingleSessionReturn {
 							}
 						},
 						onError: error => {
-							const message = getErrorMessage(error);
 							audioService.play(AudioKey.ERROR);
-							setErrorMessage(message);
+							setDialogError(error);
 							setShowErrorDialog(true);
 						},
 						playErrorSound: true,
@@ -955,6 +974,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 			dispatch,
 			streak,
 			lastScoreEarned,
+			setDialogError,
 		]
 	);
 
@@ -1081,7 +1101,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 						questionId: submittingQuestionId,
 					});
 					audioService.play(AudioKey.ERROR);
-					setErrorMessage(message);
+					setDialogError(error);
 					setShowErrorDialog(true);
 					dispatch(setAnswered(false));
 				},
@@ -1100,6 +1120,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		moveToNextQuestion,
 		submitAnswerToSessionMutation,
 		dispatch,
+		setDialogError,
 	]);
 
 	const handleExitGame = useCallback(() => {
@@ -1186,7 +1207,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		navigateToPayment,
 		showErrorDialog,
 		setShowErrorDialog,
-		errorMessage,
+		sessionError,
 		showCreditsWarning,
 		setShowCreditsWarning,
 		handleExitGame,

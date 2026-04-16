@@ -13,7 +13,7 @@ import type {
 	TriviaQuestionInput,
 } from '@shared/types';
 import { calculatePercentage, getErrorMessage, isNonEmptyString, normalizeStringArray } from '@shared/utils';
-import { isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
+import { isCustomDifficulty, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
 import { TriviaEntity } from '@internal/entities';
 import { serverLogger as logger } from '@internal/services';
@@ -303,8 +303,7 @@ export class TriviaGenerationService {
 
 		const metadata: Partial<TriviaQuestionDetailsMetadata> = providerResult.question.metadata ?? {};
 		const hasCustomDescription =
-			typeof metadata.customDifficultyDescription === 'string' &&
-			metadata.customDifficultyDescription.trim().length > 0;
+			VALIDATORS.string(metadata.customDifficultyDescription) && metadata.customDifficultyDescription.trim().length > 0;
 
 		providerResult.question.metadata = {
 			...metadata,

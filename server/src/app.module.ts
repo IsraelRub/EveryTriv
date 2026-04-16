@@ -1,4 +1,4 @@
-import { BadRequestException, MiddlewareConsumer, Module, NestModule, ValidationPipe } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE, Reflector } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -7,6 +7,7 @@ import { AppConfig } from '@config';
 import { GlobalExceptionFilter } from '@common/globalException.filter';
 import { LocalAuthGuard, RolesGuard, UserStatusGuard } from '@common/guards';
 import { CacheInterceptor, PerformanceInterceptor, ResponseFormatter } from '@common/interceptors';
+import { createAppValidationPipe } from '@common/pipes';
 import { HealthController, MetricsController } from '@internal/controllers';
 import { UserEntity } from '@internal/entities';
 import { RateLimitMiddleware } from '@internal/middleware';
@@ -98,25 +99,7 @@ import { SystemAnalyticsService } from './features/analytics/services';
 		// Global validation pipe for DTO validation
 		{
 			provide: APP_PIPE,
-			useValue: new ValidationPipe({
-				transform: true,
-				whitelist: true,
-				forbidNonWhitelisted: true,
-				skipMissingProperties: false,
-				skipNullProperties: false,
-				skipUndefinedProperties: false,
-				exceptionFactory: errors => {
-					const result = errors.map(error => ({
-						property: error.property,
-						value: error.value,
-						constraints: error.constraints,
-					}));
-					return new BadRequestException({
-						message: 'Validation failed',
-						errors: result,
-					});
-				},
-			}),
+			useValue: createAppValidationPipe(),
 		},
 	],
 })

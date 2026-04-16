@@ -30,6 +30,12 @@ import {
 	VALIDATION_LENGTH,
 } from '@shared/constants';
 import type { BasicValue } from '@shared/types';
+import {
+	parseOptionalJsonDate,
+	parseOptionalQueryInt,
+	parseQueryBooleanDefaultFalse,
+	parseQueryIntDefaultWhenMissing,
+} from '@shared/utils';
 
 export class TrackEventDto {
 	@ApiProperty({
@@ -99,7 +105,7 @@ export class TrackEventDto {
 		minimum: 0,
 	})
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => parseOptionalQueryInt(value))
 	@IsNumber({}, { message: 'Duration must be a number' })
 	duration?: number;
 
@@ -108,7 +114,7 @@ export class TrackEventDto {
 		example: 100,
 	})
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => parseOptionalQueryInt(value))
 	@IsNumber({}, { message: 'Value must be a number' })
 	value?: number;
 
@@ -128,7 +134,7 @@ export class TopicAnalyticsQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@Transform(({ value }) => parseOptionalJsonDate(value))
 	startDate?: Date;
 
 	@ApiPropertyOptional({
@@ -137,7 +143,7 @@ export class TopicAnalyticsQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@Transform(({ value }) => parseOptionalJsonDate(value))
 	endDate?: Date;
 
 	@ApiPropertyOptional({
@@ -146,7 +152,7 @@ export class TopicAnalyticsQueryDto {
 		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 	})
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => parseOptionalQueryInt(value))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(VALIDATION_COUNT.LEADERBOARD.MIN, {
 		message: `Limit must be at least ${VALIDATION_COUNT.LEADERBOARD.MIN}`,
@@ -174,7 +180,7 @@ export class UserTrendQueryDto {
 		example: '2024-01-01',
 	})
 	@IsOptional()
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@Transform(({ value }) => parseOptionalJsonDate(value))
 	startDate?: Date;
 
 	@ApiPropertyOptional({
@@ -182,7 +188,7 @@ export class UserTrendQueryDto {
 		example: '2024-05-31',
 	})
 	@IsOptional()
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@Transform(({ value }) => parseOptionalJsonDate(value))
 	endDate?: Date;
 
 	@ApiPropertyOptional({
@@ -199,7 +205,7 @@ export class UserTrendQueryDto {
 		maximum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX,
 	})
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => parseOptionalQueryInt(value))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN, {
 		message: `Limit must be at least ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN}`,
@@ -233,7 +239,7 @@ export class UserComparisonQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'Start date must be a valid date' })
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@Transform(({ value }) => parseOptionalJsonDate(value))
 	startDate?: Date;
 
 	@ApiPropertyOptional({
@@ -242,7 +248,7 @@ export class UserComparisonQueryDto {
 	})
 	@IsOptional()
 	@IsDateString({}, { message: 'End date must be a valid date' })
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@Transform(({ value }) => parseOptionalJsonDate(value))
 	endDate?: Date;
 }
 
@@ -252,7 +258,7 @@ export class UserSummaryQueryDto {
 		example: true,
 	})
 	@IsOptional()
-	@Transform(({ value }) => value === true || value === 'true')
+	@Transform(({ value }) => parseQueryBooleanDefaultFalse(value))
 	@IsBoolean({ message: 'includeActivity must be a boolean value' })
 	includeActivity?: boolean;
 }
@@ -283,7 +289,7 @@ export class GetLeaderboardDto {
 		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 		default: 50,
 	})
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => parseQueryIntDefaultWhenMissing(value, VALIDATION_COUNT.LEADERBOARD.DEFAULT))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(VALIDATION_COUNT.LEADERBOARD.MIN, {
 		message: `Limit must be at least ${VALIDATION_COUNT.LEADERBOARD.MIN}`,
@@ -298,9 +304,9 @@ export class GetLeaderboardDto {
 		minimum: 0,
 		default: 0,
 	})
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => parseQueryIntDefaultWhenMissing(value, VALIDATION_COUNT.LIST_QUERY.OFFSET_MIN))
 	@IsNumber({}, { message: 'Offset must be a number' })
-	@Min(0, { message: 'Offset must be at least 0' })
+	@Min(VALIDATION_COUNT.LIST_QUERY.OFFSET_MIN, { message: 'Offset must be at least 0' })
 	offset: number = 0;
 }
 
@@ -328,7 +334,7 @@ export class UnifiedUserAnalyticsQueryDto {
 		example: '2024-01-01',
 	})
 	@IsOptional()
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@Transform(({ value }) => parseOptionalJsonDate(value))
 	@IsDate({ message: 'Start date must be a valid date' })
 	startDate?: Date;
 
@@ -337,7 +343,7 @@ export class UnifiedUserAnalyticsQueryDto {
 		example: '2024-12-31',
 	})
 	@IsOptional()
-	@Transform(({ value }) => (value ? new Date(value) : undefined))
+	@Transform(({ value }) => parseOptionalJsonDate(value))
 	@IsDate({ message: 'End date must be a valid date' })
 	endDate?: Date;
 
@@ -355,7 +361,7 @@ export class UnifiedUserAnalyticsQueryDto {
 		maximum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX,
 	})
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => parseOptionalQueryInt(value))
 	@IsNumber({}, { message: 'Activity limit must be a number' })
 	@Min(VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN, {
 		message: `Activity limit must be at least ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN}`,
@@ -371,7 +377,7 @@ export class UnifiedUserAnalyticsQueryDto {
 		maximum: VALIDATION_COUNT.ACTIVITY_ENTRIES.MAX,
 	})
 	@IsOptional()
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => parseOptionalQueryInt(value))
 	@IsNumber({}, { message: 'Trend limit must be a number' })
 	@Min(VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN, {
 		message: `Trend limit must be at least ${VALIDATION_COUNT.ACTIVITY_ENTRIES.MIN}`,
@@ -386,7 +392,7 @@ export class UnifiedUserAnalyticsQueryDto {
 		example: false,
 	})
 	@IsOptional()
-	@Transform(({ value }) => value === true || value === 'true')
+	@Transform(({ value }) => parseQueryBooleanDefaultFalse(value))
 	@IsBoolean({ message: 'includeActivity must be a boolean value' })
 	includeActivity?: boolean;
 

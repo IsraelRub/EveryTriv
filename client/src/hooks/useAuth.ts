@@ -174,7 +174,7 @@ export const useIsAuthenticated = (): boolean => {
 	}
 
 	// If query completed successfully with user data, user is authenticated
-	return isSuccess && !isError && currentUser !== null && currentUser !== undefined;
+	return isSuccess && !isError && currentUser != null;
 };
 
 export const useUserRole = (): UseUserRoleReturn => {

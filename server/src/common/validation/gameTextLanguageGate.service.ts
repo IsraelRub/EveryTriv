@@ -1,8 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 
-import { DEFAULT_LANGUAGE, Locale } from '@shared/constants';
+import { DEFAULT_LANGUAGE, ERROR_MESSAGES, Locale } from '@shared/constants';
 import type { GameDifficulty } from '@shared/types';
-import { extractCustomDifficultyText, isCustomDifficulty, validateTriviaRequest } from '@shared/validation';
+import {
+	extractCustomDifficultyText,
+	isCustomDifficulty,
+	isLikelyGibberish,
+	validateTriviaRequest,
+} from '@shared/validation';
 
 import { LanguageToolService } from './languageTool.service';
 
@@ -11,6 +16,13 @@ export class GameTextLanguageGateService {
 	constructor(private readonly languageToolService: LanguageToolService) {}
 
 	async assertNaturalTextValid(text: string, outputLanguage?: Locale): Promise<void> {
+		if (isLikelyGibberish(text)) {
+			throw new BadRequestException({
+				message: 'Language validation failed',
+				errors: [ERROR_MESSAGES.validation.UNRECOGNIZABLE_TEXT],
+			});
+		}
+
 		const result =
 			outputLanguage != null
 				? await this.languageToolService.checkGameNaturalText(text, { outputLanguage })

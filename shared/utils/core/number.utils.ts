@@ -1,4 +1,66 @@
 import { MAX_POINTS_PER_QUESTION, TIME_PERIODS_MS } from '@shared/constants';
+import { VALIDATORS } from '@shared/validation';
+
+import { isNonEmptyString } from './data.utils';
+
+/**
+ * Optional query/body numeric field: missing or blank → `undefined`;
+ * non-empty string that does not parse as an integer → `NaN` (so `@IsNumber` fails on invalid input).
+ */
+export function parseOptionalQueryInt(value: unknown): number | undefined {
+	if (value == null || value === '') {
+		return undefined;
+	}
+	if (VALIDATORS.number(value)) {
+		return Number.isInteger(value) ? value : Math.floor(value);
+	}
+	if (VALIDATORS.string(value)) {
+		if (!isNonEmptyString(value)) {
+			return undefined;
+		}
+		const parsed = parseInt(value.trim(), 10);
+		return Number.isNaN(parsed) ? Number.NaN : parsed;
+	}
+	return undefined;
+}
+
+/**
+ * Required JSON numeric field: missing, blank, unparseable, or unsupported type → `undefined`
+ * (works with `@IsNotEmpty` / `@IsNumber` on DTOs).
+ */
+export function parseRequiredNumericInput(value: unknown): number | undefined {
+	const coerced = parseOptionalQueryInt(value);
+	if (coerced !== undefined && Number.isNaN(coerced)) {
+		return undefined;
+	}
+	return coerced;
+}
+
+/**
+ * Query integer: missing / blank / whitespace-only → `defaultValue`;
+ * non-empty invalid string → `NaN` (so `@IsNumber` rejects); valid → integer.
+ */
+export function parseQueryIntDefaultWhenMissing(value: unknown, defaultValue: number): number {
+	if (value == null || value === '') {
+		return defaultValue;
+	}
+	const coerced = parseOptionalQueryInt(value);
+	if (coerced === undefined) {
+		return defaultValue;
+	}
+	return coerced;
+}
+
+/**
+ * Query integer: missing, blank, whitespace-only, or invalid parse → `defaultValue` (lenient APIs).
+ */
+export function parseQueryIntWithDefault(value: unknown, defaultValue: number): number {
+	const coerced = parseOptionalQueryInt(value);
+	if (coerced === undefined || Number.isNaN(coerced)) {
+		return defaultValue;
+	}
+	return coerced;
+}
 
 export function clamp(value: number, min: number, max: number): number {
 	return Math.max(min, Math.min(max, value));

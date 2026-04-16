@@ -41,7 +41,7 @@ export function SingleSessionView() {
 			<SingleSessionDialogs
 				showErrorDialog={session.showErrorDialog}
 				setShowErrorDialog={session.setShowErrorDialog}
-				errorMessage={session.errorMessage}
+				sessionError={session.sessionError}
 				showCreditsWarning={session.showCreditsWarning}
 				setShowCreditsWarning={session.setShowCreditsWarning}
 				onSafeExitFromLoading={session.handleSafeExitFromLoading}

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
+import { Locale } from '@shared/constants';
 import { ensureErrorObject } from '@shared/utils';
 
 import { SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, TabsListVariant, TRANSITION_DURATIONS } from '@/constants';
@@ -10,6 +11,8 @@ import type { DashboardWithTabsProps } from '@/types';
 import { clientLogger as logger } from '@/services';
 import { buildDashboardTabsConfig } from '@/utils';
 import { RefreshButton, Skeleton, Tabs, TabsBar, TabsContent } from '@/components';
+import { useAppSelector } from '@/hooks';
+import { selectLocale } from '@/redux/selectors';
 import { RefreshAnimationContext } from '@/contexts';
 
 export function DashboardWithTabs({
@@ -25,6 +28,8 @@ export function DashboardWithTabs({
 	suspenseFallback,
 }: DashboardWithTabsProps) {
 	const { t } = useTranslation(i18nNamespace);
+	const locale = useAppSelector(selectLocale);
+	const shellDir = locale === Locale.HE ? 'rtl' : 'ltr';
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [refreshGeneration, setRefreshGeneration] = useState(0);
@@ -96,6 +101,7 @@ export function DashboardWithTabs({
 	return (
 		<RefreshAnimationContext.Provider value={refreshGeneration}>
 			<motion.main
+				dir={shellDir}
 				initial={{ opacity: 0, y: 20 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: TRANSITION_DURATIONS.SMOOTH }}
@@ -129,7 +135,7 @@ export function DashboardWithTabs({
 										fallback={
 											suspenseFallback ?? (
 												<div className='space-y-8'>
-													<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+													<div className='grid grid-cols-4 gap-4'>
 														<Skeleton variant={SkeletonVariant.Card} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 													</div>
 												</div>

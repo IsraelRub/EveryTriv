@@ -24,6 +24,7 @@ import {
 	VALIDATION_COUNT,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
+import { parseOptionalQueryInt, parseRequiredNumericInput } from '@shared/utils';
 
 import { PaymentMethodDetailsDto } from '../../payment/dtos';
 
@@ -39,21 +40,7 @@ export class DeductCreditsDto {
 		maximum: Math.max(VALIDATION_COUNT.QUESTIONS.UNLIMITED, VALIDATION_COUNT.TIME_LIMIT.MAX),
 	})
 	@IsNotEmpty({ message: 'Questions per request is required' })
-	@Transform(({ value }) => {
-		if (value == null) {
-			return undefined;
-		}
-		// If already a number, return as-is (validate it's integer)
-		if (typeof value === 'number' && Number.isFinite(value)) {
-			return Number.isInteger(value) ? value : Math.floor(value);
-		}
-		// If string, parse it
-		if (typeof value === 'string') {
-			const parsed = parseInt(value, 10);
-			return Number.isNaN(parsed) ? undefined : parsed;
-		}
-		return undefined;
-	})
+	@Transform(({ value }) => parseRequiredNumericInput(value))
 	@IsNumber({}, { message: 'Questions per request must be a number' })
 	@Min(VALIDATION_COUNT.QUESTIONS.MIN, {
 		message: `Questions per request must be at least ${VALIDATION_COUNT.QUESTIONS.MIN}`,
@@ -156,7 +143,7 @@ export class CanPlayDto {
 		maximum: VALIDATION_COUNT.QUESTIONS.UNLIMITED,
 	})
 	@IsOptional()
-	@Transform(({ value }) => (value !== undefined ? parseInt(value, 10) : undefined))
+	@Transform(({ value }) => parseOptionalQueryInt(value))
 	@IsNumber({}, { message: 'Questions per request must be a number' })
 	@Min(VALIDATION_COUNT.QUESTIONS.MIN, {
 		message: `Questions per request must be at least ${VALIDATION_COUNT.QUESTIONS.MIN}`,

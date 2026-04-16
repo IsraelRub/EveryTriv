@@ -21,6 +21,7 @@ export const StatCard = memo(function StatCard({
 	isLoading,
 	variant = StatCardVariant.HORIZONTAL,
 	animate = false,
+	stackIconLabel = false,
 }: StatCardProps) {
 	const numericValue = VALIDATORS.number(value) ? value : 0;
 	const countUpEnabled = VALIDATORS.number(value);
@@ -41,13 +42,23 @@ export const StatCard = memo(function StatCard({
 				return (
 					<Card className='overflow-hidden'>
 						<CardContent className='pt-6 overflow-hidden'>
-							<div className='flex items-center gap-4 overflow-hidden'>
-								<Skeleton variant={SkeletonVariant.IconLarge} className='rounded-lg flex-shrink-0' />
-								<div className='flex-1 space-y-2 overflow-hidden min-w-0'>
-									<Skeleton variant={SkeletonVariant.TextLarge} className='max-w-full' />
-									<Skeleton variant={SkeletonVariant.Text} className='max-w-full' />
+							{stackIconLabel ? (
+								<div className='flex flex-col gap-3 overflow-hidden'>
+									<Skeleton variant={SkeletonVariant.IconLarge} className='rounded-lg flex-shrink-0 self-start' />
+									<div className='space-y-2 overflow-hidden min-w-0'>
+										<Skeleton variant={SkeletonVariant.Text} className='max-w-full' />
+										<Skeleton variant={SkeletonVariant.TextLarge} className='max-w-full' />
+									</div>
 								</div>
-							</div>
+							) : (
+								<div className='flex items-center gap-4 overflow-hidden'>
+									<Skeleton variant={SkeletonVariant.IconLarge} className='rounded-lg flex-shrink-0' />
+									<div className='flex-1 space-y-2 overflow-hidden min-w-0'>
+										<Skeleton variant={SkeletonVariant.TextLarge} className='max-w-full' />
+										<Skeleton variant={SkeletonVariant.Text} className='max-w-full' />
+									</div>
+								</div>
+							)}
 						</CardContent>
 					</Card>
 				);
@@ -56,9 +67,16 @@ export const StatCard = memo(function StatCard({
 				<Card>
 					<CardContent className='pt-6'>
 						<div className='flex flex-col gap-2'>
-							<div className='flex items-center gap-3'>
+							<div className={cn(stackIconLabel ? 'flex flex-col items-start gap-1.5' : 'flex items-center gap-3')}>
 								<Icon className={cn('h-8 w-8 flex-shrink-0', color)} strokeWidth={2.25} />
-								<p className='text-sm text-muted-foreground leading-none'>{label}</p>
+								<p
+									className={cn(
+										'text-sm text-muted-foreground leading-none',
+										stackIconLabel && 'text-start leading-snug'
+									)}
+								>
+									{label}
+								</p>
 							</div>
 							<div>
 								<p className='text-2xl font-bold'>
@@ -66,6 +84,56 @@ export const StatCard = memo(function StatCard({
 									{suffix}
 								</p>
 								{subtext && <p className='text-xs text-muted-foreground'>{subtext}</p>}
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+			);
+		case StatCardVariant.PROSE:
+			if (isLoading) {
+				return (
+					<Card className='overflow-hidden'>
+						<CardContent className='pt-6 overflow-hidden'>
+							{stackIconLabel ? (
+								<div className='flex flex-col gap-3 overflow-hidden'>
+									<Skeleton variant={SkeletonVariant.IconLarge} className='rounded-lg flex-shrink-0 self-start' />
+									<div className='space-y-2 overflow-hidden min-w-0'>
+										<Skeleton variant={SkeletonVariant.Text} className='max-w-full' />
+										<Skeleton variant={SkeletonVariant.TextLarge} className='max-w-full' />
+									</div>
+								</div>
+							) : (
+								<div className='flex items-start gap-4 overflow-hidden'>
+									<Skeleton variant={SkeletonVariant.IconLarge} className='rounded-lg flex-shrink-0' />
+									<div className='flex-1 space-y-2 overflow-hidden min-w-0'>
+										<Skeleton variant={SkeletonVariant.Text} className='max-w-full' />
+										<Skeleton variant={SkeletonVariant.TextLarge} className='max-w-full' />
+										<Skeleton variant={SkeletonVariant.Text} className='max-w-full' />
+									</div>
+								</div>
+							)}
+						</CardContent>
+					</Card>
+				);
+			}
+			return (
+				<Card>
+					<CardContent className='pt-6'>
+						<div className='flex flex-col gap-2'>
+							<div className={cn(stackIconLabel ? 'flex flex-col items-start gap-1.5' : 'flex items-center gap-3')}>
+								<Icon className={cn('h-8 w-8 flex-shrink-0', color)} strokeWidth={2.25} />
+								<p className={cn('text-sm text-muted-foreground leading-snug', stackIconLabel && 'text-start')}>
+									{label}
+								</p>
+							</div>
+							<div className='min-w-0'>
+								<p className='text-sm font-normal leading-relaxed text-foreground break-words'>
+									{VALIDATORS.number(displayValue) ? displayValue.toLocaleString() : displayValue}
+									{suffix}
+								</p>
+								{subtext != null && subtext !== '' ? (
+									<p className='mt-2 text-xs text-muted-foreground'>{subtext}</p>
+								) : null}
 							</div>
 						</div>
 					</CardContent>
@@ -84,9 +152,21 @@ export const StatCard = memo(function StatCard({
 			}
 			const centeredContent = (
 				<div className='text-center p-4 rounded-lg bg-muted/50 transition-colors hover-row'>
-					<div className='flex items-center justify-center gap-3 mb-2'>
+					<div
+						className={cn(
+							'mb-2 flex justify-center',
+							stackIconLabel ? 'flex-col items-center gap-1.5' : 'items-center gap-3'
+						)}
+					>
 						<Icon className={cn('h-8 w-8 flex-shrink-0', color)} strokeWidth={2.25} />
-						<p className='text-sm text-muted-foreground leading-none'>{label}</p>
+						<p
+							className={cn(
+								'text-sm text-muted-foreground',
+								stackIconLabel ? 'max-w-full text-center leading-snug' : 'leading-none'
+							)}
+						>
+							{label}
+						</p>
 					</div>
 					<p className='text-3xl font-bold'>
 						{VALIDATORS.number(displayValue) ? displayValue.toLocaleString() : displayValue}
@@ -116,6 +196,8 @@ export const StatsSectionCard = memo(function StatsSectionCard({
 	className,
 	layout = StatsSectionLayout.SECTION,
 }: StatsSectionCardProps) {
+	const captured = /grid-cols-(\d+)/.exec(gridCols)?.[1];
+	const stackIconLabel = captured != null ? Number.parseInt(captured, 10) >= 4 : false;
 	const grid = (
 		<div className={cn('grid gap-4', gridCols)}>
 			{stats.map(stat => (
@@ -125,6 +207,7 @@ export const StatsSectionCard = memo(function StatsSectionCard({
 					variant={stat.variant ?? variant}
 					animate={stat.animate ?? variant === StatCardVariant.CENTERED}
 					isLoading={stat.isLoading ?? sectionLoading}
+					stackIconLabel={stat.stackIconLabel ?? stackIconLabel}
 				/>
 			))}
 		</div>

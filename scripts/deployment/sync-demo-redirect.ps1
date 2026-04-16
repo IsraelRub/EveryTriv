@@ -96,7 +96,7 @@ elseif ($DiscoverUrlFromDockerLogs) {
 	if ([string]::IsNullOrWhiteSpace($discovered)) {
 		throw @"
 No https://*.trycloudflare.com URL in docker compose logs for 'cloudflared'.
-Start: docker compose --profile demo-tunnel up -d
+Start: docker compose --profile demo-tunnel up --build -d
 Or use -FrontendTunnelUrl or -TunnelLogFilePath.
 "@
 	}

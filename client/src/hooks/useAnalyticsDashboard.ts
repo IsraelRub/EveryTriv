@@ -110,6 +110,8 @@ export const useGlobalLeaderboard = (limit: number = 100, offset: number = 0) =>
 		queryKey: QUERY_KEYS.leaderboard.global(limit, offset),
 		queryFn: () => analyticsService.getGlobalLeaderboard(limit, offset),
 		...QUERY_CACHE_PRESETS.staleFifteenGcThirty,
+		refetchOnWindowFocus: true,
+		refetchOnMount: 'always',
 	});
 };
 
@@ -118,6 +120,8 @@ export const useLeaderboardByPeriod = (period: LeaderboardPeriod, limit: number 
 		queryKey: [...QUERY_KEYS.leaderboard.byPeriod(period, limit), offset],
 		queryFn: () => analyticsService.getLeaderboardByPeriod(period, limit, offset),
 		...QUERY_CACHE_PRESETS.staleFifteenGcThirty,
+		refetchOnWindowFocus: true,
+		refetchOnMount: 'always',
 	});
 };
 
@@ -126,5 +130,7 @@ export const useLeaderboardStats = (period: LeaderboardPeriod = LeaderboardPerio
 		queryKey: QUERY_KEYS.leaderboard.stats(period),
 		queryFn: () => analyticsService.getLeaderboardStats(period),
 		...QUERY_CACHE_PRESETS.staleFifteenGcThirty,
+		refetchOnWindowFocus: true,
+		refetchOnMount: 'always',
 	});
 };

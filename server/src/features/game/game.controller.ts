@@ -4,14 +4,11 @@ import {
 	API_ENDPOINTS,
 	DEFAULT_LANGUAGE,
 	ErrorCode,
-	Locale,
 	SURPRISE_SCOPE_DEFAULT,
-	SurpriseScope,
 	TIME_DURATIONS_SECONDS,
 } from '@shared/constants';
 import type { GameData } from '@shared/types';
 import { calculateDuration, getErrorMessage } from '@shared/utils';
-import { isLocale } from '@shared/validation';
 
 import { Cache, CurrentUserId, NoCache } from '@common/decorators';
 import { CustomDifficultyPipe, StartGameSessionPipe, TriviaRequestPipe } from '@common/pipes';
@@ -24,19 +21,12 @@ import {
 	SaveGameHistoryDto,
 	StartGameSessionDto,
 	SubmitAnswerToSessionDto,
+	SurprisePickQueryDto,
 	TriviaRequestDto,
 	ValidateCustomDifficultyDto,
 	ValidateTextDto,
 } from './dtos';
 import { GameService } from './game.service';
-
-function isSurpriseScope(s: string | undefined): s is SurpriseScope {
-	return s === SurpriseScope.TOPIC || s === SurpriseScope.DIFFICULTY || s === SurpriseScope.BOTH;
-}
-
-function toLocale(s: string | undefined): Locale {
-	return isLocale(s) ? s : DEFAULT_LANGUAGE;
-}
 
 @Controller(API_ENDPOINTS.GAME.BASE)
 export class GameController {
@@ -99,10 +89,6 @@ export class GameController {
 	@Post('session/answer')
 	async submitAnswerToSession(@CurrentUserId() userId: string, @Body() body: SubmitAnswerToSessionDto) {
 		try {
-			if (!body.questionId || body.answer === undefined || body.answer === null) {
-				throw new HttpException(ErrorCode.QUESTION_ID_AND_ANSWER_REQUIRED, HttpStatus.BAD_REQUEST);
-			}
-
 			const result = await this.gameService.submitAnswerToSession({
 				questionId: body.questionId,
 				answer: body.answer,
@@ -132,14 +118,10 @@ export class GameController {
 
 	@Get('surprise-pick')
 	@NoCache()
-	async getSurprisePick(
-		@CurrentUserId() userId: string,
-		@Query('scope') scope?: string,
-		@Query('locale') locale?: string
-	) {
+	async getSurprisePick(@CurrentUserId() userId: string, @Query() query: SurprisePickQueryDto) {
 		try {
-			const scopeValue: SurpriseScope = isSurpriseScope(scope) ? scope : SURPRISE_SCOPE_DEFAULT;
-			const localeValue = toLocale(locale);
+			const scopeValue = query.scope ?? SURPRISE_SCOPE_DEFAULT;
+			const localeValue = query.locale ?? DEFAULT_LANGUAGE;
 			const result = await this.gameService.getSurprisePick(userId, scopeValue, localeValue);
 			logger.apiRead('game_surprise_pick', {
 				...(result.topic !== undefined && { topic: result.topic }),

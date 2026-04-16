@@ -11,12 +11,13 @@ import {
 	RETRY_LIMITS,
 	TIME_PERIODS_MS,
 } from '@shared/constants';
-import type { CompleteUserAnalytics } from '@shared/types';
+import type { BasicUser, CompleteUserAnalytics, GameHistoryEntry } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
 import { AudioKey, QUERY_KEYS, ROUTES } from '@/constants';
 import type { FinalizeGameOptions } from '@/types';
 import { audioService, gameHistoryService, clientLogger as logger, queryInvalidationService } from '@/services';
+import { getAuthCurrentUserQueryKey, readAuthTokenSnapshotForQueryKey } from '@/utils';
 import {
 	selectCorrectAnswers,
 	selectCurrentDifficulty,
@@ -89,9 +90,21 @@ export const useGameFinalization = () => {
 			const attemptFinalization = (attempt: number = 0): void => {
 				// Cancel any outgoing refetches to avoid overwriting optimistic update
 				void queryClient.cancelQueries({ queryKey: QUERY_KEYS.analytics.user('current') });
+				void queryClient.cancelQueries({
+					queryKey: QUERY_KEYS.trivia.gameHistory('current'),
+					exact: false,
+				});
 
 				// Snapshot the previous value for rollback
 				const previousAnalytics = queryClient.getQueryData<CompleteUserAnalytics>(QUERY_KEYS.analytics.user('current'));
+				const previousHistoryEntries = queryClient.getQueriesData<GameHistoryEntry[]>({
+					queryKey: QUERY_KEYS.trivia.gameHistory('current'),
+					exact: false,
+				});
+
+				const authUser = queryClient.getQueryData<BasicUser>(
+					getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey())
+				);
 
 				// Optimistically update analytics cache if we have current analytics
 				if (previousAnalytics?.game) {
@@ -113,6 +126,39 @@ export const useGameFinalization = () => {
 					});
 				}
 
+				// Optimistic game history: prepend a provisional row so History / Home widgets update immediately
+				if (authUser?.id) {
+					const now = new Date();
+					const optimisticHistoryRow: GameHistoryEntry = {
+						id: sessionGameId,
+						createdAt: now,
+						updatedAt: now,
+						userId: authUser.id,
+						topic: currentTopic ?? DEFAULT_GAME_CONFIG.defaultTopic,
+						difficulty: currentDifficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty,
+						gameMode: currentGameMode ?? GameMode.QUESTION_LIMITED,
+						score: score ?? 0,
+						correctAnswers: correctAnswers ?? 0,
+						gameQuestionCount: gameQuestionCount ?? 0,
+						answerHistory: [],
+						...(timeSpent != null ? { timeSpent } : {}),
+					};
+
+					queryClient.setQueriesData<GameHistoryEntry[]>(
+						{ queryKey: QUERY_KEYS.trivia.gameHistory('current'), exact: false },
+						previousList => {
+							if (!previousList) {
+								return [optimisticHistoryRow];
+							}
+							if (previousList.some(row => row.id === sessionGameId)) {
+								return previousList;
+							}
+							return [optimisticHistoryRow, ...previousList];
+						},
+						{ updatedAt: Date.now() }
+					);
+				}
+
 				finalizeGameSessionMutation.mutate(sessionGameId, {
 					onSuccess: async savedHistory => {
 						logger.gameInfo(`Game session finalized ${options.logContext ? ` - ${options.logContext}` : ''}`, {
@@ -120,6 +166,18 @@ export const useGameFinalization = () => {
 							score,
 							correctAnswers,
 						});
+
+						queryClient.setQueriesData<GameHistoryEntry[]>(
+							{ queryKey: QUERY_KEYS.trivia.gameHistory('current'), exact: false },
+							previousList => {
+								if (!previousList) {
+									return [savedHistory];
+								}
+								const withoutDup = previousList.filter(row => row.id !== savedHistory.id);
+								return [savedHistory, ...withoutDup];
+							},
+							{ updatedAt: Date.now() }
+						);
 
 						// Track analytics event if enabled
 						if (trackAnalytics) {
@@ -167,6 +225,10 @@ export const useGameFinalization = () => {
 							queryClient.setQueryData(QUERY_KEYS.analytics.user('current'), previousAnalytics, {
 								updatedAt: Date.now(),
 							});
+						}
+
+						for (const [queryKey, data] of previousHistoryEntries) {
+							queryClient.setQueryData(queryKey, data, { updatedAt: Date.now() });
 						}
 
 						const message = getErrorMessage(error);

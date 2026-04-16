@@ -11,6 +11,7 @@ import {
 } from '@shared/constants';
 import type { LeaderboardStats } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { LEADERBOARD_PERIOD_CONFIG } from '@internal/constants';
 import { GameHistoryEntity, UserStatsEntity } from '@internal/entities';
@@ -95,7 +96,7 @@ export class LeaderboardAnalyticsService {
 					return total?.value ?? 0;
 				},
 				TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES,
-				(data): data is number => typeof data === 'number' && Number.isFinite(data)
+				(data): data is number => VALIDATORS.number(data)
 			);
 		} catch (error) {
 			logger.analyticsError('getGlobalLeaderboardTotalCount', {

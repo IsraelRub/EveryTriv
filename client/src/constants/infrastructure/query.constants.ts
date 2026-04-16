@@ -56,6 +56,12 @@ export const QUERY_KEYS = {
 		stats: (period: string) => toReactQueryKey(CACHE_KEYS.LEADERBOARD.STATS(period)),
 	},
 
+	multiplayer: {
+		all: ['multiplayer'] as const,
+		publicWaiting: (topic: string, limit: number, outputLanguage: string) =>
+			[...QUERY_KEYS.multiplayer.all, 'public-waiting', topic, limit, outputLanguage] as const,
+	},
+
 	// Analytics keys
 	// Keys that sync with server cache use CACHE_KEYS + toReactQueryKey internally - conversion happens here only
 	analytics: {
@@ -114,7 +120,6 @@ export const QUERY_KEYS = {
 		systemSecurity: () => [...QUERY_KEYS.admin.all, 'systemSecurity'] as const,
 		systemRecommendations: () => [...QUERY_KEYS.admin.all, 'systemRecommendations'] as const,
 		systemInsights: () => [...QUERY_KEYS.admin.all, 'systemInsights'] as const,
-		/** Bundled admin system health (single fetch / unified loading). */
 		systemHealthDashboard: () => [...QUERY_KEYS.admin.all, 'systemHealthDashboard'] as const,
 		users: (limit: number, offset: number) => [...QUERY_KEYS.admin.all, 'adminUsers', limit, offset] as const,
 		userSearch: (query: string, limit: number) => [...QUERY_KEYS.admin.all, 'userSearch', query, limit] as const,

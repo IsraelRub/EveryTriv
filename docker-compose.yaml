@@ -85,7 +85,7 @@ services:
       - everytriv-network
 
   # Cloudflare Quick Tunnel → public https URL to the client container (same Docker network as nginx :3000).
-  # Start with: docker compose --profile demo-tunnel up -d   (or pnpm run start:demo:up; full demo+sync: pnpm run start:demo)
+  # Start with: docker compose --profile demo-tunnel up --build -d   (or pnpm run start:demo:up; full demo+sync: pnpm run start:demo)
   # Read the printed URL: docker compose logs cloudflared | findstr https
   cloudflared:
     image: cloudflare/cloudflared:latest

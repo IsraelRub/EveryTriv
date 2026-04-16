@@ -13,6 +13,7 @@ import {
 } from '@shared/constants';
 import type { ChangePasswordData } from '@shared/types';
 import { getErrorMessage, isNonEmptyString, sanitizeEmail, truncateWithEllipsis } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { AppConfig } from '@config';
 import { AuthenticationManager, JwtTokenService, PasswordService } from '@common/auth';
@@ -204,7 +205,6 @@ export class AuthService {
 			| 'lastName'
 			| 'role'
 			| 'preferences'
-			| 'customAvatar'
 			| 'customAvatarMime'
 			| 'createdAt'
 			| 'emailVerified'
@@ -226,7 +226,6 @@ export class AuthService {
 				'lastName',
 				'role',
 				'preferences',
-				'customAvatar',
 				'customAvatarMime',
 				'createdAt',
 				'emailVerified',
@@ -525,10 +524,6 @@ export class AuthService {
 		}
 	}
 
-	/**
-	 * Generates a verification token and returns a link in the API response. There is no outbound email yet —
-	 * integrate SES/SendGrid/SMTP for production, or consume the returned link in development tools.
-	 */
 	async requestVerificationEmail(userId: string): Promise<{ verificationLink: string }> {
 		const user = await this.userRepository.findOne({
 			where: { id: userId },
@@ -556,7 +551,7 @@ export class AuthService {
 		if (!result.success || result.data == null) {
 			throw new BadRequestException(ErrorCode.VERIFICATION_TOKEN_INVALID_OR_EXPIRED);
 		}
-		const userId = typeof result.data === 'string' ? result.data : String(result.data);
+		const userId = VALIDATORS.string(result.data) ? result.data : String(result.data);
 		const user = await this.userRepository.findOne({ where: { id: userId } });
 		if (!user) {
 			throw new BadRequestException(ErrorCode.VERIFICATION_TOKEN_INVALID_OR_EXPIRED);

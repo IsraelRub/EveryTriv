@@ -13,5 +13,6 @@ export const useGameHistory = (limit: number = 20, offset: number = 0) => {
 		staleTime: TIME_PERIODS_MS.FIFTEEN_MINUTES,
 		enabled: useIsAuthenticated(),
 		refetchOnWindowFocus: true,
+		refetchOnMount: 'always',
 	});
 };

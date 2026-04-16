@@ -138,7 +138,7 @@ export class StorageService implements IStorageService {
 		const result = await this.get(key, VALIDATORS.date);
 		if (result.success && result.data) {
 			// If date was stored as string, convert it to Date object
-			if (typeof result.data === 'string') {
+			if (VALIDATORS.string(result.data)) {
 				return StorageUtils.createSuccessResult<Date | null>(new Date(result.data), this.config.type);
 			}
 			// result.data is already a Date (validated by VALIDATORS.date)
@@ -215,10 +215,6 @@ export class StorageService implements IStorageService {
 		}
 	}
 
-	/**
-	 * Lists keys under this storage prefix matching a relative glob (e.g. `active_game_session:*`).
-	 * Uses SCAN via `scanKeys`; prefer over `getKeys` when only a subset of keys is needed.
-	 */
 	async getKeysByRelativePattern(relativePattern: string): Promise<StorageOperationResult<string[]>> {
 		const startTime = Date.now();
 		try {

@@ -9,6 +9,7 @@ export enum VariantBase {
 export enum StatCardVariant {
 	HORIZONTAL = 'horizontal',
 	CENTERED = 'centered',
+	PROSE = 'prose',
 }
 
 export enum ToastVariant {

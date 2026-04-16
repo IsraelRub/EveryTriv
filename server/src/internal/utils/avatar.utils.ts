@@ -1,4 +1,5 @@
 import { API_ENDPOINTS } from '@shared/constants';
+import { VALIDATORS } from '@shared/validation';
 
 const JPEG_SIGNATURE = Buffer.from([0xff, 0xd8, 0xff]);
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -26,7 +27,7 @@ function tryAvatarVersionTimestamp(updatedAt: Date | string | null | undefined):
 	if (updatedAt instanceof Date && !Number.isNaN(updatedAt.getTime())) {
 		return updatedAt.getTime();
 	}
-	if (typeof updatedAt === 'string') {
+	if (VALIDATORS.string(updatedAt)) {
 		const parsed = new Date(updatedAt);
 		if (!Number.isNaN(parsed.getTime())) {
 			return parsed.getTime();
@@ -45,18 +46,14 @@ export function getAvatarUrlForUser(
 	user:
 		| {
 				id?: string;
-				customAvatar?: unknown;
 				customAvatarMime?: string | null;
 				updatedAt?: Date | string | null;
 		  }
 		| null
 		| undefined
 ): string | undefined {
-	const hasAvatarData =
-		(Buffer.isBuffer(user?.customAvatar) && user.customAvatar.length > 0) ||
-		(user?.customAvatar instanceof Uint8Array && user.customAvatar.length > 0);
-	const hasAvatarMime = typeof user?.customAvatarMime === 'string' && user.customAvatarMime.trim() !== '';
-	if (!user?.id || (!hasAvatarData && !hasAvatarMime)) return undefined;
+	const hasAvatarMime = user != null && VALIDATORS.string(user.customAvatarMime) && user.customAvatarMime.trim() !== '';
+	if (!user?.id || !hasAvatarMime) return undefined;
 	const basePath = API_ENDPOINTS.USER.AVATAR_IMAGE.replace(':userId', user.id);
 	if (user.updatedAt == null) {
 		return basePath;

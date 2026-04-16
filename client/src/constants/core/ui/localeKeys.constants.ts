@@ -353,6 +353,8 @@ export enum GameKey {
 	PICK_FOR_ME = 'game:pickForMe',
 	PICKED_FOR_YOU = 'game:pickedForYou',
 	VIEW_GAME_SUMMARY = 'game:viewGameSummary',
+	PUBLIC_LOBBY_LIST_HOME_LABEL = 'game:publicLobbyListHomeLabel',
+	PUBLIC_LOBBY_LIST_HOME_DESCRIPTION = 'game:publicLobbyListHomeDescription',
 }
 
 export enum HomeKey {
@@ -392,6 +394,15 @@ export enum HomeKey {
 	POPULAR_TOPICS_TITLE = 'home:popularTopicsTitle',
 	POPULAR_TOPICS_DESC = 'home:popularTopicsDesc',
 	GAMES_PLAYED_TOOLTIP = 'home:gamesPlayedTooltip',
+	TAB_OVERVIEW = 'home:tabOverview',
+	TAB_PUBLIC_LOBBIES = 'home:tabPublicLobbies',
+	PUBLIC_LOBBY_SEARCH_LABEL = 'home:publicLobbySearchLabel',
+	PUBLIC_LOBBY_SEARCH_PLACEHOLDER = 'home:publicLobbySearchPlaceholder',
+	PUBLIC_LOBBY_JOIN = 'home:publicLobbyJoin',
+	PUBLIC_LOBBY_LOGIN_TO_JOIN = 'home:publicLobbyLoginToJoin',
+	PUBLIC_LOBBY_EMPTY = 'home:publicLobbyEmpty',
+	PUBLIC_LOBBY_LOAD_ERROR = 'home:publicLobbyLoadError',
+	PUBLIC_LOBBY_REFRESHING = 'home:publicLobbyRefreshing',
 }
 
 export enum ValidationKey {
@@ -607,6 +618,10 @@ export enum AdminKey {
 	SYSTEM_INSIGHTS_CATEGORY_USER_BEHAVIOR = 'admin:systemInsightsCategoryUserBehavior',
 	SYSTEM_INSIGHTS_CATEGORY_SYSTEM_HEALTH = 'admin:systemInsightsCategorySystemHealth',
 	SYSTEM_INSIGHTS_CATEGORY_TRENDS = 'admin:systemInsightsCategoryTrends',
+	SYSTEM_INSIGHTS_STATUS_METRIC_LABEL = 'admin:systemInsightsStatusMetricLabel',
+	SYSTEM_INSIGHT_STATUS_OPTIMAL = 'admin:systemInsightStatusOptimal',
+	SYSTEM_INSIGHT_STATUS_ATTENTION = 'admin:systemInsightStatusAttention',
+	SYSTEM_INSIGHT_LINE_LABEL = 'admin:systemInsightLineLabel',
 	EXPECTED = 'admin:expected',
 	FAILED_TO_LOAD_USERS = 'admin:failedToLoadUsers',
 	HEALTH_STATUS_HEALTHY = 'admin:healthStatusHealthy',
@@ -921,6 +936,11 @@ export enum ErrorsKey {
 	ENTER_IN_ENGLISH = 'errors:enterInEnglish',
 	ENTER_IN_HEBREW = 'errors:enterInHebrew',
 	SPELLING_OR_GRAMMAR_ISSUE = 'errors:spellingOrGrammarIssue',
+	UNRECOGNIZABLE_TEXT = 'errors:unrecognizableText',
+	TRIVIA_DECLINED_UNCLEAR_TOPIC = 'errors:triviaDeclinedUnclearTopic',
+	TRIVIA_DECLINED_UNCLEAR_DIFFICULTY = 'errors:triviaDeclinedUnclearDifficulty',
+	TRIVIA_DECLINED_UNCLEAR_TOPIC_AND_DIFFICULTY = 'errors:triviaDeclinedUnclearTopicAndDifficulty',
+	TRIVIA_DECLINED_INSUFFICIENT_VERIFIABLE_FACTS = 'errors:triviaDeclinedInsufficientVerifiableFacts',
 	INPUT_VALIDATION_FAILED = 'errors:inputValidationFailed',
 	INVALID_INPUT_DATA = 'errors:invalidInputData',
 	LENGTH_TOO_SHORT = 'errors:lengthTooShort',

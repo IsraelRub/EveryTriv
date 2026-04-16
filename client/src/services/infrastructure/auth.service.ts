@@ -210,7 +210,7 @@ class AuthService {
 		try {
 			const persistentResult = await storageService.getString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN);
 			const persistentToken =
-				persistentResult.success && persistentResult.data && typeof persistentResult.data === 'string'
+				persistentResult.success && persistentResult.data && VALIDATORS.string(persistentResult.data)
 					? persistentResult.data
 					: null;
 			if (!persistentToken) {

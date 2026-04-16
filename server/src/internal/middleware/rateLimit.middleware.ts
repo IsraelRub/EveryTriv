@@ -4,6 +4,7 @@ import type { Redis } from 'ioredis';
 
 import { CACHE_KEYS, RATE_LIMIT_DEFAULTS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
 import { calculateDuration, ensureErrorObject, getCurrentTimestampInSeconds } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { AppConfig } from '@config';
 import { serverLogger as logger, metricsService } from '@internal/services';
@@ -46,8 +47,8 @@ export class RateLimitMiddleware implements NestMiddleware {
 		// Try multiple ways to get the IP address
 		const xForwardedFor = req.headers['x-forwarded-for'];
 		const xRealIp = req.headers['x-real-ip'];
-		const forwardedIp = typeof xForwardedFor === 'string' ? xForwardedFor.split(',')[0]?.trim() : undefined;
-		const realIp = typeof xRealIp === 'string' ? xRealIp : undefined;
+		const forwardedIp = VALIDATORS.string(xForwardedFor) ? xForwardedFor.split(',')[0]?.trim() : undefined;
+		const realIp = VALIDATORS.string(xRealIp) ? xRealIp : undefined;
 		const ip: string | undefined =
 			req.ip ?? req.socket?.remoteAddress ?? req.connection?.remoteAddress ?? forwardedIp ?? realIp ?? undefined;
 		const ipDisplay = ip ?? 'unknown';

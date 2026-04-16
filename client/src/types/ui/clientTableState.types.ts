@@ -1,5 +1,5 @@
 import type { SortDirection } from '@/constants';
-import type { UsePaginationReturn } from '../core';
+import type { UsePaginationReturn } from './pagination.types';
 
 export interface UseClientTableStateOptions<T> {
 	data: T[];

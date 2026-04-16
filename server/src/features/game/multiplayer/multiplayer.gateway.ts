@@ -1,4 +1,4 @@
-import { UseGuards } from '@nestjs/common';
+import { UseGuards, UsePipes } from '@nestjs/common';
 import {
 	ConnectedSocket,
 	MessageBody,
@@ -31,12 +31,19 @@ import { isLocale, toDifficultyLevel } from '@shared/validation';
 
 import { WsCurrentUserId } from '@common/decorators';
 import { WsAuthGuard } from '@common/guards';
+import { createAppValidationPipe } from '@common/pipes';
 import { GameTextLanguageGateService } from '@common/validation';
 import { serverLogger as logger } from '@internal/services';
 import type { TypedSocket } from '@internal/types';
 
 import { GameService } from '../game.service';
-import { CreateRoomDto, JoinRoomDto, MultiplayerSubmitAnswerDto, RoomActionDto } from './dtos';
+import {
+	CreateRoomDto,
+	JoinRoomDto,
+	MultiplayerSubmitAnswerDto,
+	RoomActionDto,
+	UpdateRoomLobbyVisibilityDto,
+} from './dtos';
 import { MultiplayerService } from './multiplayer.service';
 import { QuestionSchedulerService } from './questionScheduler.service';
 import { RoomService } from './room.service';
@@ -52,6 +59,7 @@ import { RoomService } from './room.service';
 	allowEIO3: true,
 })
 @UseGuards(WsAuthGuard)
+@UsePipes(createAppValidationPipe())
 export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer()
 	server!: Server;
@@ -148,14 +156,19 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 				data.outputLanguage != null && isLocale(data.outputLanguage) ? data.outputLanguage : DEFAULT_LANGUAGE;
 			await this.gameTextLanguageGate.assertTriviaGameInputValid(data.topic, data.difficulty, outputLanguage);
 
-			const { room, code } = await this.multiplayerService.createRoom(userId, {
-				topic: data.topic,
-				difficulty: data.difficulty,
-				questionsPerRequest: data.questionsPerRequest,
-				maxPlayers: data.maxPlayers,
-				answerCount: data.answerCount,
-				mappedDifficulty: data.mappedDifficulty ?? toDifficultyLevel(data.difficulty),
-			});
+			const { room, code } = await this.multiplayerService.createRoom(
+				userId,
+				{
+					topic: data.topic,
+					difficulty: data.difficulty,
+					questionsPerRequest: data.questionsPerRequest,
+					maxPlayers: data.maxPlayers,
+					answerCount: data.answerCount,
+					mappedDifficulty: data.mappedDifficulty ?? toDifficultyLevel(data.difficulty),
+					outputLanguage,
+				},
+				data.isPublicLobby ?? false
+			);
 
 			// Join client to room
 			client.join(room.roomId);
@@ -183,6 +196,46 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 			});
 		} catch (error) {
 			logger.gameError('Failed to create room via WebSocket', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+			});
+			const code = getErrorCode(error);
+			client.emit('error', {
+				message: getErrorMessage(error),
+				...(code && { code }),
+			});
+		}
+	}
+
+	@SubscribeMessage(MultiplayerEvent.UPDATE_ROOM_LOBBY_VISIBILITY)
+	async handleUpdateRoomLobbyVisibility(
+		@WsCurrentUserId() userId: string,
+		@MessageBody() data: UpdateRoomLobbyVisibilityDto,
+		@ConnectedSocket() client: TypedSocket
+	) {
+		try {
+			if (!userId) {
+				throw new Error(ErrorCode.USER_NOT_AUTHENTICATED);
+			}
+
+			const normalizedRoomId = data.roomId.toUpperCase();
+			const room = await this.multiplayerService.updateRoomLobbyVisibility(
+				normalizedRoomId,
+				userId,
+				data.isPublicLobby
+			);
+
+			this.broadcastToRoom(
+				normalizedRoomId,
+				this.createGameEvent(MultiplayerEvent.ROOM_UPDATED, normalizedRoomId, { room })
+			);
+
+			logger.gameInfo('Room lobby visibility updated', {
+				roomId: normalizedRoomId,
+				userId,
+			});
+		} catch (error) {
+			logger.gameError('Failed to update room lobby visibility', {
 				errorInfo: { message: getErrorMessage(error) },
 				userId,
 			});

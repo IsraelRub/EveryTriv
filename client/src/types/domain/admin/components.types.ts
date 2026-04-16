@@ -1,4 +1,7 @@
+import type { LucideIcon } from 'lucide-react';
+
 import type {
+	AnalyticsResponse,
 	SystemRecommendation,
 	UserAnalyticsRecord,
 	UserInsightsData,
@@ -6,10 +9,13 @@ import type {
 	UserSummaryData,
 } from '@shared/types';
 
+import type { AdminKey } from '@/constants';
 import type { ClearOperation } from './admin.types';
 
 export interface ManagementActionsProps {
 	operations: ClearOperation[];
+	/** Two accordion columns when there are enough operations (Data & maintenance layout). */
+	splitIntoTwoColumns?: boolean;
 }
 
 export interface ConfirmClearDialogProps {
@@ -64,4 +70,25 @@ export interface UserAnalysisExpandedPanelProps {
 	performanceData: UserPerformanceMetrics | undefined;
 	insightsData: UserInsightsData | undefined;
 	recommendationsData: SystemRecommendation[] | undefined;
+}
+
+export interface UseAdminUserPanelQueriesResult {
+	userSummary: AnalyticsResponse<UserSummaryData> | undefined;
+	summaryLoading: boolean;
+	summaryError: boolean;
+	userStatistics: AnalyticsResponse<UserAnalyticsRecord> | undefined;
+	statisticsLoading: boolean;
+	userPerformance: AnalyticsResponse<UserPerformanceMetrics> | undefined;
+	performanceLoading: boolean;
+	userInsights: AnalyticsResponse<UserInsightsData> | undefined;
+	insightsLoading: boolean;
+	userRecommendations: AnalyticsResponse<SystemRecommendation[]> | undefined;
+	recommendationsLoading: boolean;
+}
+
+export interface SystemInsightDetailGridProps {
+	readonly items: string[];
+	readonly categoryIcon: LucideIcon;
+	readonly categoryLabelKey: AdminKey;
+	readonly idPrefix: string;
 }

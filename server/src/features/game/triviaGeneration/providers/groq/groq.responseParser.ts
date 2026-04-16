@@ -1,8 +1,9 @@
-import { ERROR_MESSAGES, ErrorCode, LLM_PARSER, LLMResponseStatus, VALIDATION_LENGTH } from '@shared/constants';
+import { ERROR_MESSAGES, ErrorCode, LLM_PARSER, VALIDATION_LENGTH } from '@shared/constants';
 import type { TriviaAnswer } from '@shared/types';
 import { isNonEmptyString, isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
-import { GROQ_PROVIDER_NAME } from '@internal/constants';
+import { GROQ_PROVIDER_NAME, LLMResponseStatus, parseTriviaGenerationDeclinedReason } from '@internal/constants';
 import type { LLMResponse, LLMTriviaResponse, TriviaLLMJsonPayload } from '@internal/types';
 import { createValidationError } from '@internal/utils';
 
@@ -19,12 +20,11 @@ export class GroqResponseParser {
 			throw createValidationError(ERROR_MESSAGES.provider.INVALID_GROQ_RESPONSE, 'string');
 		}
 		const rawContent = firstChoice.message.content;
-		const content =
-			typeof rawContent === 'string'
-				? rawContent
-				: typeof rawContent === 'object' && rawContent != null
-					? JSON.stringify(rawContent)
-					: String(rawContent ?? '');
+		const content = VALIDATORS.string(rawContent)
+			? rawContent
+			: typeof rawContent === 'object' && rawContent != null
+				? JSON.stringify(rawContent)
+				: String(rawContent ?? '');
 		return this.parseLLMContentToTriviaResponse(content, expectedAnswerCount);
 	}
 
@@ -44,6 +44,7 @@ export class GroqResponseParser {
 				content: normalizedContent,
 				status: LLMResponseStatus.ERROR,
 				validationSummary,
+				declinedReason: payload.generationDeclinedReason,
 			};
 		}
 
@@ -83,14 +84,20 @@ export class GroqResponseParser {
 			throw createValidationError(`${this.providerName} ${ErrorCode.INVALID_QUESTION_FORMAT}`, 'string');
 		}
 
+		const generationDeclinedReason =
+			question.length === 0 && answers.length === 0
+				? parseTriviaGenerationDeclinedReason(parsed.generationDeclinedReason)
+				: undefined;
+
 		return {
 			question,
 			answers,
+			generationDeclinedReason,
 		};
 	}
 
 	private sanitizeQuestion(value: unknown): string {
-		if (typeof value !== 'string') {
+		if (!VALIDATORS.string(value)) {
 			throw createValidationError(`${this.providerName} question must be a string`, 'string');
 		}
 
@@ -141,7 +148,7 @@ export class GroqResponseParser {
 	}
 
 	private sanitizeAnswerString(value: unknown): string {
-		if (typeof value !== 'string') {
+		if (!VALIDATORS.string(value)) {
 			throw createValidationError(`${this.providerName} answer must be a string`, 'string');
 		}
 
@@ -233,6 +240,7 @@ export class GroqResponseParser {
 		expectedAnswerCount: number,
 		quoteReplacements: number
 	): string {
-		return `validated:question=${payload.question ? 'ok' : 'empty'},answers=${payload.answers.length}/${expectedAnswerCount},quotesFixed=${quoteReplacements}`;
+		const declined = payload.generationDeclinedReason != null ? `,declined=${payload.generationDeclinedReason}` : '';
+		return `validated:question=${payload.question ? 'ok' : 'empty'},answers=${payload.answers.length}/${expectedAnswerCount},quotesFixed=${quoteReplacements}${declined}`;
 	}
 }

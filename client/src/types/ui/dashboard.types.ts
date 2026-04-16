@@ -27,7 +27,3 @@ export interface DashboardWithTabsProps {
 	defaultTab?: string;
 	suspenseFallback?: ReactElement | null;
 }
-export interface DashboardTabEntry {
-	label: string;
-	loader: () => Promise<{ default: ComponentType<object> }>;
-}

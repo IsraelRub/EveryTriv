@@ -135,6 +135,8 @@ export const useCreditBalance = () => {
 		queryFn: () => creditsService.getCreditBalance(),
 		staleTime: TIME_PERIODS_MS.HOUR,
 		enabled: isAuthenticated, // Only fetch when user is authenticated
+		refetchOnWindowFocus: true,
+		refetchOnMount: 'always',
 	});
 };
 
@@ -174,5 +176,7 @@ export const usePaymentHistory = () => {
 		staleTime: TIME_PERIODS_MS.THIRTY_MINUTES,
 		gcTime: TIME_PERIODS_MS.HOUR,
 		enabled: isAuthenticated,
+		refetchOnWindowFocus: true,
+		refetchOnMount: 'always',
 	});
 };

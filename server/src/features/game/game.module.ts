@@ -9,9 +9,9 @@ import { CacheModule, StorageModule } from '@internal/modules';
 import { AnalyticsModule } from '../analytics';
 import { AuthModule } from '../auth';
 import { UserModule } from '../user';
-import { AiProvidersController } from './aiProviders.controller';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
+import { AiProvidersController } from './triviaGeneration/aiProviders.controller';
 import { TriviaGenerationService } from './triviaGeneration/triviaGeneration.service';
 
 @Module({

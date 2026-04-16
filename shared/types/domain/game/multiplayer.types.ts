@@ -29,6 +29,8 @@ export interface CreateRoomConfig extends BaseTriviaConfig {
 	answerCount?: number;
 
 	outputLanguage?: Locale;
+
+	isPublicLobby?: boolean;
 }
 
 export interface RoomConfig extends CreateRoomConfig {
@@ -54,6 +56,27 @@ export interface MultiplayerRoom {
 	endTime?: Date;
 	createdAt: Date;
 	updatedAt: Date;
+
+	isPublicLobby: boolean;
+}
+
+export interface PublicLobbyListPlayer {
+	displayName: string;
+	firstName?: string;
+	lastName?: string;
+	avatar?: number;
+	avatarUrl?: string;
+	isHost: boolean;
+	status: PlayerStatus;
+}
+
+export interface PublicWaitingRoomDto {
+	roomId: string;
+	status: RoomStatus;
+	createdAt: string;
+	updatedAt: string;
+	config: RoomConfig;
+	players: PublicLobbyListPlayer[];
 }
 
 export interface GameState {

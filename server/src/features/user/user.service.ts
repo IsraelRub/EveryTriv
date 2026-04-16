@@ -297,7 +297,7 @@ export class UserService {
 							'user.firstName',
 							'user.lastName',
 							'user.preferences',
-							'user.customAvatar',
+							'user.customAvatarMime',
 							'user.role',
 							'user.createdAt',
 							'user.updatedAt',

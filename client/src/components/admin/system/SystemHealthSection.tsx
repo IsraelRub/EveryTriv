@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -16,6 +16,7 @@ import {
 	Lightbulb,
 	LogIn,
 	ScanEye,
+	Server,
 	Shield,
 	TrendingUp,
 	Zap,
@@ -37,13 +38,14 @@ import {
 	QUERY_KEYS,
 	SEMANTIC_ICON_TEXT,
 	SkeletonVariant,
+	StatCardVariant,
 	SystemInsightAccordion,
 	SystemSecurityAccordion,
 	VariantBase,
 } from '@/constants';
-import type { AdminSystemHealthDashboardBundle } from '@/types';
+import type { AdminSystemHealthDashboardBundle, SystemInsightDetailGridProps } from '@/types';
 import { analyticsService } from '@/services';
-import { formatDateTime } from '@/utils';
+import { cn, formatDateTime } from '@/utils';
 import {
 	Accordion,
 	AccordionContent,
@@ -92,6 +94,44 @@ function deriveOverallSystemStatus(
 	}
 	return 'healthy';
 }
+
+const SYSTEM_INSIGHT_LINE_COLORS: readonly string[] = [
+	SEMANTIC_ICON_TEXT.primary,
+	SEMANTIC_ICON_TEXT.secondary,
+	SEMANTIC_ICON_TEXT.success,
+	SEMANTIC_ICON_TEXT.warning,
+];
+
+function systemInsightStatusValueKey(status: SystemInsightStatus): AdminKey {
+	if (status === SystemInsightStatus.OPTIMAL) {
+		return AdminKey.SYSTEM_INSIGHT_STATUS_OPTIMAL;
+	}
+	return AdminKey.SYSTEM_INSIGHT_STATUS_ATTENTION;
+}
+
+const SystemInsightDetailGrid = memo(function SystemInsightDetailGrid({
+	items,
+	categoryIcon,
+	categoryLabelKey,
+	idPrefix,
+}: SystemInsightDetailGridProps) {
+	const { t } = useTranslation();
+	const categoryTitle = t(categoryLabelKey);
+	return (
+		<div className='grid grid-cols-3 gap-4'>
+			{items.map((insight, index) => (
+				<StatCard
+					key={`${idPrefix}-${index}`}
+					variant={StatCardVariant.PROSE}
+					icon={categoryIcon}
+					label={t(AdminKey.SYSTEM_INSIGHT_LINE_LABEL, { category: categoryTitle, index: index + 1 })}
+					value={insight}
+					color={SYSTEM_INSIGHT_LINE_COLORS[index % SYSTEM_INSIGHT_LINE_COLORS.length] ?? SEMANTIC_ICON_TEXT.primary}
+				/>
+			))}
+		</div>
+	);
+});
 
 export function SystemHealthSection() {
 	const { t } = useTranslation();
@@ -170,24 +210,25 @@ export function SystemHealthSection() {
 
 	return (
 		<div className='space-y-8'>
-			<Card className={overallCardClass}>
-				<CardHeader className='pb-2'>
-					<CardTitle className='text-base font-semibold'>{t(AdminKey.SYSTEM_HEALTH_AT_A_GLANCE)}</CardTitle>
-					<CardDescription className='flex flex-wrap items-center gap-3 pt-2'>
-						<span
-							className={
-								overallStatus === 'healthy'
-									? 'inline-flex h-3 w-3 rounded-full bg-emerald-500'
-									: overallStatus === 'attention'
-										? 'inline-flex h-3 w-3 rounded-full bg-amber-500'
-										: 'inline-flex h-3 w-3 rounded-full bg-destructive'
-							}
-							aria-hidden
-						/>
-						<span className='text-foreground text-lg font-medium'>{t(overallLabelKey)}</span>
-					</CardDescription>
-				</CardHeader>
-			</Card>
+			<div className='flex w-full justify-start'>
+				<Card className={cn(overallCardClass, 'w-fit max-w-full')}>
+					<CardHeader className='pb-2'>
+						<CardTitle className='text-base font-semibold'>{t(AdminKey.SYSTEM_HEALTH_AT_A_GLANCE)}</CardTitle>
+						<CardDescription className='flex items-center gap-3 pt-2'>
+							<span
+								className={
+									overallStatus === 'healthy'
+										? 'inline-flex h-3 w-3 shrink-0 rounded-full bg-emerald-500'
+										: overallStatus === 'attention'
+											? 'inline-flex h-3 w-3 shrink-0 rounded-full bg-amber-500'
+											: 'inline-flex h-3 w-3 shrink-0 rounded-full bg-destructive'
+								}
+							/>
+							<span className='text-foreground text-lg font-medium'>{t(overallLabelKey)}</span>
+						</CardDescription>
+					</CardHeader>
+				</Card>
+			</div>
 
 			<SectionCard
 				title={t(AdminKey.PERFORMANCE_METRICS)}
@@ -195,32 +236,37 @@ export function SystemHealthSection() {
 				description={t(AdminKey.PERFORMANCE_METRICS_DESC)}
 			>
 				{systemPerformance ? (
-					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+					<div className='grid grid-cols-4 gap-4'>
 						<StatCard
+							stackIconLabel
 							icon={Zap}
 							label={t(AdminKey.RESPONSE_TIME)}
 							value={formatNumericValue(systemPerformance.responseTime, 2, 'ms')}
 							color={SEMANTIC_ICON_TEXT.primary}
 						/>
 						<StatCard
+							stackIconLabel
 							icon={HardDrive}
 							label={t(AdminKey.MEMORY_USAGE)}
 							value={formatNumericValue(systemPerformance.memoryUsage / 1024 / 1024, 2, ' MB')}
 							color={SEMANTIC_ICON_TEXT.secondary}
 						/>
 						<StatCard
+							stackIconLabel
 							icon={Cpu}
 							label={t(AdminKey.CPU_USAGE)}
 							value={formatNumericValue(systemPerformance.cpuUsage, 2, '%')}
 							color={SEMANTIC_ICON_TEXT.warning}
 						/>
 						<StatCard
+							stackIconLabel
 							icon={CircleGauge}
 							label={t(AdminKey.THROUGHPUT)}
 							value={formatNumericValue(systemPerformance.throughput, 2, ' req/s')}
 							color={SEMANTIC_ICON_TEXT.success}
 						/>
 						<StatCard
+							stackIconLabel
 							icon={AlertTriangle}
 							label={t(AdminKey.ERROR_RATE)}
 							value={formatNumericValue(systemPerformance.errorRate, 2, '%')}
@@ -231,6 +277,7 @@ export function SystemHealthSection() {
 							}
 						/>
 						<StatCard
+							stackIconLabel
 							icon={Clock}
 							label={t(AdminKey.UPTIME)}
 							value={formatNumericValue(systemPerformance.uptime / TIME_DURATIONS_SECONDS.HOUR, 2, 'h')}
@@ -245,109 +292,282 @@ export function SystemHealthSection() {
 				)}
 			</SectionCard>
 
-			<SectionCard title={t(AdminKey.SECURITY_METRICS)} icon={Layers2} description={t(AdminKey.SECURITY_METRICS_DESC)}>
-				{systemSecurity ? (
-					<Accordion
-						type='multiple'
-						defaultValue={[SystemSecurityAccordion.AUTH, SystemSecurityAccordion.AUTHZ, SystemSecurityAccordion.DATA]}
-						className='w-full'
+			<div className={systemInsights != null ? 'grid grid-cols-2 gap-6' : undefined}>
+				<SectionCard
+					title={t(AdminKey.SECURITY_METRICS)}
+					icon={Layers2}
+					description={t(AdminKey.SECURITY_METRICS_DESC)}
+				>
+					{systemSecurity ? (
+						<Accordion
+							type='multiple'
+							defaultValue={[SystemSecurityAccordion.AUTH, SystemSecurityAccordion.AUTHZ, SystemSecurityAccordion.DATA]}
+							className='w-full'
+						>
+							<AccordionItem value={SystemSecurityAccordion.AUTH}>
+								<AccordionTrigger>
+									<span className='flex items-center gap-2'>
+										<LogIn className='h-5 w-5 shrink-0 text-primary' />
+										{t(AdminKey.AUTHENTICATION)}
+									</span>
+								</AccordionTrigger>
+								<AccordionContent>
+									<div className='grid grid-cols-3 gap-4'>
+										<StatCard
+											icon={AlertTriangle}
+											label={t(AdminKey.FAILED_LOGINS)}
+											value={systemSecurity.authentication.failedLogins.toLocaleString()}
+											color={SEMANTIC_ICON_TEXT.destructive}
+										/>
+										<StatCard
+											icon={CheckCircle}
+											label={t(AdminKey.SUCCESSFUL_LOGINS)}
+											value={systemSecurity.authentication.successfulLogins.toLocaleString()}
+											color={SEMANTIC_ICON_TEXT.success}
+										/>
+										<StatCard
+											icon={Shield}
+											label={t(AdminKey.ACCOUNT_LOCKOUTS)}
+											value={systemSecurity.authentication.accountLockouts.toLocaleString()}
+											color={SEMANTIC_ICON_TEXT.warning}
+										/>
+									</div>
+								</AccordionContent>
+							</AccordionItem>
+							<AccordionItem value={SystemSecurityAccordion.AUTHZ}>
+								<AccordionTrigger>
+									<span className='flex items-center gap-2'>
+										<KeyRound className='h-5 w-5 shrink-0 text-primary' />
+										{t(AdminKey.AUTHORIZATION)}
+									</span>
+								</AccordionTrigger>
+								<AccordionContent>
+									<div className='grid grid-cols-2 gap-4'>
+										<StatCard
+											icon={AlertTriangle}
+											label={t(AdminKey.UNAUTHORIZED_ATTEMPTS)}
+											value={systemSecurity.authorization.unauthorizedAttempts.toLocaleString()}
+											color={SEMANTIC_ICON_TEXT.destructive}
+										/>
+										<StatCard
+											icon={Shield}
+											label={t(AdminKey.PERMISSION_VIOLATIONS)}
+											value={systemSecurity.authorization.permissionViolations.toLocaleString()}
+											color={SEMANTIC_ICON_TEXT.orange}
+										/>
+									</div>
+								</AccordionContent>
+							</AccordionItem>
+							<AccordionItem value={SystemSecurityAccordion.DATA}>
+								<AccordionTrigger>
+									<span className='flex items-center gap-2'>
+										<Database className='h-5 w-5 shrink-0 text-primary' />
+										{t(AdminKey.DATA_SECURITY)}
+									</span>
+								</AccordionTrigger>
+								<AccordionContent>
+									<div className='grid grid-cols-3 gap-4'>
+										<StatCard
+											icon={AlertTriangle}
+											label={t(AdminKey.DATA_BREACHES)}
+											value={systemSecurity.dataSecurity.dataBreaches.toLocaleString()}
+											color={
+												systemSecurity.dataSecurity.dataBreaches > 0
+													? SEMANTIC_ICON_TEXT.destructive
+													: SEMANTIC_ICON_TEXT.success
+											}
+										/>
+										<StatCard
+											icon={Shield}
+											label={t(AdminKey.ENCRYPTION_COVERAGE)}
+											value={formatNumericValue(systemSecurity.dataSecurity.encryptionCoverage, 2, '%')}
+											color={SEMANTIC_ICON_TEXT.primary}
+										/>
+										<StatCard
+											icon={CheckCircle}
+											label={t(AdminKey.BACKUP_SUCCESS_RATE)}
+											value={formatNumericValue(systemSecurity.dataSecurity.backupSuccessRate, 2, '%')}
+											color={SEMANTIC_ICON_TEXT.success}
+										/>
+									</div>
+								</AccordionContent>
+							</AccordionItem>
+						</Accordion>
+					) : (
+						<div className='text-center py-8 text-muted-foreground'>
+							<Shield className='h-12 w-12 mx-auto mb-4 opacity-50' />
+							<p>{t(AdminKey.NO_SECURITY_METRICS_AVAILABLE)}</p>
+						</div>
+					)}
+				</SectionCard>
+
+				{systemInsights != null && (
+					<SectionCard
+						title={t(AdminKey.SYSTEM_INSIGHTS)}
+						icon={ScanEye}
+						description={t(AdminKey.SYSTEM_INSIGHTS_DESC)}
 					>
-						<AccordionItem value={SystemSecurityAccordion.AUTH}>
-							<AccordionTrigger>
-								<span className='flex items-center gap-2'>
-									<LogIn className='h-5 w-5 shrink-0 text-primary' />
-									{t(AdminKey.AUTHENTICATION)}
-								</span>
-							</AccordionTrigger>
-							<AccordionContent>
-								<div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
-									<StatCard
-										icon={AlertTriangle}
-										label={t(AdminKey.FAILED_LOGINS)}
-										value={systemSecurity.authentication.failedLogins.toLocaleString()}
-										color={SEMANTIC_ICON_TEXT.destructive}
-									/>
-									<StatCard
-										icon={CheckCircle}
-										label={t(AdminKey.SUCCESSFUL_LOGINS)}
-										value={systemSecurity.authentication.successfulLogins.toLocaleString()}
-										color={SEMANTIC_ICON_TEXT.success}
-									/>
-									<StatCard
-										icon={Shield}
-										label={t(AdminKey.ACCOUNT_LOCKOUTS)}
-										value={systemSecurity.authentication.accountLockouts.toLocaleString()}
-										color={SEMANTIC_ICON_TEXT.warning}
-									/>
+						<div className='space-y-6'>
+							<div className='grid grid-cols-2 gap-4'>
+								<StatCard
+									icon={ScanEye}
+									label={t(AdminKey.SYSTEM_INSIGHTS_STATUS_METRIC_LABEL)}
+									value={t(systemInsightStatusValueKey(systemInsights.status))}
+									color={
+										systemInsights.status === SystemInsightStatus.OPTIMAL
+											? SEMANTIC_ICON_TEXT.success
+											: SEMANTIC_ICON_TEXT.warning
+									}
+								/>
+								<StatCard
+									icon={Clock}
+									label={t(AdminKey.LAST_UPDATED)}
+									value={formatDateTime(systemInsights.timestamp)}
+									color={SEMANTIC_ICON_TEXT.primary}
+								/>
+							</div>
+
+							<div className='grid grid-cols-5 gap-4'>
+								<StatCard
+									stackIconLabel
+									icon={Zap}
+									label={t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_PERFORMANCE)}
+									value={systemInsights.performanceInsights.length}
+									color={SEMANTIC_ICON_TEXT.primary}
+								/>
+								<StatCard
+									stackIconLabel
+									icon={Shield}
+									label={t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SECURITY)}
+									value={systemInsights.securityInsights.length}
+									color={SEMANTIC_ICON_TEXT.secondary}
+								/>
+								<StatCard
+									stackIconLabel
+									icon={Activity}
+									label={t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_USER_BEHAVIOR)}
+									value={systemInsights.userBehaviorInsights.length}
+									color={SEMANTIC_ICON_TEXT.success}
+								/>
+								<StatCard
+									stackIconLabel
+									icon={Server}
+									label={t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SYSTEM_HEALTH)}
+									value={systemInsights.systemHealthInsights.length}
+									color={SEMANTIC_ICON_TEXT.warning}
+								/>
+								<StatCard
+									stackIconLabel
+									icon={TrendingUp}
+									label={t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_TRENDS)}
+									value={systemInsights.trends.length}
+									color={SEMANTIC_ICON_TEXT.orange}
+								/>
+							</div>
+
+							{systemInsightsAccordionDefault.length === 0 ? (
+								<div className='py-6 text-center text-muted-foreground'>
+									<ScanEye className='mx-auto mb-4 h-12 w-12 opacity-50' />
+									<p>{t(AdminKey.NO_SYSTEM_INSIGHTS_AVAILABLE)}</p>
 								</div>
-							</AccordionContent>
-						</AccordionItem>
-						<AccordionItem value={SystemSecurityAccordion.AUTHZ}>
-							<AccordionTrigger>
-								<span className='flex items-center gap-2'>
-									<KeyRound className='h-5 w-5 shrink-0 text-primary' />
-									{t(AdminKey.AUTHORIZATION)}
-								</span>
-							</AccordionTrigger>
-							<AccordionContent>
-								<div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
-									<StatCard
-										icon={AlertTriangle}
-										label={t(AdminKey.UNAUTHORIZED_ATTEMPTS)}
-										value={systemSecurity.authorization.unauthorizedAttempts.toLocaleString()}
-										color={SEMANTIC_ICON_TEXT.destructive}
-									/>
-									<StatCard
-										icon={Shield}
-										label={t(AdminKey.PERMISSION_VIOLATIONS)}
-										value={systemSecurity.authorization.permissionViolations.toLocaleString()}
-										color={SEMANTIC_ICON_TEXT.orange}
-									/>
-								</div>
-							</AccordionContent>
-						</AccordionItem>
-						<AccordionItem value={SystemSecurityAccordion.DATA}>
-							<AccordionTrigger>
-								<span className='flex items-center gap-2'>
-									<Database className='h-5 w-5 shrink-0 text-primary' />
-									{t(AdminKey.DATA_SECURITY)}
-								</span>
-							</AccordionTrigger>
-							<AccordionContent>
-								<div className='grid grid-cols-1 gap-4 md:grid-cols-3'>
-									<StatCard
-										icon={AlertTriangle}
-										label={t(AdminKey.DATA_BREACHES)}
-										value={systemSecurity.dataSecurity.dataBreaches.toLocaleString()}
-										color={
-											systemSecurity.dataSecurity.dataBreaches > 0
-												? SEMANTIC_ICON_TEXT.destructive
-												: SEMANTIC_ICON_TEXT.success
-										}
-									/>
-									<StatCard
-										icon={Shield}
-										label={t(AdminKey.ENCRYPTION_COVERAGE)}
-										value={formatNumericValue(systemSecurity.dataSecurity.encryptionCoverage, 2, '%')}
-										color={SEMANTIC_ICON_TEXT.primary}
-									/>
-									<StatCard
-										icon={CheckCircle}
-										label={t(AdminKey.BACKUP_SUCCESS_RATE)}
-										value={formatNumericValue(systemSecurity.dataSecurity.backupSuccessRate, 2, '%')}
-										color={SEMANTIC_ICON_TEXT.success}
-									/>
-								</div>
-							</AccordionContent>
-						</AccordionItem>
-					</Accordion>
-				) : (
-					<div className='text-center py-8 text-muted-foreground'>
-						<Shield className='h-12 w-12 mx-auto mb-4 opacity-50' />
-						<p>{t(AdminKey.NO_SECURITY_METRICS_AVAILABLE)}</p>
-					</div>
+							) : (
+								<Accordion type='multiple' defaultValue={systemInsightsAccordionDefault} className='w-full'>
+									{systemInsights.performanceInsights.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.PERF}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<Zap className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_PERFORMANCE)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<SystemInsightDetailGrid
+													items={systemInsights.performanceInsights}
+													categoryIcon={Zap}
+													categoryLabelKey={AdminKey.SYSTEM_INSIGHTS_CATEGORY_PERFORMANCE}
+													idPrefix='insight-perf'
+												/>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+									{systemInsights.securityInsights.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.SEC}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<Shield className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SECURITY)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<SystemInsightDetailGrid
+													items={systemInsights.securityInsights}
+													categoryIcon={Shield}
+													categoryLabelKey={AdminKey.SYSTEM_INSIGHTS_CATEGORY_SECURITY}
+													idPrefix='insight-sec'
+												/>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+									{systemInsights.userBehaviorInsights.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.USER}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<Activity className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_USER_BEHAVIOR)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<SystemInsightDetailGrid
+													items={systemInsights.userBehaviorInsights}
+													categoryIcon={Activity}
+													categoryLabelKey={AdminKey.SYSTEM_INSIGHTS_CATEGORY_USER_BEHAVIOR}
+													idPrefix='insight-user'
+												/>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+									{systemInsights.systemHealthInsights.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.HEALTH}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<Server className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SYSTEM_HEALTH)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<SystemInsightDetailGrid
+													items={systemInsights.systemHealthInsights}
+													categoryIcon={Server}
+													categoryLabelKey={AdminKey.SYSTEM_INSIGHTS_CATEGORY_SYSTEM_HEALTH}
+													idPrefix='insight-health'
+												/>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+									{systemInsights.trends.length > 0 ? (
+										<AccordionItem value={SystemInsightAccordion.TRENDS}>
+											<AccordionTrigger>
+												<span className='flex items-center gap-2'>
+													<TrendingUp className='h-5 w-5 shrink-0 text-primary' />
+													{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_TRENDS)}
+												</span>
+											</AccordionTrigger>
+											<AccordionContent>
+												<SystemInsightDetailGrid
+													items={systemInsights.trends}
+													categoryIcon={TrendingUp}
+													categoryLabelKey={AdminKey.SYSTEM_INSIGHTS_CATEGORY_TRENDS}
+													idPrefix='insight-trends'
+												/>
+											</AccordionContent>
+										</AccordionItem>
+									) : null}
+								</Accordion>
+							)}
+						</div>
+					</SectionCard>
 				)}
-			</SectionCard>
+			</div>
 
 			{systemRecommendations != null && systemRecommendations.length > 0 && (
 				<Accordion
@@ -406,134 +626,6 @@ export function SystemHealthSection() {
 						</AccordionContent>
 					</AccordionItem>
 				</Accordion>
-			)}
-
-			{systemInsights != null && (
-				<SectionCard title={t(AdminKey.SYSTEM_INSIGHTS)} icon={ScanEye} description={t(AdminKey.SYSTEM_INSIGHTS_DESC)}>
-					<div className='space-y-6'>
-						<div className='mb-4 flex items-center gap-2'>
-							<Badge
-								variant={
-									systemInsights.status === SystemInsightStatus.OPTIMAL
-										? VariantBase.DEFAULT
-										: systemInsights.status === SystemInsightStatus.ATTENTION
-											? VariantBase.SECONDARY
-											: VariantBase.DESTRUCTIVE
-								}
-							>
-								{systemInsights.status.toUpperCase()}
-							</Badge>
-							<span className='text-sm text-muted-foreground'>
-								{t(AdminKey.LAST_UPDATED)} {formatDateTime(systemInsights.timestamp)}
-							</span>
-						</div>
-
-						{systemInsightsAccordionDefault.length === 0 ? (
-							<div className='py-6 text-center text-muted-foreground'>
-								<ScanEye className='mx-auto mb-4 h-12 w-12 opacity-50' />
-								<p>{t(AdminKey.NO_SYSTEM_INSIGHTS_AVAILABLE)}</p>
-							</div>
-						) : (
-							<Accordion type='multiple' defaultValue={systemInsightsAccordionDefault} className='w-full'>
-								{systemInsights.performanceInsights.length > 0 ? (
-									<AccordionItem value={SystemInsightAccordion.PERF}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<Zap className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_PERFORMANCE)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.performanceInsights.map((insight, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{insight}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-								{systemInsights.securityInsights.length > 0 ? (
-									<AccordionItem value={SystemInsightAccordion.SEC}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<Shield className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SECURITY)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.securityInsights.map((insight, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{insight}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-								{systemInsights.userBehaviorInsights.length > 0 ? (
-									<AccordionItem value={SystemInsightAccordion.USER}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<Activity className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_USER_BEHAVIOR)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.userBehaviorInsights.map((insight, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{insight}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-								{systemInsights.systemHealthInsights.length > 0 ? (
-									<AccordionItem value={SystemInsightAccordion.HEALTH}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<Activity className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_SYSTEM_HEALTH)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.systemHealthInsights.map((insight, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{insight}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-								{systemInsights.trends.length > 0 ? (
-									<AccordionItem value={SystemInsightAccordion.TRENDS}>
-										<AccordionTrigger>
-											<span className='flex items-center gap-2'>
-												<TrendingUp className='h-5 w-5 shrink-0 text-primary' />
-												{t(AdminKey.SYSTEM_INSIGHTS_CATEGORY_TRENDS)}
-											</span>
-										</AccordionTrigger>
-										<AccordionContent>
-											<div className='space-y-3'>
-												{systemInsights.trends.map((trend, index) => (
-													<div key={index} className='rounded-lg bg-muted/50 p-3'>
-														<span className='text-sm'>{trend}</span>
-													</div>
-												))}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								) : null}
-							</Accordion>
-						)}
-					</div>
-				</SectionCard>
 			)}
 		</div>
 	);

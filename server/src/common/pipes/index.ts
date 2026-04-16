@@ -1,3 +1,5 @@
+export * from './appValidation.pipe';
+
 export * from './customDifficulty.pipe';
 
 export * from './paymentData.pipe';

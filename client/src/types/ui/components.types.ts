@@ -1,9 +1,16 @@
-import type { ButtonHTMLAttributes, ComponentPropsWithoutRef, HTMLAttributes, ReactNode } from 'react';
+import type {
+	ButtonHTMLAttributes,
+	ComponentPropsWithoutRef,
+	ErrorInfo,
+	HTMLAttributes,
+	ReactElement,
+	ReactNode,
+} from 'react';
 import { type LinkProps } from 'react-router-dom';
 import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
-import { type VariantProps } from 'class-variance-authority';
+import type { VariantProps } from 'class-variance-authority';
 import type { LucideIcon } from 'lucide-react';
 
 import {
@@ -117,4 +124,24 @@ export interface AvatarProps extends Omit<ComponentPropsWithoutRef<typeof Avatar
 	size?: AvatarSize;
 	variant?: AvatarVariant;
 	pointerEventsNone?: boolean;
+}
+
+export interface UseClipboardCopyParams {
+	text: string | null | undefined;
+	onSuccess?: () => void;
+	onError?: (error: unknown) => void;
+}
+
+export interface ErrorBoundaryProps {
+	children: ReactElement | ReactElement[];
+	featureName?: string;
+	fallback?: ReactElement | null;
+	onError?: (error: Error, errorInfo: ErrorInfo) => void;
+}
+
+export interface ErrorState {
+	hasError: boolean;
+	error?: Error;
+	errorInfo?: ErrorInfo;
+	retryCount: number;
 }

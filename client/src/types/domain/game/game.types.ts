@@ -20,7 +20,8 @@ export interface GameModeOption {
 	showTimeLimit: boolean;
 }
 
-export interface GameKey {
+/** Used to detect duplicate finalization for the same session outcome on the single-player summary screen. */
+export interface FinalizedGameSessionKey {
 	score: number;
 	gameQuestionCount: number;
 }

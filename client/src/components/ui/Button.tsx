@@ -163,7 +163,7 @@ export function ViewAllButton({ destination, visible = true }: ViewAllButtonProp
 
 	return (
 		<Button variant={VariantBase.MINIMAL} size={ButtonSize.SM} onClick={() => navigate(path)} className='text-xs'>
-			{t(HomeKey.VIEW_ALL)} <ArrowRight className='h-3 w-3 ml-1 rtl:scale-x-[-1]' />
+			{t(HomeKey.VIEW_ALL)} <ArrowRight className='h-3 w-3 ms-1 rtl:scale-x-[-1]' />
 		</Button>
 	);
 }

@@ -6,7 +6,7 @@ import { Brain, Calendar, CircleUser, ClipboardClock, Gauge, ListOrdered, Tag, T
 import { DIFFICULTY_CONFIG, EMPTY_VALUE, GameMode } from '@shared/constants';
 import type { GameHistoryEntry } from '@shared/types';
 import { formatTitle, getErrorMessage, namesMatch } from '@shared/utils';
-import { isGameDifficulty, isGameMode } from '@shared/validation';
+import { isGameDifficulty, isGameMode, VALIDATORS } from '@shared/validation';
 
 import {
 	AlertIconSize,
@@ -163,7 +163,7 @@ export function HistoryTabContent() {
 				headerLabel: t(StatisticsHistoryKey.COLUMN_DIFFICULTY),
 				type: DataTableColumnType.BADGE_DIFFICULTY,
 				getValue: row => row.difficulty,
-				format: v => getDifficultyDisplayLabel(v == null ? v : typeof v === 'string' ? v : String(v), t),
+				format: v => getDifficultyDisplayLabel(v == null ? v : VALIDATORS.string(v) ? v : String(v), t),
 				sortField: SortField.DIFFICULTY,
 				headerIcon: <Gauge />,
 			},

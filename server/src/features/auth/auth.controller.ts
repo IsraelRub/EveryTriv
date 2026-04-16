@@ -1,15 +1,4 @@
-import {
-	BadRequestException,
-	Body,
-	Controller,
-	Get,
-	Post,
-	Query,
-	Req,
-	Res,
-	UnauthorizedException,
-	UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 
@@ -24,7 +13,14 @@ import type { GoogleAuthRequest, TokenPayload } from '@internal/types';
 import { getAvatarUrlForUser } from '@internal/utils';
 
 import { AuthService } from './auth.service';
-import { AuthResponseDto, LoginDto, RefreshTokenDto, RefreshTokenResponseDto, RegisterDto } from './dtos/auth.dto';
+import {
+	AuthResponseDto,
+	LoginDto,
+	RefreshTokenDto,
+	RefreshTokenResponseDto,
+	RegisterDto,
+	VerifyEmailQueryDto,
+} from './dtos/auth.dto';
 
 @Controller(API_ENDPOINTS.AUTH.BASE)
 export class AuthController {
@@ -112,11 +108,8 @@ export class AuthController {
 
 	@Get('verify-email')
 	@Public()
-	async verifyEmail(@Query('token') token: string | undefined): Promise<{ verified: boolean }> {
-		if (!token || typeof token !== 'string') {
-			throw new BadRequestException(ErrorCode.VERIFICATION_TOKEN_INVALID_OR_EXPIRED);
-		}
-		return this.authService.verifyEmail(token);
+	async verifyEmail(@Query() query: VerifyEmailQueryDto): Promise<{ verified: boolean }> {
+		return this.authService.verifyEmail(query.token);
 	}
 
 	@Get('me')

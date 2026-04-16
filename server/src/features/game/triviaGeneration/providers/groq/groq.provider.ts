@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
+
 import {
 	DEFAULT_LANGUAGE,
 	DifficultyLevel,
@@ -17,6 +19,7 @@ import {
 	isCustomDifficulty,
 	isRegisteredDifficulty,
 	toDifficultyLevel,
+	VALIDATORS,
 } from '@shared/validation';
 
 import {
@@ -27,6 +30,8 @@ import {
 	GROQ_PROVIDER_MAX_TOKENS,
 	GROQ_PROVIDER_NAME,
 	GROQ_PROVIDER_VERSION,
+	TRIVIA_GENERATION_DECLINED_REASON,
+	type TriviaGenerationDeclinedReason,
 } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
 import type {
@@ -139,16 +144,21 @@ export class GroqTriviaProvider {
 					topic: params.topic,
 					difficulty: params.difficulty,
 					explanation: data.explanation ?? 'No explanation provided',
+					generationDeclinedReason:
+						data.declinedReason ?? TRIVIA_GENERATION_DECLINED_REASON.INSUFFICIENT_VERIFIABLE_FACTS,
 				});
 
-				// Throw error instead of returning fallback question
-				throw createServerError('AI could not generate question', new Error(ErrorCode.AI_RETURNED_EMPTY_RESPONSE));
+				this.throwTriviaGenerationDeclined(
+					data.declinedReason ?? TRIVIA_GENERATION_DECLINED_REASON.INSUFFICIENT_VERIFIABLE_FACTS
+				);
 			}
 
 			// Create trivia question object
 			const firstQuestion = questions[0];
 			if (!firstQuestion) {
-				throw createServerError('AI could not generate question', new Error(ErrorCode.AI_RETURNED_EMPTY_RESPONSE));
+				this.throwTriviaGenerationDeclined(
+					data.declinedReason ?? TRIVIA_GENERATION_DECLINED_REASON.INSUFFICIENT_VERIFIABLE_FACTS
+				);
 			}
 			// Create base question object (without correctAnswerIndex initially)
 			const questionBase = {
@@ -237,12 +247,11 @@ export class GroqTriviaProvider {
 			const response = await this.apiClient.makeApiCall(userPrompt, SURPRISE_PICK_SYSTEM_PROMPT);
 
 			const rawContent = response.data?.choices?.[0]?.message?.content;
-			const content =
-				typeof rawContent === 'string'
-					? rawContent
-					: typeof rawContent === 'object' && rawContent != null
-						? JSON.stringify(rawContent)
-						: '';
+			const content = VALIDATORS.string(rawContent)
+				? rawContent
+				: typeof rawContent === 'object' && rawContent != null
+					? JSON.stringify(rawContent)
+					: '';
 			if (!content || content.trim().length === 0) {
 				throw createServerError('surprise pick', new Error(ERROR_MESSAGES.provider.INVALID_GROQ_RESPONSE));
 			}
@@ -259,7 +268,7 @@ export class GroqTriviaProvider {
 			const result: SurprisePickResult = {};
 
 			if (scope === SurpriseScope.TOPIC || scope === SurpriseScope.BOTH) {
-				const topic = typeof parsed.topic === 'string' ? parsed.topic.trim() : '';
+				const topic = VALIDATORS.string(parsed.topic) ? parsed.topic.trim() : '';
 				if (topic.length < VALIDATION_LENGTH.TOPIC.MIN || topic.length > VALIDATION_LENGTH.TOPIC.MAX) {
 					throw createServerError(
 						'surprise pick',
@@ -270,7 +279,7 @@ export class GroqTriviaProvider {
 			}
 
 			if (scope === SurpriseScope.DIFFICULTY || scope === SurpriseScope.BOTH) {
-				const difficultyRaw = typeof parsed.difficulty === 'string' ? parsed.difficulty.trim() : '';
+				const difficultyRaw = VALIDATORS.string(parsed.difficulty) ? parsed.difficulty.trim() : '';
 				if (difficultyRaw.length === 0) {
 					throw createServerError('surprise pick', new Error('Difficulty is required'));
 				}
@@ -335,5 +344,27 @@ export class GroqTriviaProvider {
 		}
 
 		return base;
+	}
+
+	private throwTriviaGenerationDeclined(reason: TriviaGenerationDeclinedReason): never {
+		let message: string;
+		switch (reason) {
+			case TRIVIA_GENERATION_DECLINED_REASON.UNCLEAR_TOPIC:
+				message = ERROR_MESSAGES.game.TRIVIA_DECLINED_UNCLEAR_TOPIC;
+				break;
+			case TRIVIA_GENERATION_DECLINED_REASON.UNCLEAR_DIFFICULTY:
+				message = ERROR_MESSAGES.game.TRIVIA_DECLINED_UNCLEAR_DIFFICULTY;
+				break;
+			case TRIVIA_GENERATION_DECLINED_REASON.UNCLEAR_TOPIC_AND_DIFFICULTY:
+				message = ERROR_MESSAGES.game.TRIVIA_DECLINED_UNCLEAR_TOPIC_AND_DIFFICULTY;
+				break;
+			case TRIVIA_GENERATION_DECLINED_REASON.INSUFFICIENT_VERIFIABLE_FACTS:
+				message = ERROR_MESSAGES.game.TRIVIA_DECLINED_INSUFFICIENT_VERIFIABLE_FACTS;
+				break;
+		}
+		throw new BadRequestException({
+			message,
+			errors: [message],
+		});
 	}
 }

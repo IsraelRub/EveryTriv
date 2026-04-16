@@ -2,9 +2,13 @@ import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'reac
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { cva } from 'class-variance-authority';
 
+import { Locale } from '@shared/constants';
+
 import { TabsListVariant } from '@/constants';
 import type { TabsListProps } from '@/types';
 import { cn } from '@/utils';
+import { useAppSelector } from '@/hooks';
+import { selectLocale } from '@/redux/selectors';
 
 const tabsListVariants = cva('inline-flex items-center justify-center rounded-md bg-muted p-1 text-muted-foreground', {
 	variants: {
@@ -18,7 +22,21 @@ const tabsListVariants = cva('inline-flex items-center justify-center rounded-md
 	defaultVariants: { variant: TabsListVariant.DEFAULT },
 });
 
-export const Tabs = TabsPrimitive.Root;
+type TabsRootProps = ComponentPropsWithoutRef<typeof TabsPrimitive.Root>;
+
+/**
+ * Radix Tabs calls `useDirection(dir)`; without an explicit `dir`, it defaults to LTR and
+ * overrides inherited `dir` from `document.documentElement`, so tab order and roving focus
+ * stay English-oriented. Sync `dir` with app locale unless the caller passes `dir`.
+ */
+export const Tabs = forwardRef<ElementRef<typeof TabsPrimitive.Root>, TabsRootProps>(
+	({ dir: dirProp, ...props }, ref) => {
+		const locale = useAppSelector(selectLocale);
+		const dir = dirProp ?? (locale === Locale.HE ? 'rtl' : 'ltr');
+		return <TabsPrimitive.Root ref={ref} dir={dir} {...props} />;
+	}
+);
+Tabs.displayName = 'Tabs';
 
 export const TabsList = forwardRef<ElementRef<typeof TabsPrimitive.List>, TabsListProps>(
 	({ className, variant = TabsListVariant.DEFAULT, ...props }, ref) => (

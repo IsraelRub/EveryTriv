@@ -12,7 +12,6 @@ import {
 	ButtonSize,
 	CommonKey,
 	ComponentSize,
-	isManualCreditPaymentMethodEnabledInClient,
 	LoadingKey,
 	PaymentKey,
 	SEMANTIC_ICON_TEXT,
@@ -49,6 +48,10 @@ import {
 	Spinner,
 } from '@/components';
 import { usePurchaseCredits } from '@/hooks';
+
+function isManualCreditPaymentMethodEnabledInClient(): boolean {
+	return import.meta.env.VITE_ENABLE_MANUAL_CREDIT_PAYMENT === 'true' || import.meta.env.MODE === 'development';
+}
 
 export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: PaymentDialogProps) {
 	const { t } = useTranslation(['payment', 'loading', 'common', 'errors']);

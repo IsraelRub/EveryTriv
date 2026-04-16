@@ -31,7 +31,7 @@ import {
 	UserStatus,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
-import type { AdminUserData } from '@shared/types';
+import type { AdminUserData, UsersListResponse } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
@@ -54,6 +54,7 @@ import { AuthService } from '../auth/auth.service';
 import { CreditsService } from '../credits/credits.service';
 import { DeductCreditsDto } from '../credits/dtos';
 import {
+	AdminUsersListQueryDto,
 	ChangePasswordDto,
 	SearchUsersDto,
 	SetAvatarDto,
@@ -492,18 +493,13 @@ export class UserController {
 	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getAllUsers(
 		@CurrentUser() user: TokenPayload | null,
-		@Query('limit') limit?: number,
-		@Query('offset') offset?: number
-	) {
+		@Query() query: AdminUsersListQueryDto
+	): Promise<UsersListResponse> {
 		if (!user?.sub) {
 			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 		try {
-			const parsedLimit = VALIDATORS.string(limit) ? parseInt(limit, 10) : limit;
-			const parsedOffset = VALIDATORS.string(offset) ? parseInt(offset, 10) : offset;
-			const safeLimit = VALIDATORS.number(parsedLimit) ? parsedLimit : 50;
-			const safeOffset = VALIDATORS.number(parsedOffset) ? parsedOffset : 0;
-			const result = await this.userCoreService.getAllUsers(safeLimit, safeOffset);
+			const result = await this.userCoreService.getAllUsers(query.limit, query.offset);
 
 			logger.apiRead('admin_get_all_users', {
 				id: user.sub,
@@ -514,14 +510,15 @@ export class UserController {
 
 			const adminInfo: AdminUserData = {
 				id: user.sub,
-				...user,
+				email: user.email,
+				role: user.role,
 				createdAt: new Date().toISOString(),
 				lastLogin: undefined,
 			};
 
 			const { users, ...paginationData } = result;
 
-			return {
+			const body: UsersListResponse = {
 				message: 'Users retrieved successfully',
 				success: true,
 				adminUser: adminInfo,
@@ -529,6 +526,7 @@ export class UserController {
 				pagination: paginationData,
 				timestamp: new Date().toISOString(),
 			};
+			return body;
 		} catch (error) {
 			logger.userError('Failed to get all users', {
 				errorInfo: { message: getErrorMessage(error) },

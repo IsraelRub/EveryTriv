@@ -48,7 +48,14 @@ import {
 	sumBy,
 	truncateWithEllipsis,
 } from '@shared/utils';
-import { isLocale, isRegisteredDifficulty, isUuid, toDifficultyLevel, VALIDATORS } from '@shared/validation';
+import {
+	isGameDifficulty,
+	isLocale,
+	isRegisteredDifficulty,
+	isUuid,
+	toDifficultyLevel,
+	VALIDATORS,
+} from '@shared/validation';
 
 import { restoreGameDifficulty } from '@common/validation';
 import { GAME_STATUSES, GameStatus } from '@internal/constants';
@@ -64,10 +71,12 @@ import type {
 	SubmitAnswerParams,
 	UserGameHistoryParams,
 } from '@internal/types';
-import { createNotFoundError, createServerError, isGameSessionState, isValidGameDifficulty } from '@internal/utils';
+import { createNotFoundError, createServerError, isGameSessionState } from '@internal/utils';
 
 import { UserStatsUpdateService } from '../analytics/services';
 import { TriviaGenerationService } from './triviaGeneration';
+
+const MAX_SESSION_EXCLUDE_QUESTION_TEXTS = 200;
 
 @Injectable()
 export class GameService {
@@ -211,7 +220,32 @@ export class GameService {
 		try {
 			// Get user's seen questions if userId is provided
 			const userSeenQuestions = userId ? await this.getUserSeenQuestions(userId) : new Set<string>();
-			const excludeQuestionTexts = Array.from(userSeenQuestions);
+
+			const sessionExcludeQuestionTexts: string[] = [];
+			if (userId && gameId && isNonEmptyString(gameId) && isUuid(gameId)) {
+				const sessionKeyForExclude = CACHE_KEYS.GAME.SESSION(userId, gameId);
+				const sessionForExcludeResult = await this.storageService.get(sessionKeyForExclude);
+				if (
+					sessionForExcludeResult.success &&
+					sessionForExcludeResult.data &&
+					isGameSessionState(sessionForExcludeResult.data)
+				) {
+					const stored = sessionForExcludeResult.data.sessionExcludeQuestionTexts;
+					if (Array.isArray(stored)) {
+						for (const raw of stored) {
+							if (isNonEmptyString(raw)) {
+								sessionExcludeQuestionTexts.push(raw.toLowerCase().trim());
+							}
+						}
+					}
+				}
+			}
+
+			const mergedExcludeTexts = new Set<string>(userSeenQuestions);
+			for (const t of sessionExcludeQuestionTexts) {
+				mergedExcludeTexts.add(t);
+			}
+			const excludeQuestionTexts = Array.from(mergedExcludeTexts);
 
 			const locale = isLocale(outputLanguage) ? outputLanguage : Locale.EN;
 
@@ -399,6 +433,9 @@ export class GameService {
 							batchGeneratedQuestions.push(generationResult.question);
 							questions.push(question);
 						} catch (error) {
+							if (error instanceof BadRequestException) {
+								throw error;
+							}
 							logger.gameError('Failed to generate question, retrying', {
 								errorInfo: { message: getErrorMessage(error) },
 								topic,
@@ -437,12 +474,14 @@ export class GameService {
 				});
 			}
 
-			// Store question snapshots in session when gameId and userId provided (for consistent answer evaluation on submit)
+			// Store question snapshots and session exclude texts when gameId and userId provided
 			if (userId && gameId && isNonEmptyString(gameId) && isUuid(gameId) && questions.length > 0) {
 				const sessionKey = CACHE_KEYS.GAME.SESSION(userId, gameId);
 				const sessionResult = await this.storageService.get(sessionKey);
 				if (sessionResult.success && sessionResult.data && isGameSessionState(sessionResult.data)) {
 					const session = sessionResult.data;
+					let sessionDirty = false;
+
 					const newSnapshots: Record<string, { correctAnswerIndex: number }> = {};
 					for (const q of questions) {
 						if (q?.id && VALIDATORS.number(q.correctAnswerIndex)) {
@@ -450,8 +489,29 @@ export class GameService {
 						}
 					}
 					if (Object.keys(newSnapshots).length > 0) {
-						// Merge so time-limited "fetch more" keeps snapshots for previous batches and adds new ones
 						session.questionSnapshots = { ...(session.questionSnapshots ?? {}), ...newSnapshots };
+						sessionDirty = true;
+					}
+
+					const newTextsForSession = questions
+						.map(q => (isNonEmptyString(q?.question) ? q.question.trim().toLowerCase() : ''))
+						.filter((t): t is string => t.length > 0);
+					if (newTextsForSession.length > 0) {
+						const prevTexts = session.sessionExcludeQuestionTexts ?? [];
+						const combined = [...prevTexts, ...newTextsForSession];
+						const deduped: string[] = [];
+						const seenText = new Set<string>();
+						for (const t of combined) {
+							if (!seenText.has(t)) {
+								seenText.add(t);
+								deduped.push(t);
+							}
+						}
+						session.sessionExcludeQuestionTexts = deduped.slice(-MAX_SESSION_EXCLUDE_QUESTION_TEXTS);
+						sessionDirty = true;
+					}
+
+					if (sessionDirty) {
 						session.lastHeartbeat = new Date().toISOString();
 						await this.storageService.set(sessionKey, session, TIME_DURATIONS_SECONDS.HOUR);
 					}
@@ -463,6 +523,9 @@ export class GameService {
 				fromCache: false,
 			};
 		} catch (error) {
+			if (error instanceof HttpException) {
+				throw error;
+			}
 			logger.gameError('Failed to generate trivia questions', {
 				errorInfo: { message: getErrorMessage(error) },
 				topic,
@@ -781,7 +844,7 @@ export class GameService {
 			});
 
 			// Validate difficulty is a valid GameDifficulty
-			if (!isValidGameDifficulty(session.difficulty)) {
+			if (!isGameDifficulty(session.difficulty)) {
 				throw createServerError(
 					'finalize game session',
 					new Error(ERROR_MESSAGES.validation.INVALID_DIFFICULTY_LEVEL(session.difficulty))

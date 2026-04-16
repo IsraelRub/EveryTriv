@@ -1,16 +1,22 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Response } from 'express';
 import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { HttpMethod } from '@shared/constants';
-import { getErrorMessage } from '@shared/utils';
+import { getErrorMessage, isRecord } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { StorageOperation } from '@internal/constants';
 import { CacheService } from '@internal/modules';
 import { serverLogger as logger } from '@internal/services';
 import type { CacheConfig, NestRequest } from '@internal/types';
-import { isCacheableValue, isExpressResponse } from '@internal/utils';
+import { isCacheableValue } from '@internal/utils';
+
+function isExpressResponse(value: unknown): value is Response {
+	return isRecord(value) && VALIDATORS.function(value.status) && VALIDATORS.function(value.setHeader);
+}
 
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {

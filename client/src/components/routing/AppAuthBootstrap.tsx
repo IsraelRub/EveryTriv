@@ -1,17 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { ensureErrorObject } from '@shared/utils';
 
 import { FullPageSpinnerLayout, LoadingMessages, ROUTES } from '@/constants';
+import type { AppAuthBootstrapProps } from '@/types';
 import { authService, clientLogger as logger } from '@/services';
 import { getAuthCurrentUserQueryKey, isProtectedAppPath, readAuthTokenSnapshotForQueryKey } from '@/utils';
 import { BackgroundAnimation } from '@/components/ui/BackgroundAnimation';
 import { FullPageSpinner } from '@/components/ui/spinner';
-
-interface AppAuthBootstrapProps {
-	children: ReactNode;
-}
 
 export function AppAuthBootstrap({ children }: AppAuthBootstrapProps): JSX.Element {
 	const queryClient = useQueryClient();

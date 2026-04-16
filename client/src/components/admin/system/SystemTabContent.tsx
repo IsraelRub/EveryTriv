@@ -194,7 +194,7 @@ export function SystemTabContent() {
 						icon={Bolt}
 						description={t(AdminKey.DATA_MAINTENANCE_DESC)}
 					>
-						<ManagementActions operations={clearOperations} />
+						<ManagementActions operations={clearOperations} splitIntoTwoColumns />
 					</SectionCard>
 				</div>
 			</TabsContent>

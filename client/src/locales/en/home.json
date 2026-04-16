@@ -34,5 +34,14 @@
 	"emptyStatsDescription": "Play games to see your stats here",
 	"popularTopicsTitle": "Popular Topics",
 	"popularTopicsDesc": "Most played topics",
-	"gamesPlayedTooltip": "{{count}} games played"
+	"gamesPlayedTooltip": "{{count}} games played",
+	"tabOverview": "Overview",
+	"tabPublicLobbies": "Open multiplayer rooms",
+	"publicLobbySearchLabel": "Search by topic",
+	"publicLobbySearchPlaceholder": "Type part of a topic…",
+	"publicLobbyJoin": "Join room",
+	"publicLobbyLoginToJoin": "Sign in to join",
+	"publicLobbyEmpty": "No public rooms are waiting right now.",
+	"publicLobbyLoadError": "Could not load the room list",
+	"publicLobbyRefreshing": "Updating…"
 }

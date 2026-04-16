@@ -347,7 +347,6 @@ const { data, isLoading, error } = useQuery({
 - **camelCase** for variables and functions: `handleClick`, `gameState`
 - **UPPER_CASE** for constants: `ROUTES`, `ANIMATION_DELAYS`
 - **camelCase** for file names: `gameSessionView.tsx`, `answerButton.tsx`
-- Add JSDoc comments for complex logic, especially in hooks
 - Import through barrels (`index.ts`) instead of deep relative paths
 
 ## 🚀 Performance Optimization
@@ -368,6 +367,6 @@ const { data, isLoading, error } = useQuery({
 5. **Error Handling**: Always handle errors explicitly with proper user feedback
 6. **Performance**: Optimize re-renders and lazy load when appropriate
 7. **Accessibility**: Ensure proper ARIA labels and keyboard navigation
-8. **Documentation**: Document complex logic with JSDoc comments
+8. **Documentation**: Document complex logic where it materially helps maintainers
 9. **Testing**: Write tests for critical business logic
 10. **Consistency**: Follow existing patterns and conventions in the codebase

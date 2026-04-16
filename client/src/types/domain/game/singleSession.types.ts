@@ -16,7 +16,7 @@ export interface UseSingleSessionReturn {
 	navigateToPayment: () => void;
 	showErrorDialog: boolean;
 	setShowErrorDialog: (open: boolean) => void;
-	errorMessage: string;
+	sessionError: unknown | null;
 	showCreditsWarning: boolean;
 	setShowCreditsWarning: (open: boolean) => void;
 	handleExitGame: () => void;

@@ -28,10 +28,6 @@ export const useUpdateUserProfile = () => {
 	});
 };
 
-/**
- * Avatar mutations sync cache via cancelQueries + setQueryData only.
- * Do not chain `invalidateUserQueries` here: invalidation would refetch immediately and can race this write.
- */
 export const useSetAvatar = () => {
 	const queryClient = useQueryClient();
 

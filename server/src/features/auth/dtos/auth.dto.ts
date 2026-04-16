@@ -132,3 +132,13 @@ export class RefreshTokenResponseDto {
 	})
 	accessToken: string;
 }
+
+export class VerifyEmailQueryDto {
+	@ApiProperty({
+		description: 'Email verification token from the verification link',
+	})
+	@IsString({ message: 'Verification token must be a string' })
+	@IsNotEmpty({ message: 'Verification token is required' })
+	@MaxLength(4096, { message: 'Verification token is too long' })
+	token!: string;
+}

@@ -1,3 +1,7 @@
+export { useClipboardCopy } from './useClipboardCopy';
+
+export { useDebouncedValue } from './useDebouncedValue';
+
 export {
 	useLogin,
 	useRegister,
@@ -18,7 +22,7 @@ export {
 	usePurchaseCredits,
 } from './useCredits';
 
-export { useGameHistory, useGameSettingsForm, useGameFinalization, useSingleSession } from './game';
+export { useCopyRoomCode, useGameHistory, useGameSettingsForm, useGameFinalization, useSingleSession } from './game';
 
 export {
 	useSetAvatar,

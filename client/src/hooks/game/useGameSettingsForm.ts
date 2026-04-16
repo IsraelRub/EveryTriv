@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
 	DEFAULT_GAME_CONFIG,
 	DifficultyLevel,
+	LANGUAGE_VALIDATION_DEBOUNCE_MS,
 	LengthKey,
 	Locale,
 	ValidateTextContext,
@@ -19,13 +20,7 @@ import {
 	validateTriviaInputQuick,
 } from '@shared/validation';
 
-import {
-	ErrorsKey,
-	GameKey,
-	LANGUAGE_VALIDATION_DEBOUNCE_MS,
-	TextLanguageStatus,
-	VALIDATION_MESSAGES,
-} from '@/constants';
+import { ErrorsKey, GameKey, TextLanguageStatus, VALIDATION_MESSAGES } from '@/constants';
 import type { GameSettingsValidationResult, UseGameSettingsFormReturn } from '@/types';
 import { gameService } from '@/services';
 import { translateValidationMessage } from '@/utils';

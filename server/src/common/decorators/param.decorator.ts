@@ -1,10 +1,12 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
+import { VALIDATORS } from '@shared/validation';
+
 export const CurrentUserId = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
 	const user = ctx.switchToHttp().getRequest()?.user;
-	if (typeof data === 'string' && data !== '' && user != null && typeof user === 'object') {
+	if (VALIDATORS.string(data) && data !== '' && user != null && typeof user === 'object') {
 		const value = Reflect.get(user, data);
-		if (typeof value === 'string' && value !== '') {
+		if (VALIDATORS.string(value) && value !== '') {
 			return value;
 		}
 	}
@@ -13,7 +15,7 @@ export const CurrentUserId = createParamDecorator((data: unknown, ctx: Execution
 
 export const CurrentUser = createParamDecorator((data: unknown, ctx: ExecutionContext) => {
 	const user = ctx.switchToHttp().getRequest()?.user;
-	if (typeof data === 'string' && data !== '' && user != null && typeof user === 'object') {
+	if (VALIDATORS.string(data) && data !== '' && user != null && typeof user === 'object') {
 		return Reflect.get(user, data) ?? null;
 	}
 	return user ?? null;

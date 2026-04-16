@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 
 import { CACHE_KEYS, PaymentStatus, PAYPAL_WEBHOOK_EVENTS, TIME_DURATIONS_SECONDS } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { PaymentHistoryEntity } from '@internal/entities';
 import { CacheService } from '@internal/modules';
@@ -120,8 +121,8 @@ export class PayPalWebhookService {
 
 		const credits = metadata.credits;
 		const packageId = metadata.packageId;
-		const hasCredits = typeof credits === 'number' && Number.isFinite(credits) && credits > 0 && credits <= 10000;
-		const hasPackageId = typeof packageId === 'string' && packageId.trim().length > 0;
+		const hasCredits = VALIDATORS.number(credits) && credits > 0 && credits <= 10000;
+		const hasPackageId = VALIDATORS.string(packageId) && packageId.trim().length > 0;
 
 		if (!hasCredits || !hasPackageId) {
 			return;
@@ -258,9 +259,8 @@ export class PayPalWebhookService {
 	private async isEventProcessed(eventId: string): Promise<boolean> {
 		try {
 			const cacheKey = CACHE_KEYS.PAYPAL.WEBHOOK_EVENT(eventId);
-			const cached = await this.cacheService.get<string>(
-				cacheKey,
-				(value: unknown): value is string => typeof value === 'string'
+			const cached = await this.cacheService.get<string>(cacheKey, (value: unknown): value is string =>
+				VALIDATORS.string(value)
 			);
 			return cached.success && cached.data !== null;
 		} catch {

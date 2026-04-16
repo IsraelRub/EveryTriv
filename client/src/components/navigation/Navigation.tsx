@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { BrickWallShield, IdCard, LogOut, Menu } from 'lucide-react';
 
-import { APP_NAME } from '@shared/constants';
+import { APP_NAME, Locale } from '@shared/constants';
 import { getDisplayNameFromUserFields, getErrorMessage } from '@shared/utils';
 
 import {
@@ -33,10 +33,12 @@ import {
 	ProfileEditDialog,
 	UserAvatar,
 } from '@/components';
-import { useCurrentUserData, useIsAuthenticated, useUserRole } from '@/hooks';
+import { useAppSelector, useCurrentUserData, useIsAuthenticated, useUserRole } from '@/hooks';
+import { selectLocale } from '@/redux/selectors';
 
 export function Navigation() {
 	const { t } = useTranslation();
+	const locale = useAppSelector(selectLocale);
 	const navigate = useNavigate();
 	const location = useLocation();
 	const queryClient = useQueryClient();
@@ -69,8 +71,11 @@ export function Navigation() {
 		}
 	};
 
+	const navDir = locale === Locale.HE ? 'rtl' : 'ltr';
+
 	return (
 		<motion.nav
+			dir={navDir}
 			initial={{ y: -20, opacity: 0 }}
 			animate={{ y: 0, opacity: 1 }}
 			className='sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'

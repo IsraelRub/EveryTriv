@@ -62,7 +62,7 @@ pnpm run format        # עיצוב קוד
 pnpm run tunnel:cloudflared       # Quick Tunnel מול localhost:3000 (דורש cloudflared ב-PATH)
 pnpm run start:demo               # דמו מלא: up + URL + .env + everytriv-link + בילד client + דחיפת Git ל-Pages + restart server/client
 pnpm run start:demo:local         # כמו start:demo בלי commit/push ל-GitHub
-pnpm run start:demo:up            # רק docker compose + פרופיל demo-tunnel (בלי סנכרון .env / everytriv-link)
+pnpm run start:demo:up            # docker compose + demo-tunnel + --build (כמו docker:start), בלי סנכרון .env / everytriv-link
 pnpm run tunnel:cloudflared:logs  # לוגים של קונטיינר cloudflared (אחרי start:demo:up או אם מריצים רק את הטונל)
 ```
 

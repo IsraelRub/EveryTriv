@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 import { DEFAULT_LANGUAGE, Locale } from '@shared/constants';
-import { isLocale } from '@shared/validation';
+import { isLocale, VALIDATORS } from '@shared/validation';
 
 import { serverLogger as logger } from '@internal/services';
 import { StartGameSessionDto } from '@features/game/dtos';
@@ -47,10 +47,10 @@ export class StartGameSessionPipe implements PipeTransform {
 		}
 
 		return (
-			typeof value.gameId === 'string' &&
-			typeof value.topic === 'string' &&
-			typeof value.difficulty === 'string' &&
-			typeof value.gameMode === 'string'
+			VALIDATORS.string(value.gameId) &&
+			VALIDATORS.string(value.topic) &&
+			VALIDATORS.string(value.difficulty) &&
+			VALIDATORS.string(value.gameMode)
 		);
 	}
 }

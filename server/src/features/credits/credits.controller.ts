@@ -95,12 +95,7 @@ export class CreditsController {
 	}
 
 	@Post('deduct')
-	async deductCredits(
-		@CurrentUserId() userId: string | null,
-		@Body() body: DeductCreditsDto,
-		@Query('questionsPerRequest') questionsPerRequestParam?: number,
-		@Query('gameMode') gameModeParam?: GameMode
-	) {
+	async deductCredits(@CurrentUserId() userId: string | null, @Body() body: DeductCreditsDto) {
 		if (!userId) {
 			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
@@ -112,7 +107,7 @@ export class CreditsController {
 				reason: body.reason,
 			});
 
-			const questionsPerRequest = body.questionsPerRequest ?? questionsPerRequestParam;
+			const questionsPerRequest = body.questionsPerRequest;
 			if (!questionsPerRequest || questionsPerRequest <= 0) {
 				logger.userError('Invalid questions per request in request', {
 					userId,
@@ -123,7 +118,7 @@ export class CreditsController {
 				throw new HttpException(ErrorCode.QUESTIONS_PER_REQUEST_REQUIRED, HttpStatus.BAD_REQUEST);
 			}
 
-			const gameMode = body.gameMode ?? gameModeParam ?? GameMode.QUESTION_LIMITED;
+			const gameMode = body.gameMode ?? GameMode.QUESTION_LIMITED;
 
 			const result = await this.creditsService.deductCredits(userId, questionsPerRequest, gameMode, body.reason);
 

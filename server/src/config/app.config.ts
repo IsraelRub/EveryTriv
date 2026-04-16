@@ -20,10 +20,6 @@ export class AppConfig {
 		return process.env.NODE_ENV ?? 'production';
 	}
 
-	/**
-	 * Production-like runtime (strict secrets, OAuth URL warnings).
-	 * Accepts `production` and common alias `prod`; not the same as PayPal env.
-	 */
 	static get isProductionRuntime(): boolean {
 		const normalized = (process.env.NODE_ENV ?? 'production').trim().toLowerCase();
 		return normalized === 'production' || normalized === 'prod';

@@ -1,12 +1,12 @@
 import { Controller, Delete, Get, NotFoundException, Param } from '@nestjs/common';
 
 import { EMPTY_VALUE, ErrorCode, UserRole } from '@shared/constants';
-import type { AllMetricsResponse, MetricsResponse } from '@shared/types';
-import { getErrorMessage, meanBy, sumBy } from '@shared/utils';
+import type { AllMetricsResponse, MetricsResponse, MiddlewareMetrics } from '@shared/types';
+import { getErrorMessage, isRecord, meanBy, sumBy } from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { Roles } from '@common/decorators';
 import { serverLogger as logger, MetricsService } from '@internal/services';
-import { isMiddlewareMetrics } from '@internal/utils';
 
 @Controller('admin/middleware-metrics')
 export class MetricsController {
@@ -25,22 +25,24 @@ export class MetricsController {
 			}
 
 			// Type guard to ensure we have the correct type
-			if (isMiddlewareMetrics(middlewareMetrics)) {
+			if (isRecord(middlewareMetrics) && VALIDATORS.number(middlewareMetrics.requestCount)) {
 				// Single middleware metrics
 				// Return only the data - ResponseFormatter will handle the response structure
 				return middlewareMetrics;
 			}
 
+			const metricsByName = middlewareMetrics as Record<string, MiddlewareMetrics>;
+
 			// Multiple middleware metrics
-			const middlewareNames = Object.keys(middlewareMetrics);
-			const totalRequests = sumBy(middlewareNames, name => middlewareMetrics[name]?.requestCount ?? 0);
+			const middlewareNames = Object.keys(metricsByName);
+			const totalRequests = sumBy(middlewareNames, name => metricsByName[name]?.requestCount ?? 0);
 			const averagePerformance =
-				middlewareNames.length > 0 ? meanBy(middlewareNames, name => middlewareMetrics[name]?.averageDuration ?? 0) : 0;
+				middlewareNames.length > 0 ? meanBy(middlewareNames, name => metricsByName[name]?.averageDuration ?? 0) : 0;
 			let slowestMiddleware = EMPTY_VALUE;
 			if (middlewareNames.length > 0) {
 				let maxDuration = 0;
 				for (const name of middlewareNames) {
-					const metrics = middlewareMetrics[name];
+					const metrics = metricsByName[name];
 					if (metrics != null && metrics.averageDuration > maxDuration) {
 						maxDuration = metrics.averageDuration;
 						slowestMiddleware = name;
@@ -51,7 +53,7 @@ export class MetricsController {
 			if (middlewareNames.length > 0) {
 				let maxRequests = 0;
 				for (const name of middlewareNames) {
-					const metrics = middlewareMetrics[name];
+					const metrics = metricsByName[name];
 					if (metrics != null && metrics.requestCount > maxRequests) {
 						maxRequests = metrics.requestCount;
 						mostUsedMiddleware = name;
@@ -75,7 +77,7 @@ export class MetricsController {
 			// Return only the data - ResponseFormattingInterceptor will handle the response structure
 			return {
 				summary,
-				metrics: middlewareMetrics,
+				metrics: metricsByName,
 				storageMetrics: allMetrics,
 			};
 		} catch (error) {
@@ -97,7 +99,7 @@ export class MetricsController {
 				throw new NotFoundException(`${ErrorCode.NO_METRICS_FOUND}: ${middlewareName}`);
 			}
 
-			const requestCount = isMiddlewareMetrics(metrics) ? metrics.requestCount : 0;
+			const requestCount = isRecord(metrics) && VALIDATORS.number(metrics.requestCount) ? metrics.requestCount : 0;
 
 			logger.systemInfo('Middleware metrics accessed', {
 				middleware: middlewareName,

@@ -53,6 +53,7 @@ export const API_ENDPOINTS = {
 	MULTIPLAYER: {
 		BASE: '/multiplayer',
 		ROOMS: '/multiplayer/rooms',
+		ROOMS_PUBLIC_WAITING: '/multiplayer/rooms/public-waiting',
 		ROOMS_JOIN: '/multiplayer/rooms/join',
 		ROOMS_LEAVE: '/multiplayer/rooms/leave',
 		ROOMS_START: '/multiplayer/rooms/start',

@@ -5,7 +5,7 @@ import { FileQuestion, Gauge, LayoutList, Tag, TimerReset, UserPlus } from 'luci
 
 import { DIFFICULTY_CONFIG, DifficultyLevel, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
 import { namesMatch } from '@shared/utils';
-import { matchesLocaleText } from '@shared/validation';
+import { matchesLocaleText, VALIDATORS } from '@shared/validation';
 
 import {
 	AlertVariant,
@@ -130,7 +130,7 @@ export function GameSettingsForm({
 		const basicLabels = (() => {
 			const raw = t(GameKey.BASIC_TOPICS, { returnObjects: true });
 			return Array.isArray(raw)
-				? raw.filter((value): value is string => typeof value === 'string' && canShowTopic(value))
+				? raw.filter((value): value is string => VALIDATORS.string(value) && canShowTopic(value))
 				: [];
 		})();
 		basicLabels.forEach(name => {

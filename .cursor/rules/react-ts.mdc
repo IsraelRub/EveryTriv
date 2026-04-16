@@ -170,7 +170,6 @@ Optional:
 - Use camelCase for variables and functions
 - Use UPPER_CASE for constants
 - Use camelCase for file names
-- Add JSDoc comments for complex logic
 
 ## 🎬 Animation Components (framer-motion)
 
@@ -238,7 +237,6 @@ Use regular HTML elements (`<div>`, `<span>`, `<button>`, etc.) when:
 - Document custom hooks
 - Keep README.md up to date
 - Document environment variables
-- Use proper JSDoc comments
 
 ## 🎯 Component Patterns & Examples
 

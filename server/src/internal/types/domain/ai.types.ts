@@ -1,5 +1,7 @@
-import { DifficultyLevel, LLMResponseStatus, type Locale } from '@shared/constants';
+import { DifficultyLevel, type Locale } from '@shared/constants';
 import type { BasicValue, GameDifficulty, TriviaQuestion, TriviaQuestionCore } from '@shared/types';
+
+import { LLMResponseStatus, type TriviaGenerationDeclinedReason } from '@internal/constants';
 
 export interface LLMTriviaResponse {
 	questions: TriviaQuestionCore[];
@@ -7,11 +9,13 @@ export interface LLMTriviaResponse {
 	content: string;
 	status: LLMResponseStatus;
 	validationSummary?: string;
+	declinedReason?: TriviaGenerationDeclinedReason;
 }
 
 export interface TriviaLLMJsonPayload {
 	question: string;
 	answers: string[];
+	generationDeclinedReason?: TriviaGenerationDeclinedReason;
 }
 
 export interface ProviderConfig {

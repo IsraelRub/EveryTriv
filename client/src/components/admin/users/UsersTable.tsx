@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { AtSign, BookUser, Calendar, Clock, ShieldUser } from 'lucide-react';
@@ -23,6 +23,7 @@ import type { DataTableColumn, UserTableRow } from '@/types';
 import { adminService, apiService } from '@/services';
 import { calculateTotalPages } from '@/utils';
 import { Button, Card, CardContent, CardDescription, CardTitle, DataTableCard, Input, Label } from '@/components';
+import { useDebouncedValue } from '@/hooks';
 import { useAdminUserPanelQueries } from './useAdminUserPanelQueries';
 import { UserAnalysisExpandedPanel } from './UserAnalysisExpandedPanel';
 
@@ -77,13 +78,18 @@ export function UsersTable() {
 	const [limit] = useState(DEFAULT_ITEMS_PER_PAGE);
 	const [offset, setOffset] = useState(0);
 	const [searchQuery, setSearchQuery] = useState('');
-	const [searchSubmitted, setSearchSubmitted] = useState('');
 	const [sortBy, setSortBy] = useState<string>(UserSortField.EMAIL);
 	const [sortDirection, setSortDirection] = useState<SortDirection>(SortDirection.ASC);
 	const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-	const isSearchMode = !!searchSubmitted.trim();
-	const trimmedSearch = searchSubmitted.trim();
+	const trimmedSearchQuery = useMemo(() => searchQuery.trim(), [searchQuery]);
+	const debouncedTrimmedSearch = useDebouncedValue(
+		trimmedSearchQuery,
+		TIME_PERIODS_MS.SERVER_SEARCH_QUERY_DEBOUNCE_MS,
+		query => query.length === 0
+	);
+	const isSearchMode = !!debouncedTrimmedSearch;
+	const trimmedSearch = debouncedTrimmedSearch;
 
 	const { data, isLoading, error } = useQuery({
 		queryKey: QUERY_KEYS.admin.users(limit, offset),
@@ -113,16 +119,6 @@ export function UsersTable() {
 		userRecommendations,
 		recommendationsLoading,
 	} = useAdminUserPanelQueries(selectedUserId);
-
-	useEffect(() => {
-		const trimmedQuery = searchQuery.trim();
-		if (!trimmedQuery) {
-			setSearchSubmitted('');
-			return;
-		}
-		const t = setTimeout(() => setSearchSubmitted(trimmedQuery), TIME_PERIODS_MS.THREE_HUNDRED_MILLISECONDS);
-		return () => clearTimeout(t);
-	}, [searchQuery]);
 
 	const users = useMemo(() => data?.users ?? [], [data?.users]);
 	const searchResults = useMemo(() => searchData?.results ?? [], [searchData?.results]);
@@ -264,7 +260,7 @@ export function UsersTable() {
 				description: (
 					<CardDescription>
 						{isSearchMode
-							? `${displayTotal} result${displayTotal !== 1 ? 's' : ''} for "${searchSubmitted}"`
+							? `${displayTotal} result${displayTotal !== 1 ? 's' : ''} for "${trimmedSearch}"`
 							: `Showing ${startIndex + 1}-${endIndex} of ${totalUsers} users`}
 						{isSearchMode && totalUsers > 0 ? ` (${totalUsers} total)` : ''}
 					</CardDescription>
@@ -303,7 +299,6 @@ export function UsersTable() {
 							size={ButtonSize.SM}
 							onClick={() => {
 								setSearchQuery('');
-								setSearchSubmitted('');
 							}}
 						>
 							{t(AdminKey.CLEAR_SEARCH)}

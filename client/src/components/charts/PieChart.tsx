@@ -6,22 +6,10 @@ import { calculatePercentage, formatNumericValue, isRecord, sumBy } from '@share
 import { VALIDATORS } from '@shared/validation';
 
 import { CHART_COLORS, CHART_HEIGHTS, CommonKey, CssColor, OTHERS_LABEL, SkeletonVariant } from '@/constants';
-import type { ChartDataPoint, PieChartProps } from '@/types';
+import type { ChartDataPoint, PieChartLabelLineProps, PieChartProps } from '@/types';
 import { EmptyState, Skeleton } from '@/components';
 
-interface LabelLinePoint {
-	x: number;
-	y: number;
-}
-
-interface LabelLineProps {
-	points: LabelLinePoint[];
-	stroke?: string;
-	fill?: string;
-	index?: number;
-}
-
-function renderLabelLine(props: LabelLineProps): ReactElement {
+function renderLabelLine(props: PieChartLabelLineProps): ReactElement {
 	const { points, stroke } = props;
 	const [p0, p1] = points;
 	if (!p0 || !p1) return <path d='M0 0' stroke='none' fill='none' />;
@@ -86,7 +74,7 @@ export const PieChart = memo(function PieChart({
 	const total = useMemo(() => sumBy(chartData, item => item.value), [chartData]);
 
 	const labelLineRenderer = useCallback(
-		(props: LabelLineProps) =>
+		(props: PieChartLabelLineProps) =>
 			renderLabelLine({
 				...props,
 				stroke: colors[(props.index ?? 0) % colors.length] ?? props.fill ?? props.stroke ?? CssColor.PRIMARY,
@@ -184,7 +172,7 @@ export const PieChart = memo(function PieChart({
 						className='fill-foreground'
 						style={{ fontSize: '16px', fontWeight: 'bold' }}
 					>
-						{typeof centerText === 'string' ? (
+						{VALIDATORS.string(centerText) ? (
 							<tspan x='50%' dy='0' textAnchor='middle'>
 								{centerText}
 							</tspan>

@@ -218,6 +218,13 @@ export const ERROR_MESSAGES = {
 	},
 	game: {
 		INSUFFICIENT_CREDITS: 'Insufficient credits.',
+		TRIVIA_DECLINED_UNCLEAR_TOPIC: 'We could not understand the topic. Please try a clearer or more specific topic.',
+		TRIVIA_DECLINED_UNCLEAR_DIFFICULTY:
+			'We could not understand the difficulty level. Please describe it more clearly.',
+		TRIVIA_DECLINED_UNCLEAR_TOPIC_AND_DIFFICULTY:
+			'We could not understand the topic and difficulty together. Please refine your choices.',
+		TRIVIA_DECLINED_INSUFFICIENT_VERIFIABLE_FACTS:
+			'We could not create a verified trivia question for this topic and difficulty. Try adjusting them.',
 		FAILED_TO_INITIALIZE_GAME_SESSION: (detail: string) => `Failed to initialize game session: ${detail}`,
 		INVALID_ANSWER_INDEX: (maxIndex: number) => `Invalid answer value: must be a number between 0 and ${maxIndex}`,
 		INVALID_ANSWER_INDEX_SERVER: (maxIndex: number, answerCount: number) =>
@@ -263,6 +270,7 @@ export const ERROR_MESSAGES = {
 		ENTER_IN_ENGLISH: 'Please enter in English',
 		ENTER_IN_HEBREW: 'Please enter in Hebrew',
 		SPELLING_OR_GRAMMAR_ISSUE: 'Spelling or grammar issue detected. Please write in English.',
+		UNRECOGNIZABLE_TEXT: 'The text you entered does not appear to be valid. Please enter meaningful text.',
 	},
 } as const;
 

@@ -1,3 +1,5 @@
+import { VALIDATION_COUNT } from '@shared/constants';
+
 export enum ComponentSize {
 	SM = 'sm',
 	MD = 'md',
@@ -56,7 +58,7 @@ export enum GameSessionHudCounterLayout {
 	MULTIPLAYER = 'multiplayer',
 }
 
-export const DEFAULT_ITEMS_PER_PAGE = 10;
+export const DEFAULT_ITEMS_PER_PAGE = VALIDATION_COUNT.LIST_QUERY.DEFAULT_PAGE_SIZE;
 
 export const RESULT_ICON_SIZE_CLASSES = {
 	SM: 'h-4 w-4',

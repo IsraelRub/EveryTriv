@@ -61,7 +61,7 @@ const gameSessionSlice = createSlice({
 			state.questions = action.payload.questions;
 			// Only update gameQuestionCount when it was already set (QUESTION_LIMITED/MULTIPLAYER).
 			// Do not set from undefined so TIME_LIMITED keeps no fixed count and does not end on question limit.
-			if (state.gameQuestionCount !== undefined && state.gameQuestionCount !== null) {
+			if (state.gameQuestionCount != null) {
 				if (action.payload.questions.length < state.gameQuestionCount) {
 					state.gameQuestionCount = action.payload.questions.length;
 				}

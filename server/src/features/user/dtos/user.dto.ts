@@ -19,7 +19,7 @@ import {
 
 import { DifficultyLevel, GameMode, Locale, UserStatus, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
 import type { BasicValue, CustomDifficultyItem, UserPreferences } from '@shared/types';
-import { isNonEmptyString } from '@shared/utils';
+import { nullIfBlankString, parseQueryIntDefaultWhenMissing } from '@shared/utils';
 
 export class UpdateUserProfileDto {
 	@ApiPropertyOptional({
@@ -41,7 +41,7 @@ export class UpdateUserProfileDto {
 		maxLength: VALIDATION_LENGTH.NAME.MAX,
 	})
 	@IsOptional()
-	@Transform(({ value }) => (!isNonEmptyString(value) ? null : value))
+	@Transform(({ value }) => nullIfBlankString(value))
 	@ValidateIf(o => o.lastName !== null)
 	@IsString()
 	@ValidateIf(o => o.lastName !== null)
@@ -85,7 +85,7 @@ export class SearchUsersDto {
 		maximum: VALIDATION_COUNT.LEADERBOARD.MAX,
 		default: 10,
 	})
-	@Transform(({ value }) => parseInt(value, 10))
+	@Transform(({ value }) => parseQueryIntDefaultWhenMissing(value, VALIDATION_COUNT.LIST_QUERY.DEFAULT_PAGE_SIZE))
 	@IsNumber({}, { message: 'Limit must be a number' })
 	@Min(VALIDATION_COUNT.LEADERBOARD.MIN, {
 		message: `Limit must be at least ${VALIDATION_COUNT.LEADERBOARD.MIN}`,

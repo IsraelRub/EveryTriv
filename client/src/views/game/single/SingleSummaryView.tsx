@@ -20,7 +20,7 @@ import {
 	STAR_GRADE_LEVELS_AND_THRESHOLDS,
 	TRANSITION_DURATIONS,
 } from '@/constants';
-import type { GameSummaryStats } from '@/types';
+import type { FinalizedGameSessionKey, GameSummaryStats } from '@/types';
 import { audioService, clientLogger as logger } from '@/services';
 import { cn, formatTime, getDifficultyDisplayLabel } from '@/utils';
 import { Card, QuestionBreakdown, SummaryActionButtons } from '@/components';
@@ -92,7 +92,7 @@ export function SingleSummaryView() {
 
 	// Track if game has been finalized to prevent duplicate finalization
 	// Use a ref that tracks the last finalized game state to detect new games
-	const lastFinalizedGameRef = useRef<{ score: number; gameQuestionCount: number } | null>(null);
+	const lastFinalizedGameRef = useRef<FinalizedGameSessionKey | null>(null);
 
 	const {
 		CONTAINER_DELAY_MS: starsContainerDelayMs,
@@ -145,7 +145,7 @@ export function SingleSummaryView() {
 			return;
 		}
 
-		const currentGameKey = {
+		const sessionKey: FinalizedGameSessionKey = {
 			score,
 			gameQuestionCount: gameQuestionCount ?? 0,
 		};
@@ -154,14 +154,14 @@ export function SingleSummaryView() {
 		const lastFinalized = lastFinalizedGameRef.current;
 		if (
 			lastFinalized &&
-			lastFinalized.score === currentGameKey.score &&
-			lastFinalized.gameQuestionCount === currentGameKey.gameQuestionCount
+			lastFinalized.score === sessionKey.score &&
+			lastFinalized.gameQuestionCount === sessionKey.gameQuestionCount
 		) {
 			return;
 		}
 
 		// Mark as finalized immediately to prevent duplicate finalization
-		lastFinalizedGameRef.current = currentGameKey;
+		lastFinalizedGameRef.current = sessionKey;
 
 		// Finalize using URL gameId so we finalize the session this page belongs to (avoids Redux/URL mismatch)
 		finalizeGameSession({

@@ -2,7 +2,7 @@ import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'reac
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 
-import { cn } from '@/utils';
+import { cn, getDocumentDirection } from '@/utils';
 
 export const Select = SelectPrimitive.Root;
 
@@ -59,7 +59,7 @@ SelectScrollDownButton.displayName = 'SelectScrollDownButton';
 export const SelectContent = forwardRef<
 	ElementRef<typeof SelectPrimitive.Content>,
 	ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = 'popper', ...props }, ref) => (
+>(({ className, children, position = 'popper', style, ...props }, ref) => (
 	<SelectPrimitive.Portal>
 		<SelectPrimitive.Content
 			ref={ref}
@@ -70,6 +70,7 @@ export const SelectContent = forwardRef<
 				className
 			)}
 			position={position}
+			style={{ direction: getDocumentDirection() ?? 'ltr', ...style }}
 			{...props}
 		>
 			<SelectScrollUpButton />
@@ -95,12 +96,12 @@ export const SelectItem = forwardRef<
 	<SelectPrimitive.Item
 		ref={ref}
 		className={cn(
-			'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground',
+			'relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 ps-8 pe-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground',
 			className
 		)}
 		{...props}
 	>
-		<span className='absolute left-2 flex h-3.5 w-3.5 items-center justify-center'>
+		<span className='absolute start-2 flex h-3.5 w-3.5 items-center justify-center'>
 			<SelectPrimitive.ItemIndicator>
 				<Check className='h-4 w-4' />
 			</SelectPrimitive.ItemIndicator>

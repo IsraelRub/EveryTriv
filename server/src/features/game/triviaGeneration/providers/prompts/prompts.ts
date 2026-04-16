@@ -65,10 +65,12 @@ export function buildTriviaPrompt(params: PromptParams): string {
 					.join('\n')}`
 			: '';
 
-	return `You must emit exactly one JSON object describing a trivia question. Only emit the JSON—no markdown, code fences, comments, or explanations.
+	return `You must emit exactly one JSON object. Only emit the JSON—no markdown, code fences, comments, or explanations.
 
 OUTPUT LANGUAGE
 - You must write the question and every answer in ${outputLanguageLabel}. Use only ${outputLanguageLabel} for the "question" field and for each string in the "answers" array. Do not mix languages.
+- On failure only, set generationDeclinedReason to exactly one of these English snake_case tokens (never translate the token): unclear_topic | unclear_difficulty | unclear_topic_and_difficulty | insufficient_verifiable_facts.
+- Meaning: unclear_topic = topic is meaningless or too vague to target facts; unclear_difficulty = difficulty text cannot be read as a level; unclear_topic_and_difficulty = both are unclear together; insufficient_verifiable_facts = topic is fine but you cannot state one verifiable fact at this difficulty.
 
 INPUT
 - Topic: "${topic}"
@@ -76,10 +78,11 @@ INPUT
 - Answer count: ${answerCount}${difficultyGuidance ? `\n- Difficulty guidance: ${difficultyGuidance}` : ''}${excludeSection}
 
 MANDATORY RULES
-1. Output must contain ONLY the fields "question" and "answers" in that order. Never include mappedDifficulty, excludeQuestions, explanations, or extra metadata.
-2. Output format: {"question":"<question ending with ?>","answers":["<correct answer>","<wrong answer 1>", "..."]}
-3. Prefer standard ASCII double quotes ("); if you emit smart quotes, they will be normalized downstream.
-4. If you cannot produce a compliant question with verified factual information, output {"question":"","answers":[]} with nothing else.
+1. Success path: output must contain the fields "question" and "answers" only (in that order). "question" must be non-empty and end with "?". Never include mappedDifficulty, excludeQuestions, explanations, or other metadata on success.
+2. Success format: {"question":"<question ending with ?>","answers":["<correct answer>","<wrong answer 1>", "..."]}
+3. Failure path: if you cannot comply, output exactly: {"question":"","answers":[],"generationDeclinedReason":"<token from OUTPUT LANGUAGE decline list>"}. On failure, "question" must be "" and "answers" must be []. Pick the single best-matching token by meaning.
+4. Prefer standard ASCII double quotes ("); if you emit smart quotes, they will be normalized downstream.
+5. Never output both a non-empty question and generationDeclinedReason.
 
 QUESTION REQUIREMENTS
 - The question MUST be a genuine interrogative sentence using clear, direct question words (What, Which, Who, Where, When, How, Why)

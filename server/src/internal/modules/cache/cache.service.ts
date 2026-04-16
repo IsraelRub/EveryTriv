@@ -699,7 +699,7 @@ export class CacheService implements IStorageService, OnModuleDestroy {
 
 	private incrementMemory(key: string, amount: number): number {
 		const currentValue = this.getMemory(key);
-		if (currentValue === null || currentValue === undefined) {
+		if (currentValue == null) {
 			this.setMemory(key, amount);
 			return amount;
 		}
@@ -825,7 +825,7 @@ export class CacheService implements IStorageService, OnModuleDestroy {
 			const value = entry.value;
 			const ttl = entry.ttl;
 			const serialized = JSON.stringify(value);
-			if (ttl && typeof ttl === 'number') {
+			if (ttl && VALIDATORS.number(ttl)) {
 				pipeline.setex(key, ttl, serialized);
 			} else {
 				pipeline.set(key, serialized);
@@ -873,7 +873,7 @@ export class CacheService implements IStorageService, OnModuleDestroy {
 		const result = await this.get(key, VALIDATORS.date);
 		if (result.success && result.data) {
 			// If date was stored as string, convert it to Date object
-			if (typeof result.data === 'string') {
+			if (VALIDATORS.string(result.data)) {
 				return createTimedResult<Date | null>(true, new Date(result.data), undefined, startTime, StorageType.CACHE);
 			}
 			// result.data is already a Date (validated by VALIDATORS.date)

@@ -4,8 +4,11 @@ import { Repository } from 'typeorm';
 
 import {
 	CACHE_KEYS,
+	DEFAULT_LANGUAGE,
+	EMPTY_VALUE,
 	ERROR_MESSAGES,
 	ErrorCode,
+	Locale,
 	PlayerStatus,
 	QuestionState,
 	RETRY_LIMITS,
@@ -15,8 +18,16 @@ import {
 	VALIDATION_COUNT,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
-import type { MultiplayerRoom, Player, RoomConfig } from '@shared/types';
-import { delay, getDisplayNameFromUserFields, getErrorMessage, isMultiplayerRoom } from '@shared/utils';
+import type { MultiplayerRoom, Player, PublicWaitingRoomDto, RoomConfig } from '@shared/types';
+import {
+	delay,
+	getDisplayNameFromUserFields,
+	getErrorMessage,
+	isMultiplayerRoom,
+	isNonEmptyString,
+	isRecord,
+} from '@shared/utils';
+import { VALIDATORS } from '@shared/validation';
 
 import { UserEntity } from '@internal/entities';
 import { StorageService } from '@internal/modules';
@@ -60,7 +71,7 @@ export class RoomService {
 		return result;
 	}
 
-	async createRoom(hostId: string, config: RoomConfig): Promise<MultiplayerRoom> {
+	async createRoom(hostId: string, config: RoomConfig, isPublicLobby = false): Promise<MultiplayerRoom> {
 		try {
 			// Validate configuration
 			if (config.maxPlayers < VALIDATION_COUNT.PLAYERS.MIN || config.maxPlayers > VALIDATION_COUNT.PLAYERS.MAX) {
@@ -116,6 +127,7 @@ export class RoomService {
 				version: 1,
 				createdAt: new Date(),
 				updatedAt: new Date(),
+				isPublicLobby,
 			};
 
 			await this.persistRoomSnapshot(room);
@@ -156,9 +168,12 @@ export class RoomService {
 
 			// Check Redis storage
 			const result = await this.storageService.get(CACHE_KEYS.MULTIPLAYER.ROOM(normalizedId));
-			if (result.success && result.data && isMultiplayerRoom(result.data)) {
-				this.cacheRoom(result.data);
-				return result.data;
+			if (result.success && result.data) {
+				const parsed = this.parseRoomFromStorage(result.data);
+				if (parsed) {
+					this.cacheRoom(parsed);
+					return parsed;
+				}
 			}
 
 			return null;
@@ -434,8 +449,11 @@ export class RoomService {
 
 				for (const key of roomKeys) {
 					const result = await this.storageService.get(key);
-					if (result.success && result.data && isMultiplayerRoom(result.data)) {
-						const room = result.data;
+					if (result.success && result.data) {
+						const room = this.parseRoomFromStorage(result.data);
+						if (!room) {
+							continue;
+						}
 						this.cacheRoom(room);
 						if (room.players.some(p => p.userId === userId)) {
 							rooms.push(room);
@@ -445,7 +463,7 @@ export class RoomService {
 			}
 
 			for (const cachedRoom of this.inMemoryRooms.values()) {
-				const room = cachedRoom.room;
+				const room = this.normalizeRoomPublicFlag(cachedRoom.room);
 				const alreadyTracked = rooms.some(existing => existing.roomId === room.roomId);
 				if (!alreadyTracked && room.players.some(p => p.userId === userId)) {
 					rooms.push(room);
@@ -480,7 +498,118 @@ export class RoomService {
 			return null;
 		}
 
-		return cached.room;
+		return this.normalizeRoomPublicFlag(cached.room);
+	}
+
+	async listPublicWaitingLobbies(
+		topicSubstring: string | undefined,
+		limit: number,
+		outputLanguage: Locale
+	): Promise<PublicWaitingRoomDto[]> {
+		const max = Math.min(Math.max(limit, 1), 50);
+		const needle = topicSubstring?.trim().toLowerCase();
+		const collected: MultiplayerRoom[] = [];
+
+		const matchesPublicLobbyFilters = (room: MultiplayerRoom): boolean => {
+			if (room.status !== RoomStatus.WAITING || !room.isPublicLobby) {
+				return false;
+			}
+			const roomLang = room.config.outputLanguage ?? DEFAULT_LANGUAGE;
+			if (roomLang !== outputLanguage) {
+				return false;
+			}
+			if (needle) {
+				const topic = room.config.topic.toLowerCase();
+				if (!topic.includes(needle)) {
+					return false;
+				}
+			}
+			return true;
+		};
+
+		const keysResult = await this.storageService.getKeysByRelativePattern(CACHE_KEYS.MULTIPLAYER.ROOM_PATTERN);
+		if (keysResult.success && keysResult.data) {
+			for (const key of keysResult.data) {
+				const getResult = await this.storageService.get(key);
+				if (!getResult.success || getResult.data == null) {
+					continue;
+				}
+				const room = this.parseRoomFromStorage(getResult.data);
+				if (!room) {
+					continue;
+				}
+				this.cacheRoom(room);
+				if (!matchesPublicLobbyFilters(room)) {
+					continue;
+				}
+				collected.push(room);
+			}
+		}
+
+		for (const entry of this.inMemoryRooms.values()) {
+			const room = this.normalizeRoomPublicFlag(entry.room);
+			if (!matchesPublicLobbyFilters(room)) {
+				continue;
+			}
+			if (!collected.some(r => r.roomId === room.roomId)) {
+				collected.push(room);
+			}
+		}
+
+		collected.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+		return collected.slice(0, max).map(r => this.toPublicWaitingRoomDto(r));
+	}
+
+	private parseRoomFromStorage(raw: unknown): MultiplayerRoom | null {
+		if (!isRecord(raw)) {
+			return null;
+		}
+		const merged: Record<string, unknown> = {
+			...raw,
+			isPublicLobby: typeof raw.isPublicLobby === 'boolean' ? raw.isPublicLobby : false,
+		};
+		if (!isMultiplayerRoom(merged)) {
+			return null;
+		}
+		return merged;
+	}
+
+	private normalizeRoomPublicFlag(room: MultiplayerRoom): MultiplayerRoom {
+		if (typeof room.isPublicLobby === 'boolean') {
+			return room;
+		}
+		return { ...room, isPublicLobby: false };
+	}
+
+	private toPublicWaitingRoomDto(room: MultiplayerRoom): PublicWaitingRoomDto {
+		return {
+			roomId: room.roomId,
+			status: room.status,
+			createdAt: room.createdAt.toISOString(),
+			updatedAt: room.updatedAt.toISOString(),
+			config: room.config,
+			players: room.players.map(p => {
+				const fromNames = getDisplayNameFromUserFields({
+					firstName: p.firstName,
+					lastName: p.lastName,
+					email: undefined,
+				});
+				const displayName = isNonEmptyString(p.displayName)
+					? p.displayName.trim()
+					: fromNames !== EMPTY_VALUE
+						? fromNames
+						: 'Player';
+				return {
+					displayName,
+					firstName: p.firstName,
+					lastName: p.lastName,
+					avatar: p.avatar,
+					avatarUrl: p.avatarUrl,
+					isHost: p.isHost,
+					status: p.status,
+				};
+			}),
+		};
 	}
 
 	invalidateRoomCache(roomId: string): void {
@@ -489,7 +618,7 @@ export class RoomService {
 
 	private static toDate(value: unknown, fieldName: string): Date {
 		if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
-		if (typeof value === 'string') {
+		if (VALIDATORS.string(value)) {
 			const parsed = new Date(value);
 			if (!Number.isNaN(parsed.getTime())) {
 				return parsed;
@@ -515,6 +644,7 @@ export class RoomService {
 			currentQuestionIndex: rest.currentQuestionIndex,
 			questions: rest.questions,
 			version: rest.version,
+			isPublicLobby: rest.isPublicLobby,
 		});
 		if ('currentQuestionStartTime' in rest) room.currentQuestionStartTime = rest.currentQuestionStartTime;
 		if ('questionState' in rest) room.questionState = rest.questionState;

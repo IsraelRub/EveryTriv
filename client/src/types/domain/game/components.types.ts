@@ -75,7 +75,8 @@ export interface ExitGameButtonProps {
 export interface SingleSessionDialogsProps {
 	showErrorDialog: boolean;
 	setShowErrorDialog: (open: boolean) => void;
-	errorMessage: string;
+	/** Raw error for translation (axios, Error, or message-only). */
+	sessionError: unknown | null;
 	showCreditsWarning: boolean;
 	setShowCreditsWarning: (open: boolean) => void;
 	onSafeExitFromLoading: () => void;

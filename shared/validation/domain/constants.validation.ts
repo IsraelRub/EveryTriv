@@ -8,6 +8,8 @@ import {
 	PaymentMethod,
 } from '@shared/constants';
 
+import { VALIDATORS } from '../core/validators';
+
 export function isPaymentMethod(value: string): value is PaymentMethod {
 	return PAYMENT_METHODS.has(value);
 }
@@ -21,5 +23,5 @@ export function isLocale(value: unknown): value is Locale {
 }
 
 export function isGameMode(value: unknown): value is GameMode {
-	return typeof value === 'string' && GAME_MODES.has(value);
+	return VALIDATORS.string(value) && GAME_MODES.has(value);
 }

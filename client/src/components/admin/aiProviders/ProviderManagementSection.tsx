@@ -99,7 +99,7 @@ export function ProviderManagementSection() {
 									{t(AdminKey.LAST_CHECKED)} {formatDateTime(aiProviderHealth.timestamp)}
 								</span>
 							</div>
-							<div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-4'>
+							<div className='grid grid-cols-2 gap-4 mt-4'>
 								<StatCard
 									icon={CheckCircle2}
 									label={t(AdminKey.AVAILABLE_PROVIDERS)}
@@ -142,20 +142,23 @@ export function ProviderManagementSection() {
 					</div>
 				) : aiProviderStats ? (
 					<div className='space-y-6'>
-						<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+						<div className='grid grid-cols-4 gap-4'>
 							<StatCard
+								stackIconLabel
 								icon={BotMessageSquare}
 								label={t(AdminKey.TOTAL_PROVIDERS)}
 								value={aiProviderStats.totalProviders}
 								color={SEMANTIC_ICON_TEXT.primary}
 							/>
 							<StatCard
+								stackIconLabel
 								icon={CircleDot}
 								label={t(AdminKey.CURRENT_PROVIDER)}
 								value={aiProviderStats.providers[aiProviderStats.currentProviderIndex] ?? EMPTY_VALUE}
 								color={SEMANTIC_ICON_TEXT.success}
 							/>
 							<StatCard
+								stackIconLabel
 								icon={Activity}
 								label={t(AdminKey.ACTIVE_PROVIDERS)}
 								value={
@@ -172,6 +175,7 @@ export function ProviderManagementSection() {
 								color={SEMANTIC_ICON_TEXT.secondary}
 							/>
 							<StatCard
+								stackIconLabel
 								icon={Send}
 								label={t(AdminKey.TOTAL_REQUESTS)}
 								value={totalRequests}
@@ -213,26 +217,30 @@ export function ProviderManagementSection() {
 														</div>
 													</CardHeader>
 													<CardContent>
-														<div className='grid grid-cols-2 gap-4 md:grid-cols-4'>
+														<div className='grid grid-cols-4 gap-4'>
 															<StatCard
+																stackIconLabel
 																icon={Send}
 																label={t(AdminKey.REQUESTS)}
 																value={providerStats.requests ?? 0}
 																color={SEMANTIC_ICON_TEXT.primary}
 															/>
 															<StatCard
+																stackIconLabel
 																icon={CheckCircle2}
 																label={t(AdminKey.SUCCESSES)}
 																value={providerStats.successes ?? 0}
 																color={SEMANTIC_ICON_TEXT.success}
 															/>
 															<StatCard
+																stackIconLabel
 																icon={XCircle}
 																label={t(AdminKey.FAILURES)}
 																value={providerStats.failures ?? 0}
 																color={SEMANTIC_ICON_TEXT.destructive}
 															/>
 															<StatCard
+																stackIconLabel
 																icon={CirclePercent}
 																label={t(AdminKey.SUCCESS_RATE)}
 																value={formatNumericValue(providerStats.successRate, 2, '%')}

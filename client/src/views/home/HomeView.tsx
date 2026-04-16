@@ -2,11 +2,23 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BarChart3, Play } from 'lucide-react';
+import { BarChart3, Play, Users } from 'lucide-react';
 
 import { ANIMATION_DELAYS, AuthKey, ButtonSize, ErrorsKey, HomeKey, NavKey, ROUTES, VariantBase } from '@/constants';
 import { cn } from '@/utils';
-import { Button, HomeHeader, HomeStats, LeaderboardPreview, PopularTopicsSection, RecentGames } from '@/components';
+import {
+	Button,
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+	HomeHeader,
+	HomePublicLobbiesPanel,
+	HomeStats,
+	LeaderboardPreview,
+	PopularTopicsSection,
+	RecentGames,
+} from '@/components';
 import { toast, useCurrentUserData, useIsAuthenticated, useUserProfile } from '@/hooks';
 
 export function HomeView() {
@@ -33,7 +45,7 @@ export function HomeView() {
 	return (
 		<main className='view-main-fill animate-fade-in-only'>
 			<div className='view-container-inner'>
-				<div className='view-content-6xl-fill'>
+				<div className='view-content-7xl-fill'>
 					<div className='mb-4 md:mb-6 lg:mb-8'>
 						<HomeHeader
 							isAuthenticated={isAuthenticated}
@@ -113,36 +125,55 @@ export function HomeView() {
 						/>
 					</div>
 
-					{/* Second Row - HomeStats + RecentGames (authenticated only) */}
-					{isAuthenticated && (
-						<motion.section
-							initial={{ opacity: 0, y: 20 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: ANIMATION_DELAYS.STAGGER_NORMAL }}
-							className='grid grid-cols-1 lg:grid-cols-2 gap-6'
-						>
-							<HomeStats />
-							<RecentGames />
-						</motion.section>
-					)}
-
-					{/* Dashboard Content: Popular Topics (narrow) + Top Players (wide) in one row */}
-					<motion.div
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						transition={{ delay: ANIMATION_DELAYS.SEQUENCE_LARGE }}
-						className={cn(
-							'view-spacing pt-4 md:pt-6 border-t border-border/50 flex-shrink-0',
-							!isAuthenticated && 'view-centered-4xl'
+					<div className='w-full min-w-0 space-y-6 md:space-y-8'>
+						{isAuthenticated && (
+							<motion.section
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: ANIMATION_DELAYS.STAGGER_NORMAL }}
+								className='grid grid-cols-1 gap-6 lg:grid-cols-2'
+							>
+								<HomeStats />
+								<RecentGames />
+							</motion.section>
 						)}
-					>
-						<div className='grid grid-cols-1 lg:grid-cols-[minmax(0,15rem)_1fr] gap-4 md:gap-6'>
-							<PopularTopicsSection />
-							<div className='min-w-0'>
-								<LeaderboardPreview />
+
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							transition={{ delay: ANIMATION_DELAYS.SEQUENCE_LARGE }}
+							className={cn(
+								'view-spacing flex-shrink-0 border-t border-border/50 pt-4 md:pt-6',
+								!isAuthenticated && 'view-centered-4xl'
+							)}
+						>
+							<div className='grid grid-cols-1 gap-4 md:gap-6 lg:grid-cols-[minmax(0,18rem)_1fr] xl:grid-cols-[minmax(0,20rem)_1fr]'>
+								<PopularTopicsSection />
+								<div className='min-w-0'>
+									<LeaderboardPreview />
+								</div>
 							</div>
-						</div>
-					</motion.div>
+						</motion.div>
+
+						<motion.section
+							initial={{ opacity: 0, y: 12 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: ANIMATION_DELAYS.SEQUENCE_LARGE + 0.05 }}
+							className='view-spacing flex-shrink-0 border-t border-border/50 pt-4 md:pt-6'
+						>
+							<Card className='card-muted-tint'>
+								<CardHeader>
+									<CardTitle className='flex items-center gap-2 text-xl'>
+										<Users className='h-5 w-5 shrink-0 text-primary' />
+										{t(HomeKey.TAB_PUBLIC_LOBBIES)}
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<HomePublicLobbiesPanel />
+								</CardContent>
+							</Card>
+						</motion.section>
+					</div>
 				</div>
 			</div>
 		</main>

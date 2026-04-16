@@ -1,9 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import {
+	DEFAULT_LANGUAGE,
 	ErrorCode,
 	GAME_MODES_CONFIG,
 	GameMode,
+	Locale,
 	MULTIPLAYER_TIME_PER_QUESTION,
 	RoomStatus,
 	TIME_PERIODS_MS,
@@ -14,6 +16,7 @@ import type {
 	GameState,
 	MultiplayerRoom,
 	MultiplayerSubmitAnswerResult,
+	PublicWaitingRoomDto,
 	QuestionEndResponse,
 	QuestionStartResponse,
 	RoomConfig,
@@ -37,8 +40,8 @@ export class MultiplayerService {
 		private readonly creditsService: CreditsService
 	) {}
 
-	async createRoom(hostId: string, config: RoomConfig): Promise<CreateRoomResponse> {
-		const room = await this.roomService.createRoom(hostId, config);
+	async createRoom(hostId: string, config: RoomConfig, isPublicLobby = false): Promise<CreateRoomResponse> {
+		const room = await this.roomService.createRoom(hostId, config, isPublicLobby);
 
 		logger.gameInfo('Multiplayer room created', {
 			roomId: room.roomId,
@@ -46,6 +49,28 @@ export class MultiplayerService {
 		});
 
 		return { room, code: room.roomId };
+	}
+
+	async listPublicWaitingLobbies(
+		topicSubstring: string | undefined,
+		limit: number,
+		outputLanguage: Locale
+	): Promise<PublicWaitingRoomDto[]> {
+		return this.roomService.listPublicWaitingLobbies(topicSubstring, limit, outputLanguage);
+	}
+
+	async updateRoomLobbyVisibility(roomId: string, userId: string, isPublicLobby: boolean): Promise<MultiplayerRoom> {
+		const room = await this.roomService.getRoom(roomId);
+		if (!room) {
+			throw new NotFoundException(ErrorCode.ROOM_NOT_FOUND);
+		}
+		if (room.hostId !== userId) {
+			throw new ForbiddenException(ErrorCode.FORBIDDEN);
+		}
+		if (room.status !== RoomStatus.WAITING) {
+			throw new BadRequestException(ErrorCode.GAME_ALREADY_STARTED_OR_FINISHED);
+		}
+		return this.roomService.updateRoom(roomId, { isPublicLobby, version: room.version });
 	}
 
 	async joinRoom(roomId: string, userId: string): Promise<MultiplayerRoom> {
@@ -99,6 +124,7 @@ export class MultiplayerService {
 				questionsPerRequest: room.config.questionsPerRequest,
 				userId: hostId,
 				answerCount: room.config.answerCount,
+				outputLanguage: room.config.outputLanguage ?? DEFAULT_LANGUAGE,
 			});
 
 			const initializedRoom = await this.gameStateService.initializeGame(room, triviaResult.questions);

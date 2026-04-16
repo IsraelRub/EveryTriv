@@ -200,12 +200,13 @@ export function ConsistencyManagementSection() {
 				description={t(AdminKey.DATA_CONSISTENCY_DESC)}
 			>
 				{allConsistencyLoading ? (
-					<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+					<div className='grid grid-cols-4 gap-4'>
 						<Skeleton variant={SkeletonVariant.Card} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 					</div>
 				) : allConsistency ? (
-					<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+					<div className='grid grid-cols-4 gap-4'>
 						<StatCard
+							stackIconLabel
 							variant={StatCardVariant.CENTERED}
 							icon={UsersIcon}
 							label={t(AdminKey.TOTAL_USERS)}
@@ -213,6 +214,7 @@ export function ConsistencyManagementSection() {
 							color={SEMANTIC_ICON_TEXT.primary}
 						/>
 						<StatCard
+							stackIconLabel
 							variant={StatCardVariant.CENTERED}
 							icon={GamepadIcon}
 							label={t(AdminKey.USERS_WITH_GAMES)}
@@ -220,6 +222,7 @@ export function ConsistencyManagementSection() {
 							color={SEMANTIC_ICON_TEXT.success}
 						/>
 						<StatCard
+							stackIconLabel
 							variant={StatCardVariant.CENTERED}
 							icon={CheckCircle2}
 							label={t(AdminKey.CONSISTENT_USERS)}
@@ -227,6 +230,7 @@ export function ConsistencyManagementSection() {
 							color={SEMANTIC_ICON_TEXT.success}
 						/>
 						<StatCard
+							stackIconLabel
 							variant={StatCardVariant.CENTERED}
 							icon={XCircle}
 							label={t(AdminKey.INCONSISTENT_USERS)}

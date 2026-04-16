@@ -1,5 +1,17 @@
-export const MULTIPLAYER_SUMMARY_LEADERBOARD_KEY = 'leaderboard';
+import { RoomStatus } from '@shared/constants';
 
-export const MULTIPLAYER_SUMMARY_QUESTION_COUNT_KEY = 'questionCount';
+import { GameKey } from '../core/ui/localeKeys.constants';
 
-export const MULTIPLAYER_SUMMARY_ANSWER_HISTORY_KEY = 'personalAnswerHistory';
+export enum MultiplayerSummaryPayloadKey {
+	Leaderboard = 'leaderboard',
+	QuestionCount = 'questionCount',
+	PersonalAnswerHistory = 'personalAnswerHistory',
+}
+
+export const MULTIPLAYER_ROOM_STATUS_LABEL_KEYS: Record<RoomStatus, GameKey> = {
+	[RoomStatus.WAITING]: GameKey.ROOM_STATUS_WAITING,
+	[RoomStatus.STARTING]: GameKey.ROOM_STATUS_STARTING,
+	[RoomStatus.PLAYING]: GameKey.ROOM_STATUS_PLAYING,
+	[RoomStatus.FINISHED]: GameKey.ROOM_STATUS_FINISHED,
+	[RoomStatus.CANCELLED]: GameKey.ROOM_STATUS_CANCELLED,
+};

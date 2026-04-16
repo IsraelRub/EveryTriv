@@ -1,4 +1,4 @@
-import { Body, Controller, DefaultValuePipe, Get, ParseIntPipe, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, Put, Query } from '@nestjs/common';
 
 import { API_ENDPOINTS, TIME_DURATIONS_SECONDS, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
@@ -9,6 +9,7 @@ import type { CreditPackageConfigItem, TokenPayload } from '@internal/types';
 
 import { CreditsService, UpdateCreditPackagesDto } from '../credits';
 import { AdminService } from './admin.service';
+import { AdminTriviaListQueryDto } from './dtos';
 
 @Controller(API_ENDPOINTS.ADMIN.BASE)
 export class AdminController {
@@ -51,13 +52,9 @@ export class AdminController {
 	@Get('trivia')
 	@Roles(UserRole.ADMIN)
 	@Cache(TIME_DURATIONS_SECONDS.HOUR)
-	async getAllTriviaQuestions(
-		@CurrentUser() user: TokenPayload,
-		@Query('limit', new DefaultValuePipe(500), ParseIntPipe) limit: number,
-		@Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number
-	) {
+	async getAllTriviaQuestions(@CurrentUser() user: TokenPayload, @Query() query: AdminTriviaListQueryDto) {
 		try {
-			const result = await this.adminService.getAllTriviaQuestions({ limit, offset });
+			const result = await this.adminService.getAllTriviaQuestions({ limit: query.limit, offset: query.offset });
 
 			const questions = result?.questions ?? [];
 			const topicCounts: Record<string, number> = {};

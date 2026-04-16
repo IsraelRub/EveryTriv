@@ -1,158 +1,221 @@
 import type { QueryClient } from '@tanstack/react-query';
 
-import { CACHE_KEYS, toReactQueryKey } from '@shared/constants';
-import { ensureErrorObject } from '@shared/utils';
-
 import { QUERY_KEYS } from '@/constants';
 import { clientLogger as logger } from '@/services';
 
-class QueryInvalidationService {
-	async invalidateByServerKey(queryClient: QueryClient, serverKey: string): Promise<void> {
-		try {
-			const queryKey = toReactQueryKey(serverKey);
-			await queryClient.invalidateQueries({ queryKey, exact: false });
-		} catch (error) {
-			logger.systemError(ensureErrorObject(error), {
-				contextMessage: 'Failed to invalidate queries by server key',
-				serverKey,
-			});
-		}
-	}
+const REFETCH_ALL = { refetchType: 'all' as const };
 
+class QueryInvalidationService {
 	async invalidateGameQueries(queryClient: QueryClient, userId?: string): Promise<void> {
 		const promises: Promise<void>[] = [];
 
 		if (userId) {
-			promises.push(this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.USER(userId)));
 			promises.push(
 				queryClient.invalidateQueries({
-					queryKey: QUERY_KEYS.analytics.user('current'),
+					queryKey: QUERY_KEYS.analytics.user(),
 					exact: false,
+					...REFETCH_ALL,
 				})
 			);
-			promises.push(this.invalidateByServerKey(queryClient, CACHE_KEYS.GAME_HISTORY.USER(userId)));
 			promises.push(
 				queryClient.invalidateQueries({
 					queryKey: QUERY_KEYS.trivia.gameHistory('current'),
 					exact: false,
+					...REFETCH_ALL,
 				})
 			);
 			promises.push(
 				queryClient.invalidateQueries({
 					queryKey: QUERY_KEYS.admin.userStatistics(userId),
 					exact: true,
+					...REFETCH_ALL,
 				})
 			);
 		}
 
-		promises.push(this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_STATS));
-		promises.push(this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY));
+		promises.push(
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.analytics.globalStats(),
+				exact: false,
+				...REFETCH_ALL,
+			})
+		);
+		promises.push(
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.analytics.globalDifficultyStats(),
+				exact: false,
+				...REFETCH_ALL,
+			})
+		);
 		promises.push(
 			queryClient.invalidateQueries({
 				queryKey: QUERY_KEYS.analytics.popularTopics(),
 				exact: false,
+				...REFETCH_ALL,
 			})
 		);
 		promises.push(
 			queryClient.invalidateQueries({
 				queryKey: QUERY_KEYS.analytics.globalTrends(),
 				exact: false,
+				...REFETCH_ALL,
 			})
 		);
-		promises.push(this.invalidateByServerKey(queryClient, CACHE_KEYS.LEADERBOARD.GLOBAL(100, 0)));
 		promises.push(
 			queryClient.invalidateQueries({
 				queryKey: QUERY_KEYS.leaderboard.all,
 				exact: false,
+				...REFETCH_ALL,
 			})
 		);
 		promises.push(
 			queryClient.invalidateQueries({
 				queryKey: QUERY_KEYS.analytics.all,
 				exact: false,
+				...REFETCH_ALL,
 			})
 		);
 
 		await Promise.all(promises);
 	}
 
-	// Add new method specifically for game completion
 	async invalidateAfterGameComplete(queryClient: QueryClient, userId: string): Promise<void> {
-		await this.invalidateGameQueries(queryClient, userId);
-		await this.invalidateCreditsQueries(queryClient, userId);
+		await Promise.all([this.invalidateGameQueries(queryClient, userId), this.invalidateCreditsQueries(queryClient)]);
 
 		logger.userInfo('Invalidated queries after game completion', { userId });
 	}
 
 	async invalidateAuthQueries(queryClient: QueryClient): Promise<void> {
-		await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.auth.all, exact: false });
+		await queryClient.invalidateQueries({
+			queryKey: QUERY_KEYS.auth.all,
+			exact: false,
+			...REFETCH_ALL,
+		});
 	}
 
-	async invalidateUserQueries(queryClient: QueryClient, userId?: string): Promise<void> {
+	async invalidateUserQueries(queryClient: QueryClient): Promise<void> {
 		await this.invalidateAuthQueries(queryClient);
 
-		await queryClient.invalidateQueries({
-			queryKey: QUERY_KEYS.user.profile(),
-			exact: false,
-		});
-
-		if (userId) {
-			await this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.PROFILE(userId));
-			await this.invalidateByServerKey(queryClient, CACHE_KEYS.USER.CREDITS(userId));
-		}
+		await Promise.all([
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.user.profile(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.user.credits(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+		]);
 	}
 
-	async invalidateCreditsQueries(queryClient: QueryClient, userId?: string): Promise<void> {
-		if (userId) {
-			await this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.BALANCE(userId));
-			await this.invalidateByServerKey(queryClient, CACHE_KEYS.PAYMENT.HISTORY(userId));
-		}
-
-		await this.invalidateByServerKey(queryClient, CACHE_KEYS.CREDITS.PACKAGES_ALL);
-		await queryClient.invalidateQueries({
-			queryKey: QUERY_KEYS.credits.balance(),
-			exact: false,
-		});
-		await queryClient.invalidateQueries({
-			queryKey: QUERY_KEYS.credits.paymentHistory(),
-			exact: false,
-		});
+	async invalidateCreditsQueries(queryClient: QueryClient): Promise<void> {
+		await Promise.all([
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.credits.balance(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.credits.paymentHistory(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.credits.packages(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+		]);
 	}
 
 	async invalidateLeaderboardQueries(queryClient: QueryClient): Promise<void> {
-		await this.invalidateByServerKey(queryClient, CACHE_KEYS.LEADERBOARD.GLOBAL(100, 0));
 		await queryClient.invalidateQueries({
 			queryKey: QUERY_KEYS.leaderboard.all,
 			exact: false,
+			...REFETCH_ALL,
 		});
 	}
 
 	async invalidateAnalyticsQueries(queryClient: QueryClient, userId?: string): Promise<void> {
+		const promises: Promise<void>[] = [
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.analytics.globalStats(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.analytics.globalDifficultyStats(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.analytics.popularTopics(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.analytics.globalTrends(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+		];
+
 		if (userId) {
-			await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.USER(userId));
+			promises.push(
+				queryClient.invalidateQueries({
+					queryKey: QUERY_KEYS.analytics.user(),
+					exact: false,
+					...REFETCH_ALL,
+				})
+			);
 		}
 
-		await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_STATS);
-		await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY);
-		await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.TOPICS_STATS({}));
-		await this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS({}));
+		await Promise.all(promises);
 	}
 
 	async invalidateAdminDashboardQueries(queryClient: QueryClient): Promise<void> {
 		const promises: Promise<void>[] = [
-			this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_STATS),
-			this.invalidateByServerKey(queryClient, CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY),
-			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.analytics.popularTopics(), exact: false }),
-			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.gameStatistics() }),
-			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.businessMetrics() }),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.analytics.globalStats(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.analytics.globalDifficultyStats(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.analytics.popularTopics(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.admin.gameStatistics(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.admin.businessMetrics(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
 			queryClient.invalidateQueries({
 				queryKey: [...QUERY_KEYS.admin.all, 'adminUserStatistics'],
 				exact: false,
+				...REFETCH_ALL,
 			}),
-			queryClient.invalidateQueries({ queryKey: QUERY_KEYS.admin.allUsersConsistency() }),
+			queryClient.invalidateQueries({
+				queryKey: QUERY_KEYS.admin.allUsersConsistency(),
+				exact: false,
+				...REFETCH_ALL,
+			}),
 			queryClient.invalidateQueries({
 				queryKey: [...QUERY_KEYS.admin.all, 'userStatsConsistency'],
 				exact: false,
+				...REFETCH_ALL,
 			}),
 		];
 		await Promise.all(promises);

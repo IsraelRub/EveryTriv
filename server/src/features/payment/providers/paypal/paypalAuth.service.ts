@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
 
 import { CACHE_KEYS, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { VALIDATORS } from '@shared/validation';
 
 import { AppConfig } from '@config';
 import { CacheService } from '@internal/modules';
@@ -68,9 +69,8 @@ export class PayPalAuthService {
 
 	private async getCachedToken(): Promise<string | null> {
 		try {
-			const cached = await this.cacheService.get<string>(
-				CACHE_KEYS.PAYPAL.ACCESS_TOKEN,
-				(value): value is string => typeof value === 'string'
+			const cached = await this.cacheService.get<string>(CACHE_KEYS.PAYPAL.ACCESS_TOKEN, (value): value is string =>
+				VALIDATORS.string(value)
 			);
 			if (cached.success && cached.data) {
 				return cached.data;

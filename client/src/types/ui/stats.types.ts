@@ -23,6 +23,8 @@ export interface StatCardProps {
 	isLoading?: boolean;
 	variant?: StatCardVariant;
 	animate?: boolean;
+	/** In narrow multi-column grids (e.g. 4+), place label under the icon instead of beside it. */
+	stackIconLabel?: boolean;
 }
 
 export interface StatsSectionCardProps {

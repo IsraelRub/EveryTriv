@@ -223,8 +223,17 @@
 		@apply max-w-6xl mx-auto view-spacing min-h-0 flex-1 flex flex-col overflow-y-auto;
 	}
 
+	/* Wider content shell (e.g. home cards / dashboards) — same behavior as 6xl-fill */
+	.view-content-7xl-fill {
+		@apply max-w-7xl mx-auto view-spacing min-h-0 flex-1 flex flex-col overflow-y-auto;
+	}
+
 	.view-content-6xl-scroll {
 		@apply max-w-6xl mx-auto h-full flex flex-col view-spacing-lg overflow-y-auto;
+	}
+
+	.view-content-7xl-scroll {
+		@apply max-w-7xl mx-auto h-full flex flex-col view-spacing-lg overflow-y-auto;
 	}
 
 	.view-content-3xl-scroll {

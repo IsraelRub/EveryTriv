@@ -11,22 +11,9 @@ import type {
 } from '@shared/types';
 
 import { QUERY_CACHE_PRESETS, QUERY_KEYS } from '@/constants';
+import type { UseAdminUserPanelQueriesResult } from '@/types';
 import { analyticsService } from '@/services';
 import { useUserRole } from '@/hooks/useAuth';
-
-export interface UseAdminUserPanelQueriesResult {
-	userSummary: AnalyticsResponse<UserSummaryData> | undefined;
-	summaryLoading: boolean;
-	summaryError: boolean;
-	userStatistics: AnalyticsResponse<UserAnalyticsRecord> | undefined;
-	statisticsLoading: boolean;
-	userPerformance: AnalyticsResponse<UserPerformanceMetrics> | undefined;
-	performanceLoading: boolean;
-	userInsights: AnalyticsResponse<UserInsightsData> | undefined;
-	insightsLoading: boolean;
-	userRecommendations: AnalyticsResponse<SystemRecommendation[]> | undefined;
-	recommendationsLoading: boolean;
-}
 
 export function useAdminUserPanelQueries(selectedUserId: string | null): UseAdminUserPanelQueriesResult {
 	const { isAdmin } = useUserRole();

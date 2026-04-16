@@ -42,34 +42,82 @@ export const ANIMATION_COLORS = [
 	'hsl(217 33% 17%)', // muted
 ] as const;
 
-export enum WordDirection {
-	DiagonalUpRight = 'diagonal-up-right',
-	DiagonalUpLeft = 'diagonal-up-left',
-	DiagonalDownRight = 'diagonal-down-right',
-	DiagonalDownLeft = 'diagonal-down-left',
-	HorizontalRight = 'horizontal-right',
-	HorizontalLeft = 'horizontal-left',
-	VerticalUp = 'vertical-up',
-	VerticalDown = 'vertical-down',
+/**
+ * Unit offset per axis (× `movementOffset`) for each travel direction.
+ * Single source: string keys are the persisted `WordDirection` values.
+ */
+export const WORD_DIRECTION_OFFSET_UNIT = {
+	'diagonal-up-right': { dx: 1, dy: -1 },
+	'diagonal-up-left': { dx: -1, dy: -1 },
+	'diagonal-down-right': { dx: 1, dy: 1 },
+	'diagonal-down-left': { dx: -1, dy: 1 },
+	'horizontal-right': { dx: 1, dy: 0 },
+	'horizontal-left': { dx: -1, dy: 0 },
+	'vertical-up': { dx: 0, dy: -1 },
+	'vertical-down': { dx: 0, dy: 1 },
+} as const;
+
+export type WordDirection = keyof typeof WORD_DIRECTION_OFFSET_UNIT;
+
+export const WORD_DIRECTIONS: readonly WordDirection[] = Object.keys(WORD_DIRECTION_OFFSET_UNIT) as WordDirection[];
+
+export enum BackgroundWordMotionPath {
+	Straight = 'straight',
+	SineWave = 'sine-wave',
+	Arc = 'arc',
+	Zigzag = 'zigzag',
+	Serpentine = 'serpentine',
 }
 
-export const WORD_DIRECTIONS: WordDirection[] = Object.values(WordDirection);
+/** Weighted pool: more gentle paths appear more often than sharp zigzag. */
+export const BACKGROUND_WORD_MOTION_PATH_POOL: readonly BackgroundWordMotionPath[] = [
+	BackgroundWordMotionPath.Straight,
+	BackgroundWordMotionPath.Straight,
+	BackgroundWordMotionPath.SineWave,
+	BackgroundWordMotionPath.SineWave,
+	BackgroundWordMotionPath.SineWave,
+	BackgroundWordMotionPath.Arc,
+	BackgroundWordMotionPath.Arc,
+	BackgroundWordMotionPath.Zigzag,
+	BackgroundWordMotionPath.Serpentine,
+] as const;
 
 export const BACKGROUND_ANIMATION_CONFIG = {
-	wordCount: 18,
-	minDuration: 15,
-	maxDuration: 35,
-	minFontSize: 1.2,
-	maxFontSize: 2.5,
-	minOpacity: 0.05,
-	maxOpacity: 0.12,
-	fadeFraction: 0.1,
-	zIndex: 0,
-	spawnDelay: 200,
-	minRotation: -15,
-	maxRotation: 15,
-	movementOffset: 120,
-	minStartPosition: -20,
-	maxStartPosition: 100,
-	fontWeight: 700,
+	layout: {
+		wordCount: 18,
+		spawnDelay: 200,
+		zIndex: 0,
+		fontWeight: 700,
+	},
+	timing: {
+		minDuration: 15,
+		maxDuration: 35,
+		fadeFraction: 0.1,
+	},
+	appearance: {
+		minFontSize: 1.2,
+		maxFontSize: 2.5,
+		minOpacity: 0.05,
+		maxOpacity: 0.12,
+		minRotation: -15,
+		maxRotation: 15,
+	},
+	position: {
+		movementOffset: 120,
+		minStartPosition: -20,
+		maxStartPosition: 100,
+	},
+	path: {
+		waveAmplitudeMin: 4,
+		waveAmplitudeMax: 14,
+		waveCyclesMin: 1,
+		waveCyclesMax: 2.4,
+		arcBulgeMin: 10,
+		arcBulgeMax: 28,
+		zigzagMin: 6,
+		zigzagMax: 18,
+		serpentineMin: 5,
+		serpentineMax: 16,
+		sineSteps: 8,
+	},
 } as const;
