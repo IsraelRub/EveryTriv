@@ -114,11 +114,12 @@ export class GroqApiClient {
 
 		// Use executeRetry for unified retry logic
 		const result = await executeRetry<LLMResponse>(
-			async () => {
+			async (signal: AbortSignal) => {
 				const response = await globalThis.fetch(config.baseUrl, {
 					method: HttpMethod.POST,
 					headers: config.headers ?? {},
 					body: JSON.stringify(config.body),
+					signal,
 				});
 
 				// Handle non-OK responses
@@ -219,6 +220,7 @@ export class GroqApiClient {
 				baseDelay: HTTP_CLIENT_CONFIG.RETRY_DELAY,
 				timeout: config.timeout,
 				maxTotalTimeMs: TIME_PERIODS_MS.MINUTE,
+				signal: options?.signal,
 				retryOnAuthError: false,
 				retryOnRateLimit: true,
 				retryOnServerError: true,

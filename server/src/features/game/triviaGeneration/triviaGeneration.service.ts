@@ -33,10 +33,14 @@ export class TriviaGenerationService {
 		this.groqProvider = new GroqTriviaProvider();
 	}
 
-	async generateQuestion(params: PromptParams, userId?: string): Promise<TriviaEntity> {
+	async generateQuestion(
+		params: PromptParams,
+		userId?: string,
+		options?: { signal?: AbortSignal }
+	): Promise<TriviaEntity> {
 		try {
 			// Try to generate question using Groq AI provider
-			const providerResult = await this.groqProvider.generateTriviaQuestion(params);
+			const providerResult = await this.groqProvider.generateTriviaQuestion(params, options?.signal);
 			this.applyProviderMetadata(providerResult, params.difficulty);
 
 			const question = this.convertAIQuestionToFormat(providerResult.question, params.topic, params.difficulty);

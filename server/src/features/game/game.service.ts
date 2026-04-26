@@ -4,6 +4,8 @@ import { In, Repository } from 'typeorm';
 
 import {
 	CACHE_KEYS,
+	DEFAULT_GAME_CONFIG,
+	DEFAULT_LANGUAGE,
 	DifficultyLevel,
 	ERROR_MESSAGES,
 	ErrorCode,
@@ -15,7 +17,6 @@ import {
 	SURPRISE_SCOPE_DEFAULT,
 	SurpriseScope,
 	TIME_DURATIONS_SECONDS,
-	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
@@ -54,10 +55,11 @@ import {
 	isRegisteredDifficulty,
 	isUuid,
 	toDifficultyLevel,
+	TRUSTED_PRESET_TOPICS_BY_LOCALE,
 	VALIDATORS,
 } from '@shared/validation';
 
-import { restoreGameDifficulty } from '@common/validation';
+import { GameTextLanguageGateService, restoreGameDifficulty } from '@common/validation';
 import { GAME_STATUSES, GameStatus } from '@internal/constants';
 import { GameHistoryEntity, TriviaEntity, UserEntity } from '@internal/entities';
 import { CacheService, StorageService } from '@internal/modules';
@@ -76,8 +78,6 @@ import { createNotFoundError, createServerError, isGameSessionState } from '@int
 import { UserStatsUpdateService } from '../analytics/services';
 import { TopicDifficultyGateService, TriviaGenerationService } from './triviaGeneration';
 
-const MAX_SESSION_EXCLUDE_QUESTION_TEXTS = VALIDATION_LENGTH.STRING_TRUNCATION.LONG_PREVIEW;
-
 @Injectable()
 export class GameService {
 	constructor(
@@ -91,6 +91,7 @@ export class GameService {
 		private readonly storageService: StorageService,
 		private readonly triviaGenerationService: TriviaGenerationService,
 		private readonly topicDifficultyGateService: TopicDifficultyGateService,
+		private readonly gameTextLanguageGateService: GameTextLanguageGateService,
 		private readonly userStatsUpdateService: UserStatsUpdateService
 	) {}
 
@@ -218,12 +219,27 @@ export class GameService {
 			);
 		}
 
+		const requestStartMs = Date.now();
+		const slowRequestThresholdMs = 8_000;
+		let stageUserSeenMs = 0;
+		let stageSessionExcludeMs = 0;
+		let stageHasExistingMs = 0;
+		let stageGetAvailableMs = 0;
+		let stageGateMs = 0;
+		let stageRecentMs = 0;
+		let stageGenerationMs = 0;
+		let totalGeneratedRetries = 0;
+		let totalGeneratedTimeouts = 0;
+
 		try {
 			// Get user's seen questions if userId is provided
+			const userSeenStartMs = Date.now();
 			const userSeenQuestions = userId ? await this.getUserSeenQuestions(userId) : new Set<string>();
+			stageUserSeenMs = Date.now() - userSeenStartMs;
 
 			const sessionExcludeQuestionTexts: string[] = [];
 			if (userId && gameId && isNonEmptyString(gameId) && isUuid(gameId)) {
+				const sessionExcludeStartMs = Date.now();
 				const sessionKeyForExclude = CACHE_KEYS.GAME.SESSION(userId, gameId);
 				const sessionForExcludeResult = await this.storageService.get(sessionKeyForExclude);
 				if (
@@ -240,6 +256,7 @@ export class GameService {
 						}
 					}
 				}
+				stageSessionExcludeMs = Date.now() - sessionExcludeStartMs;
 			}
 
 			const mergedExcludeTexts = new Set<string>(userSeenQuestions);
@@ -251,15 +268,18 @@ export class GameService {
 			const locale = isLocale(outputLanguage) ? outputLanguage : Locale.EN;
 
 			// Check if questions exist in database for this topic, difficulty, and language
+			const hasExistingStartMs = Date.now();
 			const hasExistingQuestions = await this.triviaGenerationService.hasQuestionsForTopicAndDifficulty(
 				topic,
 				difficulty,
 				locale
 			);
+			stageHasExistingMs = Date.now() - hasExistingStartMs;
 
 			// Try to get existing questions first (only those matching requested language)
 			let availableQuestions: TriviaEntity[] = [];
 			if (hasExistingQuestions) {
+				const getAvailableStartMs = Date.now();
 				availableQuestions = await this.triviaGenerationService.getAvailableQuestions(
 					topic,
 					difficulty,
@@ -268,6 +288,7 @@ export class GameService {
 					[],
 					locale
 				);
+				stageGetAvailableMs = Date.now() - getAvailableStartMs;
 			}
 
 			const questions: TriviaQuestion[] = [];
@@ -284,7 +305,7 @@ export class GameService {
 			};
 			const generationTimeout = HTTP_TIMEOUTS.QUESTION_GENERATION;
 			const maxRetries = RETRY_LIMITS.questionGeneration;
-			const delayBetweenQuestionsMs = TIME_PERIODS_MS.TWO_SECONDS;
+			const delayBetweenQuestionsMs = 0;
 
 			const actualAnswerCount = clamp(
 				answerCount,
@@ -352,17 +373,22 @@ export class GameService {
 			// Generate new questions if we don't have enough
 			const remainingCount = normalizedQuestionsPerRequest - questions.length;
 			if (remainingCount > 0) {
+				const gateStartMs = Date.now();
 				await this.topicDifficultyGateService.enforceTopicDifficultyGate({
 					topic,
 					difficulty,
 					outputLanguage: locale,
 				});
+				stageGateMs = Date.now() - gateStartMs;
 				// Get recent questions from same topic across all difficulty levels to help LLM avoid duplicates (once per batch)
 				// Limit to 50 questions to avoid overwhelming the prompt (each question ~50-100 chars = ~10-20 tokens)
+				const recentStartMs = Date.now();
 				const baseRecentQuestions = userId ? await this.getUserRecentQuestionsForTopic(userId, topic, 50) : [];
+				stageRecentMs = Date.now() - recentStartMs;
 				// Track questions generated in this batch to include in exclude list for subsequent generations
 				const batchGeneratedQuestions: string[] = [];
 
+				const generationStartMs = Date.now();
 				for (let i = 0; i < remainingCount; i++) {
 					let question: TriviaQuestion | null = null;
 					let retries = 0;
@@ -386,20 +412,28 @@ export class GameService {
 								outputLanguageLabel: OUTPUT_LANGUAGE_LABELS[locale],
 								outputLanguage: locale,
 							};
-							let timeoutId: NodeJS.Timeout | undefined = undefined;
-							const timeoutPromise = new Promise<never>((_, reject) => {
-								timeoutId = setTimeout(() => {
-									reject(new Error(ErrorCode.QUESTION_GENERATION_TIMEOUT));
-								}, generationTimeout);
-							});
+							const generationAbortController = new AbortController();
+							const timeoutId = setTimeout(() => {
+								generationAbortController.abort();
+							}, generationTimeout);
 
-							const generationResult = await Promise.race([
-								this.triviaGenerationService.generateQuestion(promptParams, userId),
-								timeoutPromise,
-							]);
-
-							// Clear timeout if generation completed before timeout
-							if (timeoutId !== undefined) {
+							let generationResult: TriviaEntity;
+							try {
+								generationResult = await this.triviaGenerationService.generateQuestion(promptParams, userId, {
+									signal: generationAbortController.signal,
+								});
+							} catch (genError) {
+								const genMessage = getErrorMessage(genError);
+								const isAbort =
+									genMessage.toLowerCase().includes('aborted') ||
+									genMessage.toLowerCase().includes('aborterror') ||
+									(genError instanceof Error && genError.name === 'AbortError');
+								if (isAbort) {
+									totalGeneratedTimeouts += 1;
+									throw new Error(ErrorCode.QUESTION_GENERATION_TIMEOUT);
+								}
+								throw genError;
+							} finally {
 								clearTimeout(timeoutId);
 							}
 
@@ -450,6 +484,7 @@ export class GameService {
 								count: questions.length + i + 1,
 							});
 							retries++;
+							totalGeneratedRetries += 1;
 						}
 					}
 
@@ -462,9 +497,12 @@ export class GameService {
 						});
 					}
 					if (i < remainingCount - 1) {
-						await delay(delayBetweenQuestionsMs);
+						if (delayBetweenQuestionsMs > 0) {
+							await delay(delayBetweenQuestionsMs);
+						}
 					}
 				}
+				stageGenerationMs = Date.now() - generationStartMs;
 			}
 
 			// If we have fewer questions than requested, log a warning
@@ -513,7 +551,7 @@ export class GameService {
 								deduped.push(t);
 							}
 						}
-						session.sessionExcludeQuestionTexts = deduped.slice(-MAX_SESSION_EXCLUDE_QUESTION_TEXTS);
+						session.sessionExcludeQuestionTexts = deduped.slice(-VALIDATION_LENGTH.STRING_TRUNCATION.LONG_PREVIEW);
 						sessionDirty = true;
 					}
 
@@ -522,6 +560,41 @@ export class GameService {
 						await this.storageService.set(sessionKey, session, TIME_DURATIONS_SECONDS.HOUR);
 					}
 				}
+			}
+
+			const totalMs = Date.now() - requestStartMs;
+			if (totalMs >= slowRequestThresholdMs) {
+				logger.gameInfo('Slow trivia generation request', {
+					topic,
+					difficulty,
+					language: locale,
+					requestCounts: { requested: questionsPerRequest, total: normalizedQuestionsPerRequest },
+					actualCount: questions.length,
+					resultsCount: questions.length,
+					totalItems: availableQuestions.length,
+					responseTime: totalMs,
+					analysis: JSON.stringify({
+						timingsMs: {
+							total: totalMs,
+							userSeen: stageUserSeenMs,
+							sessionExclude: stageSessionExcludeMs,
+							hasExisting: stageHasExistingMs,
+							getAvailable: stageGetAvailableMs,
+							gate: stageGateMs,
+							recent: stageRecentMs,
+							generation: stageGenerationMs,
+						},
+						generationStats: {
+							retries: totalGeneratedRetries,
+							timeouts: totalGeneratedTimeouts,
+						},
+						resultCounts: {
+							fromDb: availableQuestions.length,
+							returned: questions.length,
+							remainingCount,
+						},
+					}),
+				});
 			}
 
 			return {
@@ -651,12 +724,83 @@ export class GameService {
 	}
 
 	async getSurprisePick(userId: string, scope?: SurpriseScope, locale?: Locale): Promise<SurprisePickResult> {
-		const excludeTopics = await this.getTopicsPlayedByUser(userId);
-		return this.triviaGenerationService.getSurprisePick({
-			excludeTopics,
-			scope: scope ?? SURPRISE_SCOPE_DEFAULT,
-			locale,
-		});
+		const resolvedScope = scope ?? SURPRISE_SCOPE_DEFAULT;
+		const outputLanguage = locale ?? DEFAULT_LANGUAGE;
+		let excludeTopics = await this.getTopicsPlayedByUser(userId);
+		let lastError: unknown;
+
+		for (let attempt = 0; attempt < RETRY_LIMITS.surprisePickDownstreamValidation; attempt++) {
+			let picked: SurprisePickResult;
+			try {
+				picked = await this.triviaGenerationService.getSurprisePick({
+					excludeTopics,
+					scope: resolvedScope,
+					locale,
+				});
+			} catch (error) {
+				lastError = error;
+				logger.gameError('Surprise pick provider attempt failed', {
+					errorInfo: { message: getErrorMessage(error) },
+					attempt: attempt + 1,
+				});
+				continue;
+			}
+
+			try {
+				const { topic, difficulty } = this.buildSyntheticTopicDifficultyForSurpriseValidation(
+					resolvedScope,
+					picked,
+					outputLanguage
+				);
+				await this.gameTextLanguageGateService.assertTriviaGameInputValid(topic, difficulty, outputLanguage);
+				await this.topicDifficultyGateService.enforceTopicDifficultyGate({
+					topic,
+					difficulty,
+					outputLanguage,
+				});
+				return picked;
+			} catch (error) {
+				lastError = error;
+				if (picked.topic !== undefined && picked.topic.trim().length > 0) {
+					excludeTopics = [...excludeTopics, picked.topic];
+				}
+				logger.gameInfo('Surprise pick failed downstream validation, retrying', {
+					attempt: attempt + 1,
+					errorInfo: { message: getErrorMessage(error) },
+				});
+			}
+		}
+
+		throw lastError instanceof Error
+			? lastError
+			: createServerError('surprise pick', new Error(getErrorMessage(lastError)));
+	}
+
+	private buildSyntheticTopicDifficultyForSurpriseValidation(
+		scope: SurpriseScope,
+		result: SurprisePickResult,
+		outputLanguage: Locale
+	): { topic: string; difficulty: GameDifficulty } {
+		const placeholderTopic =
+			(TRUSTED_PRESET_TOPICS_BY_LOCALE[outputLanguage] ?? TRUSTED_PRESET_TOPICS_BY_LOCALE[Locale.EN])[0] ??
+			DEFAULT_GAME_CONFIG.defaultTopic;
+		const placeholderDifficulty: GameDifficulty = DEFAULT_GAME_CONFIG.defaultDifficulty;
+
+		switch (scope) {
+			case SurpriseScope.BOTH: {
+				const topic = result.topic?.trim() ?? '';
+				const difficulty = result.difficulty ?? placeholderDifficulty;
+				return { topic, difficulty };
+			}
+			case SurpriseScope.TOPIC: {
+				const topic = result.topic?.trim() ?? '';
+				return { topic, difficulty: placeholderDifficulty };
+			}
+			case SurpriseScope.DIFFICULTY: {
+				const difficulty = result.difficulty ?? placeholderDifficulty;
+				return { topic: placeholderTopic, difficulty };
+			}
+		}
 	}
 
 	async submitAnswerToSession(params: SubmitAnswerParams & { gameId: string }): Promise<SubmitAnswerResult> {

@@ -1,6 +1,7 @@
 export type GroqApiCallOptions = Readonly<{
 	maxTokens?: number;
 	timeoutMs?: number;
+	signal?: AbortSignal;
 }>;
 
 export interface GroqMessageForLog {

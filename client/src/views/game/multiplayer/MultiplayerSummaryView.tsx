@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { FileQuestion, Gauge, Hash, PartyPopper, Tag, Trophy, Users } from 'lucide-react';
+import { FileQuestion, Gauge, Hash, PartyPopper, Timer, Trophy } from 'lucide-react';
 
 import { APP_NAME, DEFAULT_GAME_CONFIG } from '@shared/constants';
 import type { Player } from '@shared/types';
@@ -42,6 +42,13 @@ import {
 } from '@/components';
 import { useAppSelector, useCurrentUserData, useMultiplayer } from '@/hooks';
 import { selectMultiplayerPersonalAnswerHistory } from '@/redux/selectors';
+
+function formatDurationFromMs(ms: number): string {
+	const totalSeconds = Math.max(0, Math.round(ms / 1000));
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
 
 function isPlayerLike(value: unknown): value is Player {
 	if (!isRecord(value)) return false;
@@ -173,6 +180,21 @@ export function MultiplayerSummaryView() {
 	const shareTopic = formatTitle(room?.config?.topic ?? DEFAULT_GAME_CONFIG.defaultTopic);
 	const shareDifficulty = room?.config?.difficulty;
 	const sharePercentage = calculatePercentage(shareScore, shareTotal);
+	const myRank = useMemo(() => {
+		if (!currentUser?.id || results.length === 0) return null;
+		const idx = results.findIndex(p => p.userId === currentUser.id);
+		return idx >= 0 ? idx + 1 : null;
+	}, [results, currentUser?.id]);
+
+	const durationText = useMemo(() => {
+		if (!room?.startTime || !room?.endTime) return null;
+		if (!VALIDATORS.date(room.startTime) || !VALIDATORS.date(room.endTime)) return null;
+		const startMs = new Date(room.startTime).getTime();
+		const endMs = new Date(room.endTime).getTime();
+		if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) return null;
+		return formatDurationFromMs(endMs - startMs);
+	}, [room?.startTime, room?.endTime]);
+
 	const shareInterpolation = {
 		appName: APP_NAME,
 		topic: shareTopic,
@@ -344,36 +366,38 @@ export function MultiplayerSummaryView() {
 				{/* Personal questions breakdown */}
 				<QuestionBreakdown entries={personalAnswerHistory} />
 
-				{/* Game Stats */}
-				{room && (
+				{/* Your stats (derived from existing data) */}
+				{(myResult || room) && (
 					<Card>
 						<CardHeader>
-							<CardTitle>{t(GameKey.GAME_STATS)}</CardTitle>
+							<CardTitle>{t(GameKey.YOUR_STATS)}</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
 								<StatCard
-									icon={Users}
-									label={t(GameKey.PLAYERS)}
-									value={room.players?.length ?? 0}
-									color={SEMANTIC_ICON_TEXT.primary}
+									icon={Trophy}
+									label={t(GameKey.YOUR_RANK)}
+									value={myRank ?? '—'}
+									color={SEMANTIC_ICON_TEXT.warning}
 								/>
 								<StatCard
 									icon={FileQuestion}
-									label={t(GameKey.QUESTIONS_LABEL)}
-									value={room.questions?.length ?? 0}
+									label={t(GameKey.CORRECT_ANSWERS)}
+									value={
+										shareTotal > 0 ? `${shareScore}/${shareTotal} (${sharePercentage}%)` : `${shareScore}`
+									}
 									color={SEMANTIC_ICON_TEXT.success}
 								/>
 								<StatCard
 									icon={Gauge}
-									label={t(GameKey.DIFFICULTY)}
-									value={getDifficultyDisplayLabel(room.config?.difficulty, t)}
-									color={SEMANTIC_ICON_TEXT.warning}
+									label={t(GameKey.ACCURACY)}
+									value={shareTotal > 0 ? `${sharePercentage}%` : '—'}
+									color={SEMANTIC_ICON_TEXT.primary}
 								/>
 								<StatCard
-									icon={Tag}
-									label={t(GameKey.TOPIC)}
-									value={formatTitle(room.config?.topic ?? DEFAULT_GAME_CONFIG.defaultTopic)}
+									icon={Timer}
+									label={t(GameKey.DURATION)}
+									value={durationText ?? '—'}
 									color={SEMANTIC_ICON_TEXT.secondary}
 								/>
 							</div>

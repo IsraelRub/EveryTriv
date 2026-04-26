@@ -564,6 +564,7 @@ export class RoomService {
 		if (!isRecord(raw)) {
 			return null;
 		}
+
 		const merged: Record<string, unknown> = {
 			...raw,
 			isPublicLobby: typeof raw.isPublicLobby === 'boolean' ? raw.isPublicLobby : false,
@@ -571,7 +572,25 @@ export class RoomService {
 		if (!isMultiplayerRoom(merged)) {
 			return null;
 		}
-		return merged;
+
+		const normalizedPlayers: Player[] = merged.players.map(p => ({
+			...p,
+			joinedAt: RoomService.toDate(p.joinedAt, 'joinedAt'),
+			lastActivity: p.lastActivity !== undefined ? RoomService.toDate(p.lastActivity, 'lastActivity') : undefined,
+		}));
+
+		return {
+			...merged,
+			players: normalizedPlayers,
+			createdAt: RoomService.toDate(merged.createdAt, 'createdAt'),
+			updatedAt: RoomService.toDate(merged.updatedAt, 'updatedAt'),
+			currentQuestionStartTime:
+				merged.currentQuestionStartTime !== undefined
+					? RoomService.toDate(merged.currentQuestionStartTime, 'currentQuestionStartTime')
+					: undefined,
+			startTime: merged.startTime !== undefined ? RoomService.toDate(merged.startTime, 'startTime') : undefined,
+			endTime: merged.endTime !== undefined ? RoomService.toDate(merged.endTime, 'endTime') : undefined,
+		};
 	}
 
 	private normalizeRoomPublicFlag(room: MultiplayerRoom): MultiplayerRoom {

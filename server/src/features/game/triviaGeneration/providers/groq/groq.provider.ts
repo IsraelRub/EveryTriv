@@ -183,7 +183,7 @@ export class GroqTriviaProvider {
 		}
 	}
 
-	async generateTriviaQuestion(params: PromptParams): Promise<ProviderTriviaGenerationResult> {
+	async generateTriviaQuestion(params: PromptParams, signal?: AbortSignal): Promise<ProviderTriviaGenerationResult> {
 		const startTime = Date.now();
 
 		try {
@@ -246,7 +246,7 @@ export class GroqTriviaProvider {
 				isCustomDifficulty: isCustomDifficulty(sanitizedParams.difficulty),
 			});
 
-			const response = await this.apiClient.makeApiCall(prompt);
+			const response = await this.apiClient.makeApiCall(prompt, undefined, { signal });
 
 			// Parse the LLM response with smart error handling
 			let data: LLMTriviaResponse;

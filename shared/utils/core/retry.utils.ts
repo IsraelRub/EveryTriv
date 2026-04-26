@@ -88,7 +88,7 @@ function extractRetryAfterFromHeaders(headers?: Headers): number | undefined {
 }
 
 export async function executeRetry<T>(
-	requestFn: () => Promise<T>,
+	requestFn: (signal: AbortSignal) => Promise<T>,
 	config: RetryConfig = {}
 ): Promise<RetryResponse<T>> {
 	const {
@@ -136,14 +136,14 @@ export async function executeRetry<T>(
 		}
 
 		try {
-			// Create AbortController for timeout
-			const timeoutController = new AbortController();
+			// Create AbortController for timeout + external abort
+			const combinedController = new AbortController();
 			let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
 			// Set up timeout if provided
 			if (timeout > 0) {
 				timeoutId = setTimeout(() => {
-					timeoutController.abort();
+					combinedController.abort();
 				}, timeout);
 			}
 
@@ -167,6 +167,7 @@ export async function executeRetry<T>(
 
 				// Set up cleanup handler for external signal
 				const abortHandler = () => {
+					combinedController.abort();
 					if (timeoutId) {
 						clearTimeout(timeoutId);
 					}
@@ -176,7 +177,7 @@ export async function executeRetry<T>(
 			}
 
 			try {
-				const result = await requestFn();
+				const result = await requestFn(combinedController.signal);
 
 				// Cleanup timeout
 				if (timeoutId) {

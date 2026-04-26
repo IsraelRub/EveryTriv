@@ -7,6 +7,7 @@ export const RETRY_LIMITS = {
 	languageToolHttp: 3,
 	paypalHttp: 3,
 	questionGeneration: 3,
+	surprisePickDownstreamValidation: 4,
 	reactQueryMutations: 2,
 	reactQueryQueries: 3,
 	roomCodeGeneration: 10,

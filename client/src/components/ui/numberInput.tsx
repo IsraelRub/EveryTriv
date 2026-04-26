@@ -58,7 +58,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 					step={step}
 					disabled={disabled}
 					error={error}
-					className='h-10 min-w-[4.5rem] w-24 shrink-0 text-center border-0 rounded-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0 focus-visible:ring-offset-0'
+					className='h-10 min-w-[4.5rem] w-16 sm:w-20 md:w-24 shrink-0 text-center border-0 rounded-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0 focus-visible:ring-offset-0'
 					{...props}
 				/>
 				<div className='flex flex-col shrink-0 border-l border-input'>

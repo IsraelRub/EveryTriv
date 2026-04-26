@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Wand2 } from 'lucide-react';
 
 import { DifficultyLevel, SurpriseScope } from '@shared/constants';
+import { getErrorMessage } from '@shared/utils';
 import { extractCustomDifficultyText, isCustomDifficulty } from '@shared/validation';
 
 import {
@@ -16,7 +17,7 @@ import {
 import type { SurpriseMeDialogProps } from '@/types';
 import { gameHistoryService } from '@/services';
 import { Button, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Spinner } from '@/components';
-import { useAppSelector } from '@/hooks';
+import { toast, useAppSelector } from '@/hooks';
 import { selectLocale } from '@/redux/selectors';
 
 export function SurpriseMeDialog({
@@ -114,6 +115,12 @@ export function SurpriseMeDialog({
 										onCustomDifficultyErrorChange('');
 									}
 									setOpen(false);
+								} catch (error) {
+									const detail = getErrorMessage(error);
+									toast.error({
+										title: t(GameKey.SURPRISE_PICK_FAILED),
+										...(detail.trim().length > 0 ? { description: detail } : {}),
+									});
 								} finally {
 									setSurpriseLoading(false);
 								}
