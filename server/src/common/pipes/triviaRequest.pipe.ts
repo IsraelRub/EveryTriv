@@ -36,15 +36,9 @@ export class TriviaRequestPipe implements PipeTransform {
 				payload.outputLanguage
 			);
 
-			// Convert UNLIMITED_QUESTIONS (-1) to MAX for DTO validation
-			// The DTO validator expects MAX when UNLIMITED is provided
-			const { UNLIMITED, MAX } = VALIDATION_COUNT.QUESTIONS;
-			const questionsPerRequestForValidation =
-				payload.questionsPerRequest === UNLIMITED ? MAX : payload.questionsPerRequest;
-
-			// Create and return TriviaRequestDto with converted questionsPerRequest
-			// Validation will be handled by NestJS ValidationPipe using DTO decorators
-			return this.createTriviaRequestDto(payload, questionsPerRequestForValidation);
+			// Keep UNLIMITED (-1) so GameService can use INITIAL_BATCH_UNLIMITED instead of requesting MAX questions.
+			// TriviaRequestDto skips @Min/@Max when questionsPerRequest === UNLIMITED.
+			return this.createTriviaRequestDto(payload);
 		} catch (error) {
 			const errorMessage = getErrorMessage(error);
 
@@ -242,11 +236,11 @@ export class TriviaRequestPipe implements PipeTransform {
 		return value == null || VALIDATORS.string(value);
 	}
 
-	private createTriviaRequestDto(payload: TriviaRequest, questionsPerRequest: number): TriviaRequestDto {
+	private createTriviaRequestDto(payload: TriviaRequest): TriviaRequestDto {
 		const dto = new TriviaRequestDto();
 		dto.topic = sanitizeInput(payload.topic, VALIDATION_LENGTH.TOPIC.MAX);
 		dto.difficulty = payload.difficulty;
-		dto.questionsPerRequest = questionsPerRequest;
+		dto.questionsPerRequest = payload.questionsPerRequest;
 
 		if (payload.gameId !== undefined) {
 			dto.gameId = payload.gameId;

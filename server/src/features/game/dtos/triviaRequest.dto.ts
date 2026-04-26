@@ -25,6 +25,7 @@ export class TriviaRequestDto {
 		maximum: VALIDATION_COUNT.QUESTIONS.UNLIMITED,
 	})
 	@IsInt()
+	@ValidateIf((o: TriviaRequestDto) => o.questionsPerRequest !== VALIDATION_COUNT.QUESTIONS.UNLIMITED)
 	@Min(VALIDATION_COUNT.QUESTIONS.MIN)
 	@ValidateIf((o: TriviaRequestDto) => o.questionsPerRequest !== VALIDATION_COUNT.QUESTIONS.UNLIMITED)
 	@Max(VALIDATION_COUNT.QUESTIONS.MAX)

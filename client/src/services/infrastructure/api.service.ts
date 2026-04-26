@@ -63,18 +63,18 @@ export class ApiConfig {
 
 	static get oauthBaseUrl(): string {
 		if (
-			typeof window !== 'undefined' &&
-			isNonEmptyString(window.location?.origin) &&
-			isLocalhostClientOrigin(window.location.origin)
-		) {
-			return LOCALHOST_CONFIG.urls.SERVER;
-		}
-		if (
 			import.meta.env.VITE_API_BASE_URL === VITE_API_BUNDLE_USE_ORIGIN_PREFIX &&
 			typeof window !== 'undefined' &&
 			isNonEmptyString(window.location?.origin)
 		) {
 			return window.location.origin;
+		}
+		if (
+			typeof window !== 'undefined' &&
+			isNonEmptyString(window.location?.origin) &&
+			isLocalhostClientOrigin(window.location.origin)
+		) {
+			return LOCALHOST_CONFIG.urls.SERVER;
 		}
 		return ApiConfig.baseUrl;
 	}
@@ -84,7 +84,6 @@ class ApiService {
 	private baseURL: string;
 	private readonly interceptors: InterceptorsService;
 	private activeRequests = new Map<string, Promise<ApiResponse<unknown>>>();
-
 	private refreshTokenInFlight: Promise<RefreshTokenResponse> | null = null;
 
 	private isValidApiResponse<T>(response: ApiResponse<unknown>): response is ApiResponse<T> {
