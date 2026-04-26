@@ -1,6 +1,6 @@
 import { getErrorMessage } from '@shared/utils';
 
-import { STORAGE_KEYS } from '@/constants';
+import { StorageKeys } from '@/constants';
 import type { EnhancedRequestConfig, InterceptorEntry, RequestInterceptor } from '@/types';
 import { clientLogger as logger, storageService } from '@/services';
 
@@ -36,7 +36,7 @@ export const authRequestInterceptor: RequestInterceptor = async (
 ): Promise<EnhancedRequestConfig> => {
 	if (config.skipAuth) return config;
 
-	const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+	const tokenResult = await storageService.getString(StorageKeys.AUTH_TOKEN);
 	const token = tokenResult.success ? tokenResult.data : null;
 
 	if (!token) return config;

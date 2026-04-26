@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
-	Brain,
 	CalendarDays,
+	Crosshair,
 	GamepadIcon,
 	Hash,
 	Medal,
@@ -27,6 +27,7 @@ import {
 	StatusDirection,
 	TrendTarget,
 	trendVariants,
+	UiDensity,
 } from '@/constants';
 import { analyticsService } from '@/services';
 import { formatPlayTime } from '@/utils';
@@ -107,6 +108,7 @@ export function PerformanceTabContent() {
 						data={t(StatisticsPerformanceKey.EMPTY_DATA)}
 						icon={TrendingUp}
 						description={t(StatisticsPerformanceKey.EMPTY_DESCRIPTION)}
+						density={UiDensity.COMPACT}
 					/>
 				</CardContent>
 			</Card>
@@ -117,10 +119,10 @@ export function PerformanceTabContent() {
 		<div className='space-y-8'>
 			<SectionCard
 				title={t(StatisticsPerformanceKey.STATS_AT_GLANCE)}
-				icon={Brain}
+				icon={Crosshair}
 				description={t(StatisticsPerformanceKey.CORE_METRICS)}
 			>
-				<div className='grid grid-cols-4 gap-4'>
+				<div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
 					<StatCard
 						stackIconLabel
 						icon={GamepadIcon}
@@ -303,7 +305,7 @@ export function PerformanceTabContent() {
 				</SectionCard>
 			)}
 
-			<div className='grid grid-cols-2 gap-8'>
+			<div className='space-y-8'>
 				<PerformanceAnalysis
 					mainData={userDifficultyData?.difficulties}
 					isLoading={analyticsLoading}

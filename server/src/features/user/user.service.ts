@@ -134,7 +134,7 @@ export class UserService {
 	async setAvatar(userId: string, avatarId: number) {
 		try {
 			const { MIN, MAX } = VALIDATION_COUNT.AVATAR_ID;
-			const isClear = avatarId === 0;
+			const isClear = avatarId === VALIDATION_COUNT.AVATAR_ID.CLEAR;
 			if (!Number.isInteger(avatarId) || avatarId < 0 || (!isClear && (avatarId < MIN || avatarId > MAX))) {
 				throw new BadRequestException(ErrorCode.AVATAR_ID_OUT_OF_RANGE);
 			}

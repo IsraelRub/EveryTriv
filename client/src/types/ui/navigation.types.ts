@@ -72,3 +72,7 @@ export interface NavigationCreditsState {
 	display: string;
 	total?: number;
 }
+
+export type ApplyPostLoginNavigationOptions = {
+	navigateHomeInstead?: () => void;
+};

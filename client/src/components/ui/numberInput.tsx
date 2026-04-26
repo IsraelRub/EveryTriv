@@ -10,7 +10,7 @@ import { Input } from './input';
 import { Label } from './label';
 
 export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
-	({ value, onChange, min, max, step = 1, disabled, label, labelIcon, ...props }, ref) => {
+	({ value, onChange, min, max, step = 1, disabled, label, labelIcon, error, ...props }, ref) => {
 		const handleStep = useCallback(
 			(direction: 1 | -1) => {
 				if (disabled) return;
@@ -57,7 +57,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 					max={max}
 					step={step}
 					disabled={disabled}
-					className='h-10 w-16 text-center border-0 rounded-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0 focus-visible:ring-offset-0'
+					error={error}
+					className='h-10 min-w-[4.5rem] w-24 shrink-0 text-center border-0 rounded-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus-visible:ring-0 focus-visible:ring-offset-0'
 					{...props}
 				/>
 				<div className='flex flex-col shrink-0 border-l border-input'>

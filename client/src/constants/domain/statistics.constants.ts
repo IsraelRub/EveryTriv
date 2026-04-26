@@ -1,4 +1,4 @@
-import { Activity, Brain, CirclePercent, FileQuestion, GamepadIcon, Medal } from 'lucide-react';
+import { Activity, CirclePercent, Crosshair, FileQuestion, GamepadIcon, Medal } from 'lucide-react';
 
 import type { AdminGameStatSpec, TabSpec } from '@/types';
 import { SEMANTIC_ICON_TEXT } from '../core/ui/color.constants';
@@ -23,8 +23,9 @@ export enum AdminGameStatKey {
 	TOTAL_QUESTIONS_ANSWERED = 'totalQuestionsAnswered',
 }
 
-export const STATISTICS_TAB_PARAM = 'tab';
-export const LEADERBOARD_PERIOD_PARAM = 'leaderboardPeriod';
+export const STATISTICS_TAB_SEARCH_PARAM = 'tab';
+
+export const STATISTICS_LEADERBOARD_PERIOD_SEARCH_PARAM = 'leaderboardPeriod';
 
 export enum ViewAllDestination {
 	LEADERBOARD = 'leaderboard',
@@ -79,7 +80,7 @@ export const ADMIN_GAME_STATS_SPEC: AdminGameStatSpec[] = [
 		format: AdminGameStatFormat.DECIMAL,
 	},
 	{
-		icon: Brain,
+		icon: Crosshair,
 		label: 'Accuracy',
 		color: SEMANTIC_ICON_TEXT.secondary,
 		key: AdminGameStatKey.ACCURACY,

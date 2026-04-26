@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 import { EMPTY_VALUE, ProviderHealthStatus, TIME_PERIODS_MS } from '@shared/constants';
-import { formatNumericValue, isRecord, sumBy } from '@shared/utils';
+import { formatDateTime, formatNumericValue, isRecord, sumBy } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import {
@@ -27,7 +27,6 @@ import {
 	VariantBase,
 } from '@/constants';
 import { adminService } from '@/services';
-import { formatDateTime } from '@/utils';
 import {
 	Accordion,
 	AccordionContent,
@@ -142,7 +141,7 @@ export function ProviderManagementSection() {
 					</div>
 				) : aiProviderStats ? (
 					<div className='space-y-6'>
-						<div className='grid grid-cols-4 gap-4'>
+						<div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
 							<StatCard
 								stackIconLabel
 								icon={BotMessageSquare}
@@ -217,7 +216,7 @@ export function ProviderManagementSection() {
 														</div>
 													</CardHeader>
 													<CardContent>
-														<div className='grid grid-cols-4 gap-4'>
+														<div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
 															<StatCard
 																stackIconLabel
 																icon={Send}

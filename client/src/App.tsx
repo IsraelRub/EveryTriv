@@ -1,17 +1,37 @@
-import { Fragment, useEffect } from 'react';
+import { useEffect } from 'react';
 import { PersistGate } from 'redux-persist/integration/react';
 
-import { ErrorCode } from '@shared/constants';
-import { ensureErrorObject, getErrorMessage, hasProperty, isRecord } from '@shared/utils';
+import { ErrorCode, HTTP_STATUS_CODES } from '@shared/constants';
+import {
+	ensureErrorObject,
+	getErrorMessage,
+	getErrorStatusCode,
+	isCancelledOrAbortError,
+	isRecord,
+} from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import { FullPageSpinnerLayout, LoadingMessages } from '@/constants';
 import { authService, gameService, clientLogger as logger, prefetchCommonQueries } from '@/services';
-import { AppAuthBootstrap, BackgroundAnimation, ErrorBoundary, FullPageSpinner, LocaleSync } from '@/components';
-import { selectGameId } from '@/redux/selectors';
+import { setDocumentLocaleFromAppLocale } from '@/utils/core/direction.utils';
+import { AppAuthBootstrap, BackgroundAnimation, ErrorBoundary, FullPageSpinner } from '@/components';
+import { useAppSelector } from '@/hooks';
+import { selectGameId, selectLocale } from '@/redux/selectors';
 import { resetGameSession, resetLeaderboardPeriod, resetMultiplayer } from '@/redux/slices';
 import { persistor, store } from '@/redux/store';
+import i18n from '@/i18n';
 import AppRoutes from './AppRoutes';
+
+function LocaleSync() {
+	const locale = useAppSelector(selectLocale);
+
+	useEffect(() => {
+		void i18n.changeLanguage(locale);
+		setDocumentLocaleFromAppLocale(locale);
+	}, [locale]);
+
+	return null;
+}
 
 export default function App() {
 	useEffect(() => {
@@ -39,21 +59,22 @@ export default function App() {
 		};
 
 		const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+			if (isCancelledOrAbortError(event.reason)) {
+				event.preventDefault();
+				return;
+			}
+
 			const errorMessage = event.reason ? getErrorMessage(event.reason) : 'Unknown reason';
 
-			const isAbortError =
-				errorMessage === 'Request was cancelled' ||
-				errorMessage.includes('aborted') ||
-				errorMessage === 'signal is aborted without reason' ||
-				(isRecord(event.reason) &&
-					'statusCode' in event.reason &&
-					event.reason.statusCode === 0 &&
-					hasProperty(event.reason, 'details') &&
-					isRecord(event.reason.details) &&
-					event.reason.details.error === 'Request was cancelled') ||
-				(event.reason instanceof Error && event.reason.name === 'AbortError');
+			if (errorMessage.includes('aborted') || errorMessage === 'signal is aborted without reason') {
+				event.preventDefault();
+				return;
+			}
 
-			if (isAbortError) {
+			const statusCode = getErrorStatusCode(event.reason);
+			if (statusCode === HTTP_STATUS_CODES.UNAUTHORIZED) {
+				// API often returns 401 with message only (no `code`); still an expected auth outcome in dev.
+				event.preventDefault();
 				return;
 			}
 
@@ -147,12 +168,12 @@ export default function App() {
 				}
 				persistor={persistor}
 			>
-				<Fragment>
+				<>
 					<LocaleSync />
 					<AppAuthBootstrap>
 						<AppRoutes />
 					</AppAuthBootstrap>
-				</Fragment>
+				</>
 			</PersistGate>
 		</ErrorBoundary>
 	);

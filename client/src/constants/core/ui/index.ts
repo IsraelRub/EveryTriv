@@ -17,6 +17,7 @@ export * from './stats.constants';
 export * from './statusVariants.constants';
 export * from './label.constants';
 export * from './variant.constants';
+export * from './emptyStateLucideIcons.constants';
 export * from './toast.constants';
 export * from './color.constants';
 export * from './form.constants';

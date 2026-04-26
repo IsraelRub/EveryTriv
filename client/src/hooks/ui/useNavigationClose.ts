@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ROUTES } from '@/constants';
+import { Routes } from '@/constants';
 import type { UseNavigationCloseOptions } from '@/types';
 import { useModalRoute } from './useModalRoute';
 
 export function useNavigationClose(options?: UseNavigationCloseOptions) {
-	const defaultRoute = options?.defaultRoute ?? ROUTES.HOME;
+	const defaultRoute = options?.defaultRoute ?? Routes.HOME;
 	const onBeforeCloseRef = useRef(options?.onBeforeClose);
 
 	// Keep ref updated to avoid stale closures

@@ -33,6 +33,7 @@
 	"creditsAddedToAccountShort": "הקרדיטים נוספו לחשבונך.",
 	"addCredits": "הוסף",
 	"grantedCreditsRefillHint": "מילוי ל-{{cap}} קרדיטים עד {{dateTime}}",
+	"paypalBrand": "PayPal",
 	"continueToPaypal": "המשך ל-PayPal",
 	"manualPaymentConfirmTitle": "אישור תשלום מדומה",
 	"manualPaymentConfirmDescription": "מסלול זה מריץ בשרת זרימת כרטיס בסגנון פיתוח (ללא חיוב אמיתי). המשך רק אם אתה מבין שזו לא מערכת תשלום חיה.",

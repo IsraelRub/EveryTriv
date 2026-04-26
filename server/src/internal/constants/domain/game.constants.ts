@@ -2,7 +2,6 @@ import { LeaderboardPeriod, TIME_PERIODS_MS } from '@shared/constants';
 
 import type { GroqModelConfig } from '@internal/types';
 
-/** Server-side LLM trivia pipeline parse outcome (not exposed to client API types). */
 export enum LLMResponseStatus {
 	SUCCESS = 'success',
 	ERROR = 'error',
@@ -109,14 +108,12 @@ export const GROQ_DEFAULT_TEMPERATURE = 0.7;
 
 export const GROQ_DEFAULT_MAX_TOKENS = 512;
 
+export const GROQ_TOPIC_DIFFICULTY_GATE_MAX_TOKENS = 160;
+
 export const GROQ_PROVIDER_MAX_TOKENS = 8192;
 
 export const GROQ_PROVIDER_VERSION = '1.0';
 
-/**
- * Machine-only values returned by the LLM in `generationDeclinedReason` when it cannot generate a question.
- * Always English snake_case so parsing is locale-independent; user-facing copy comes from ERROR_MESSAGES + i18n.
- */
 export const TRIVIA_GENERATION_DECLINED_REASON = {
 	UNCLEAR_TOPIC: 'unclear_topic',
 	UNCLEAR_DIFFICULTY: 'unclear_difficulty',

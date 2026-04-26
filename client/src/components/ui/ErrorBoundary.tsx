@@ -5,9 +5,10 @@ import { RETRY_LIMITS } from '@shared/constants';
 import { getErrorMessage, getErrorStack, getErrorType, isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { AlertVariant, ButtonSize, ErrorsKey, getErrorLogStorageKey, VariantBase } from '@/constants';
+import { AlertVariant, ButtonSize, ErrorsKey, VariantBase } from '@/constants';
 import type { ErrorBoundaryProps, ErrorState } from '@/types';
 import { clientLogger as logger, storageService } from '@/services';
+import { getErrorLogStorageKey } from '@/utils';
 import { Alert, AlertDescription, AlertTitle, Button } from '@/components';
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorState> {

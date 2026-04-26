@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Binoculars, Brain, CalendarDays, GamepadIcon, Medal } from 'lucide-react';
+import { Binoculars, CalendarDays, Crosshair, GamepadIcon, Medal } from 'lucide-react';
 
 import { formatNumericValue } from '@shared/utils';
 
@@ -11,6 +11,7 @@ import {
 	SEMANTIC_ICON_TEXT,
 	SkeletonVariant,
 	StatCardVariant,
+	UiDensity,
 	VariantBase,
 } from '@/constants';
 import type { StatCardProps } from '@/types';
@@ -52,7 +53,7 @@ export function HomeStats() {
 				variant: VARIANT,
 			},
 			{
-				icon: Brain,
+				icon: Crosshair,
 				label: t(HomeKey.SUCCESS_RATE),
 				value: formatNumericValue(gameStats?.successRate, 0, '%'),
 				color: SEMANTIC_ICON_TEXT.success,
@@ -103,6 +104,7 @@ export function HomeStats() {
 								data='stats'
 								title={t(HomeKey.YOUR_OVERVIEW)}
 								description={t(HomeKey.EMPTY_STATS_DESCRIPTION)}
+								density={UiDensity.COMPACT}
 							/>
 						)
 					) : (

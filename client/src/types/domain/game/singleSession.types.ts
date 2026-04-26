@@ -15,12 +15,13 @@ export interface UseSingleSessionReturn {
 	handleClose: () => void;
 	navigateToPayment: () => void;
 	showErrorDialog: boolean;
-	setShowErrorDialog: (open: boolean) => void;
+	setShowErrorDialog: (open: boolean | ((prev: boolean) => boolean)) => void;
 	sessionError: unknown | null;
 	showCreditsWarning: boolean;
 	setShowCreditsWarning: (open: boolean) => void;
 	handleExitGame: () => void;
 	handleSafeExitFromLoading: () => void;
+	navigateToGameSettings: () => void;
 	isTimeLimited: boolean;
 	timeLimit: number;
 	gameStartTime: number | null;

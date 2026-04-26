@@ -47,16 +47,22 @@
 git clone https://github.com/IsraelRub/EveryTriv.git
 cd EveryTriv
 pnpm install
-pnpm run dev   # הפעלה מקבילה של client+server
+pnpm run dev:check              # אופציונלי: בודק ש-Postgres ו-Redis זמינים (TCP) לפי `.env`
+pnpm run start:dev              # שרת (Nest watch) + לקוח (Vite) במקביל (טרמינל אחד)
 ```
 
-שרת ברירת מחדל (מקומי): `http://localhost:3002`  |  ממשק לקוח (Vite): `http://localhost:5173`
+**פיתוח בלי Docker:** דורש PostgreSQL ו-Redis על `localhost` (פורטים מה־`.env` / `.env.dev`). מדריך מלא: `docs/LOCAL_DEV_NO_DOCKER.md`.
+
+שרת מקומי (ללא דוקר): `http://localhost:3001`  |  דוקר (מארח): `http://localhost:3002`  |  לקוח (Vite): `http://localhost:5173`
 
 ## 📋 סקריפטים שימושיים
 
 ```bash
-pnpm run dev           # פיתוח מלא
-pnpm run build         # בנייה לכל החבילות הרלוונטיות
+pnpm run start:dev              # פיתוח מלא (שרת + לקוח)
+pnpm run dev:check              # בדיקת Postgres + Redis (TCP) לפי `.env` + `.env.dev`
+pnpm run redis:install:windows  # התקנת Redis ל-Windows (winget) — ראו `docs/LOCAL_DEV_NO_DOCKER.md`
+pnpm run start:dev:windows      # אופציונלי (Windows): חלונות cmd נפרדים לשרת וללקוח
+pnpm run build:all              # בניית server + client
 pnpm run lint          # בדיקות ESLint
 pnpm run format        # עיצוב קוד
 pnpm run tunnel:cloudflared       # Quick Tunnel מול localhost:3000 (דורש cloudflared ב-PATH)
@@ -76,7 +82,7 @@ pnpm run tunnel:cloudflared:logs  # לוגים של קונטיינר cloudflared
 docker compose up -d
 ```
 
-ברירת מחדל: שרת על פורט `3002`, לקוח (nginx) על `3000`; `VITE_API_BASE_URL=USE_ORIGIN_API_PREFIX` גורם ל־REST דרך אותו מארח כמו ה־SPA (`/api` מאחורי nginx).
+בדוקר: שירות ה־API מאזין על `3002` (מיפוי מארח `3002:3002`), nginx מגיש את ה־SPA על `3000`. בפיתוח מקומי בלי דוקר השרת על `3001` (ראו `.env.dev`). `VITE_API_BASE_URL=USE_ORIGIN_API_PREFIX` גורם ל־REST דרך אותו מארח כמו ה־SPA (`/api` מאחורי nginx).
 
 #### `.env` ובניית הקליינט (Docker)
 

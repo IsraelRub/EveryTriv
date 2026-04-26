@@ -5,8 +5,9 @@ import { DEFAULT_LANGUAGE, Locale } from '@shared/constants';
 import { isRecord } from '@shared/utils';
 import { isLocale } from '@shared/validation';
 
-import { STORAGE_KEYS } from '@/constants';
+import { StorageKeys } from '@/constants';
 import type { I18nResources } from '@/types';
+import { setDocumentLocaleFromAppLocale } from '@/utils/core/direction.utils';
 import enAdmin from './locales/en/admin.json';
 import enAuth from './locales/en/auth.json';
 import enCommon from './locales/en/common.json';
@@ -75,7 +76,7 @@ const resources: I18nResources = {
 
 function getPersistedLocale(): Locale | null {
 	try {
-		const raw = localStorage.getItem(STORAGE_KEYS.UI_PREFERENCES);
+		const raw = localStorage.getItem(StorageKeys.UI_PREFERENCES);
 		if (!raw) return null;
 		const parsed: unknown = JSON.parse(raw);
 		if (!isRecord(parsed)) return null;
@@ -119,8 +120,7 @@ void i18n.use(initReactI18next).init({
 const persistedLocale = getPersistedLocale();
 if (persistedLocale) {
 	void i18n.changeLanguage(persistedLocale);
-	document.documentElement.dir = persistedLocale === Locale.HE ? 'rtl' : 'ltr';
-	document.documentElement.lang = persistedLocale === Locale.HE ? Locale.HE : Locale.EN;
+	setDocumentLocaleFromAppLocale(persistedLocale);
 }
 
 export default i18n;

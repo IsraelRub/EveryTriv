@@ -14,7 +14,7 @@ import {
 	CommonKey,
 	DISPLAY_NAME_FALLBACKS,
 	NAVIGATION_LINKS,
-	ROUTES,
+	Routes,
 	VariantBase,
 } from '@/constants';
 import type { NavigationLink } from '@/types';
@@ -44,8 +44,8 @@ export function Navigation() {
 	const queryClient = useQueryClient();
 
 	const isAuthenticated = useIsAuthenticated();
-	const isLoginPage = location.pathname === ROUTES.LOGIN;
-	const isRegisterPage = location.pathname === ROUTES.REGISTER;
+	const isLoginPage = location.pathname === Routes.LOGIN;
+	const isRegisterPage = location.pathname === Routes.REGISTER;
 	const currentUser = useCurrentUserData();
 	const { isAdmin } = useUserRole();
 	const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
@@ -65,7 +65,7 @@ export function Navigation() {
 		try {
 			await authService.logout();
 			queryClient.clear();
-			navigate(ROUTES.HOME);
+			navigate(Routes.HOME);
 		} catch (error) {
 			logger.authError('Logout failed', { errorInfo: { message: getErrorMessage(error) } });
 		}
@@ -83,7 +83,7 @@ export function Navigation() {
 			<div className='container mx-auto px-4'>
 				<div className='flex h-16 items-center justify-between gap-2'>
 					<div className='flex min-w-0 flex-1 items-center gap-4 lg:gap-6'>
-						<NavLink to={ROUTES.HOME} className='flex shrink-0 items-center gap-2 text-2xl font-bold text-foreground'>
+						<NavLink to={Routes.HOME} className='flex shrink-0 items-center gap-2 text-2xl font-bold text-foreground'>
 							<img
 								src='/assets/logo.svg'
 								alt=''
@@ -206,7 +206,7 @@ export function Navigation() {
 								{!isRegisterPage && (
 									<Button
 										size={ButtonSize.SM}
-										onClick={() => navigate(ROUTES.REGISTER, { state: { modal: true, returnUrl: location.pathname } })}
+										onClick={() => navigate(Routes.REGISTER, { state: { modal: true, returnUrl: location.pathname } })}
 									>
 										{t(CommonKey.SIGN_UP)}
 									</Button>
@@ -215,7 +215,7 @@ export function Navigation() {
 									<Button
 										variant={VariantBase.OUTLINE}
 										size={ButtonSize.SM}
-										onClick={() => navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: location.pathname } })}
+										onClick={() => navigate(Routes.LOGIN, { state: { modal: true, returnUrl: location.pathname } })}
 									>
 										{t(CommonKey.SIGN_IN)}
 									</Button>

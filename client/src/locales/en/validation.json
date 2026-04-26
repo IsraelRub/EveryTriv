@@ -12,6 +12,7 @@
 	"roomCodeRequired": "Please enter a room code",
 	"userIdRequired": "Please enter a user ID",
 	"customDifficultyInvalid": "Invalid custom difficulty",
+	"customDifficultyRequiresDescription": "Custom difficulty needs a description. Pick easy, medium, hard, or describe how you want the questions to feel.",
 	"customDifficultyLanguageValidationFailed": "Language validation failed. Please try again.",
 	"topicLanguageValidationFailed": "Language validation failed. Please try again.",
 	"passwordConfirmationRequired": "Please confirm your password",

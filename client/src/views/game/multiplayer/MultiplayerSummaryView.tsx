@@ -11,21 +11,25 @@ import { calculatePercentage, formatTitle, getDisplayNameFromUserFields, isRecor
 import { VALIDATORS } from '@shared/validation';
 
 import {
-	ANIMATION_DELAYS,
+	AnimationDelays,
 	AvatarSize,
 	AvatarVariant,
 	GameKey,
-	getMultiplayerSummaryStorageKey,
 	MultiplayerSummaryPayloadKey,
 	PODIUM_SLOTS,
-	ROUTES,
+	Routes,
 	SEMANTIC_ICON_TEXT,
 	SocialShareMode,
 	SPRING_CONFIGS,
 } from '@/constants';
 import type { MultiplayerAnswerBreakdownEntry } from '@/types';
 import { queryInvalidationService } from '@/services';
-import { cn, getDifficultyDisplayLabel } from '@/utils';
+import {
+	cn,
+	getDifficultyDisplayLabel,
+	getLegacyMultiplayerSummaryStorageKey,
+	getMultiplayerSummaryStorageKey,
+} from '@/utils';
 import {
 	Card,
 	CardContent,
@@ -63,8 +67,9 @@ function parsePersistedSummary(roomId: string): {
 	personalAnswerHistory: MultiplayerAnswerBreakdownEntry[];
 } {
 	try {
-		const key = getMultiplayerSummaryStorageKey(roomId);
-		const raw = sessionStorage.getItem(key);
+		const tabScopedKey = getMultiplayerSummaryStorageKey(roomId);
+		let raw = sessionStorage.getItem(tabScopedKey);
+		raw ??= sessionStorage.getItem(getLegacyMultiplayerSummaryStorageKey(roomId));
 		if (!raw) return { leaderboard: [], questionCount: null, personalAnswerHistory: [] };
 		const parsed: unknown = JSON.parse(raw);
 		let leaderboard: Player[] = [];
@@ -135,6 +140,7 @@ export function MultiplayerSummaryView() {
 		if (roomId) {
 			try {
 				sessionStorage.removeItem(getMultiplayerSummaryStorageKey(roomId));
+				sessionStorage.removeItem(getLegacyMultiplayerSummaryStorageKey(roomId));
 			} catch {
 				// Ignore
 			}
@@ -207,7 +213,7 @@ export function MultiplayerSummaryView() {
 					<motion.h1
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM }}
+						transition={{ delay: AnimationDelays.SEQUENCE_MEDIUM }}
 						className='text-3xl md:text-4xl font-bold mb-1 md:mb-2 flex items-center justify-center gap-4'
 					>
 						{isWinner ? (
@@ -223,7 +229,7 @@ export function MultiplayerSummaryView() {
 						<motion.p
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
-							transition={{ delay: ANIMATION_DELAYS.SEQUENCE_LARGE }}
+							transition={{ delay: AnimationDelays.SEQUENCE_LARGE }}
 							className='text-xl text-muted-foreground'
 						>
 							{t(GameKey.WINNER)} <span className='font-bold text-primary'>{getDisplayNameFromUserFields(winner)}</span>{' '}
@@ -250,7 +256,7 @@ export function MultiplayerSummaryView() {
 											initial={{ opacity: 0, y: 50 }}
 											animate={{ opacity: 1, y: 0 }}
 											transition={{
-												delay: ANIMATION_DELAYS.SEQUENCE_AFTER_HEADER + displayIndex * ANIMATION_DELAYS.STAGGER_LARGE,
+												delay: AnimationDelays.SEQUENCE_AFTER_HEADER + displayIndex * AnimationDelays.STAGGER_LARGE,
 											}}
 											className='flex flex-col items-center'
 										>
@@ -295,7 +301,7 @@ export function MultiplayerSummaryView() {
 										initial={{ opacity: 0, x: -20 }}
 										animate={{ opacity: 1, x: 0 }}
 										transition={{
-											delay: ANIMATION_DELAYS.MULTIPLAYER_STANDINGS_ROW_BASE + index * ANIMATION_DELAYS.STAGGER_NORMAL,
+											delay: AnimationDelays.MULTIPLAYER_STANDINGS_ROW_BASE + index * AnimationDelays.STAGGER_NORMAL,
 										}}
 										className={cn(
 											'flex items-center gap-4 p-4 rounded-lg',
@@ -376,7 +382,7 @@ export function MultiplayerSummaryView() {
 				)}
 
 				<SummaryActionButtons
-					playAgainTo={ROUTES.MULTIPLAYER}
+					playAgainTo={Routes.MULTIPLAYER}
 					onBeforeNavigate={onBeforeNavigate}
 					share={
 						results.length > 0

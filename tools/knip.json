@@ -49,6 +49,7 @@
     "rimraf",
     "webdb",
     "docker",
+    "winget",
     "scriptsdevelopmentstart-dev-with-info.bat",
     "scriptsdockerstart-docker-with-info.bat"
   ],

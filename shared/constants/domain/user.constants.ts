@@ -13,7 +13,6 @@ export enum UserStatus {
 	INACTIVE = 'inactive',
 	SUSPENDED = 'suspended',
 	BANNED = 'banned',
-	PENDING_VERIFICATION = 'pending_verification',
 }
 
 export const USER_STATUSES = new Set<string>(Object.values(UserStatus));

@@ -13,9 +13,11 @@ export const LobbyRoomCodeBlock = memo(function LobbyRoomCodeBlock({
 	const { t } = useTranslation('game');
 
 	return (
-		<div className='flex flex-col items-center gap-2'>
-			<span className='text-sm text-muted-foreground'>{t(GameKey.ROOM_CODE)}</span>
-			<div className='flex max-w-full items-stretch overflow-hidden rounded-lg border border-border bg-card shadow-sm'>
+		<div className='flex w-full max-w-full flex-col items-center gap-2 sm:flex-row sm:items-stretch sm:justify-center sm:gap-3'>
+			<span className='shrink-0 text-sm text-muted-foreground sm:self-center sm:whitespace-nowrap'>
+				{t(GameKey.ROOM_CODE)}
+			</span>
+			<div className='flex min-w-0 max-w-full flex-1 items-stretch overflow-hidden rounded-lg border border-border bg-card shadow-sm sm:max-w-md sm:flex-initial'>
 				<span className='flex min-h-10 min-w-0 flex-1 items-center px-4 py-2 font-mono text-lg tracking-wide text-foreground'>
 					{roomCode}
 				</span>
@@ -24,7 +26,7 @@ export const LobbyRoomCodeBlock = memo(function LobbyRoomCodeBlock({
 					variant={VariantBase.DEFAULT}
 					size={ButtonSize.ICON_LG}
 					onClick={onCopy}
-					className='h-auto min-h-10 w-11 shrink-0 rounded-none rounded-r-lg border-l border-primary-foreground/15'
+					className='h-auto min-h-10 w-11 shrink-0 rounded-none rounded-e-lg border-s border-primary-foreground/15'
 				>
 					<AnimatedCopyFeedbackIcon success={copied} variant={AnimatedCopyFeedbackIconVariant.ON_PRIMARY} />
 				</Button>

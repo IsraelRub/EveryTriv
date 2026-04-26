@@ -22,6 +22,7 @@ export const StatCard = memo(function StatCard({
 	variant = StatCardVariant.HORIZONTAL,
 	animate = false,
 	stackIconLabel = false,
+	compact = false,
 }: StatCardProps) {
 	const numericValue = VALIDATORS.number(value) ? value : 0;
 	const countUpEnabled = VALIDATORS.number(value);
@@ -143,7 +144,7 @@ export const StatCard = memo(function StatCard({
 		default: {
 			if (isLoading) {
 				return (
-					<div className='text-center p-4 rounded-lg bg-muted/50'>
+					<div className={cn('text-center rounded-lg bg-muted/50', compact ? 'p-3' : 'p-4')}>
 						<Skeleton variant={SkeletonVariant.Icon} className='rounded mx-auto mb-2' />
 						<Skeleton variant={SkeletonVariant.TextLarge} className='mx-auto mb-2' />
 						<Skeleton variant={SkeletonVariant.TextWithSmallWidth} className='mx-auto' />
@@ -151,24 +152,24 @@ export const StatCard = memo(function StatCard({
 				);
 			}
 			const centeredContent = (
-				<div className='text-center p-4 rounded-lg bg-muted/50 transition-colors hover-row'>
+				<div className={cn('text-center rounded-lg bg-muted/50 transition-colors hover-row', compact ? 'p-3' : 'p-4')}>
 					<div
 						className={cn(
 							'mb-2 flex justify-center',
 							stackIconLabel ? 'flex-col items-center gap-1.5' : 'items-center gap-3'
 						)}
 					>
-						<Icon className={cn('h-8 w-8 flex-shrink-0', color)} strokeWidth={2.25} />
+						<Icon className={cn(compact ? 'h-7 w-7' : 'h-8 w-8', 'flex-shrink-0', color)} strokeWidth={2.25} />
 						<p
 							className={cn(
-								'text-sm text-muted-foreground',
+								compact ? 'text-xs text-muted-foreground' : 'text-sm text-muted-foreground',
 								stackIconLabel ? 'max-w-full text-center leading-snug' : 'leading-none'
 							)}
 						>
 							{label}
 						</p>
 					</div>
-					<p className='text-3xl font-bold'>
+					<p className={cn('font-bold', compact ? 'min-w-0 break-words px-0.5 text-xl sm:text-2xl' : 'text-3xl')}>
 						{VALIDATORS.number(displayValue) ? displayValue.toLocaleString() : displayValue}
 						{suffix}
 					</p>
@@ -196,8 +197,10 @@ export const StatsSectionCard = memo(function StatsSectionCard({
 	className,
 	layout = StatsSectionLayout.SECTION,
 }: StatsSectionCardProps) {
-	const captured = /grid-cols-(\d+)/.exec(gridCols)?.[1];
-	const stackIconLabel = captured != null ? Number.parseInt(captured, 10) >= 4 : false;
+	const gridColMatches = [...gridCols.matchAll(/grid-cols-(\d+)/g)];
+	const maxGridCols =
+		gridColMatches.length === 0 ? 1 : Math.max(...gridColMatches.map(m => Number.parseInt(m[1] ?? '1', 10)));
+	const stackIconLabel = maxGridCols >= 4;
 	const grid = (
 		<div className={cn('grid gap-4', gridCols)}>
 			{stats.map(stat => (

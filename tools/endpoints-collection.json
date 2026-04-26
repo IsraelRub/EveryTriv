@@ -97,12 +97,6 @@
       "type": "string"
     },
     {
-      "key": "emailVerifyToken",
-      "value": "",
-      "type": "string",
-      "description": "Set by Request Verification Email → Verify Email before PUT /users/profile (RequireEmailVerified)"
-    },
-    {
       "key": "creditsBalance",
       "value": "",
       "type": "string"
@@ -1039,63 +1033,6 @@
           }
         },
         {
-          "name": "Request Verification Email",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200 || pm.response.code === 201) {",
-                  "    try {",
-                  "        const raw = pm.response.json();",
-                  "        const body = raw && raw.data ? raw.data : raw;",
-                  "        const link = body && body.verificationLink ? body.verificationLink : null;",
-                  "        if (link && typeof link === 'string') {",
-                  "            const m = link.match(/token=([^&]+)/);",
-                  "            if (m && m[1]) pm.collectionVariables.set('emailVerifyToken', m[1]);",
-                  "        }",
-                  "    } catch (e) { console.warn('request verification parse', e); }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/request-verification-email",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "request-verification-email"]
-            },
-            "description": "Required before PUT /users/profile: that route uses @RequireEmailVerified(). Response is wrapped as { success, data: { verificationLink } }."
-          }
-        },
-        {
-          "name": "Verify Email",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "{{baseUrl}}/auth/verify-email?token={{emailVerifyToken}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "verify-email"],
-              "query": [
-                {
-                  "key": "token",
-                  "value": "{{emailVerifyToken}}"
-                }
-              ]
-            },
-            "description": "Public GET; uses token extracted from verificationLink. Skipped if request-verification-email failed (e.g. already verified)."
-          }
-        },
-        {
           "name": "Update User Profile",
           "request": {
             "method": "PUT",
@@ -1408,11 +1345,11 @@
     },
     {
       "name": "🎮 Game Management",
-      "description": "🎮 **GAME MANAGEMENT ENDPOINTS** - Trivia Game Logic & History\n\n**Purpose:** Handle trivia game operations, question generation, answer submission, and game history\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Question retrieval, game info\n- 🔐 **Protected Endpoints:** Answer submission, game history, validation, game sessions\n- 👑 **Admin Endpoints:** See Admin Management section for /admin/* endpoints\n\n**Key Features:**\n- AI-powered question generation\n- Multiple difficulty levels\n- Custom difficulty validation\n- Game history tracking\n- Answer submission and scoring\n- Game session management\n- Performance analytics\n\n**Available Endpoints:**\n- Generate Trivia Questions (POST)\n- Get Trivia Question by ID (GET)\n- Submit Answer (POST)\n- Start Game Session (POST)\n- Submit Answer to Session (POST)\n- Finalize Game Session (POST)\n- Save Game History (POST)\n- Get Game by ID (GET)\n- Get Game History (GET)\n- Delete Game History (DELETE)\n- Validate Custom Difficulty (POST)\n\n**Game Operations:**\n- Question generation and retrieval\n- Answer submission and validation\n- Game session management\n- Game history management\n- Performance tracking\n- Statistics and analytics\n\n**Note:** Admin endpoints (statistics, trivia management) have been moved to /admin/* - see Admin Management section",
+      "description": "🎮 **GAME MANAGEMENT ENDPOINTS** - Trivia Game Logic & History\n\n**Purpose:** Handle trivia game operations, question generation, answer submission, and game history\n\n**Authentication Requirements:**\n- 🔓 **Public Endpoints:** Question retrieval, game info\n- 🔐 **Protected Endpoints:** Answer submission, game history, validation, game sessions\n- 👑 **Admin Endpoints:** See Admin Management section for /admin/* endpoints\n\n**Key Features:**\n- AI-powered question generation\n- Multiple difficulty levels\n- Custom difficulty validation\n- Game history tracking\n- Answer submission and scoring\n- Game session management\n- Performance analytics\n\n**Available Endpoints:**\n- Generate Trivia Questions (POST)\n- Get Trivia Question by ID (GET)\n- Submit Answer (POST)\n- Start Game Session (POST)\n- Submit Answer to Session (POST)\n- Finalize Game Session (POST)\n- Save Game History (POST)\n- Get Game by ID (GET)\n- Get Game History (GET)\n- Delete Game History (DELETE)\n- Validate Custom Difficulty (POST)\n- Validate Trivia Topic (POST)\n- Validate Text (POST)\n- Validate Game Session (GET)\n\n**Game Operations:**\n- Question generation and retrieval\n- Answer submission and validation\n- Game session management\n- Game history management\n- Performance tracking\n- Statistics and analytics\n\n**Note:** Admin endpoints (statistics, trivia management) have been moved to /admin/* - see Admin Management section",
       "item": [
         {
           "name": "❓ Trivia",
-          "description": "Generate and get trivia questions, validate custom difficulty",
+          "description": "Generate and get trivia questions, validate custom difficulty, validate trivia topic (LLM gate), validate text (LanguageTool)",
           "item": [
         {
           "name": "Generate Trivia Questions",
@@ -1517,12 +1454,64 @@
               "path": ["game", "validate-custom"]
             }
           }
+        },
+        {
+          "name": "Validate Trivia Topic (gate)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"science\",\n  \"difficulty\": \"medium\",\n  \"outputLanguage\": \"en\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/validate-trivia-topic",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "validate-trivia-topic"]
+            },
+            "description": "LLM gate for topic + difficulty before expensive trivia generation. 200: { ok: true }. 400: same decline messages as trivia (unclear_topic, etc.)."
+          }
+        },
+        {
+          "name": "Validate Text (LanguageTool)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"science\",\n  \"context\": \"topic\",\n  \"language\": \"en\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/game/validate-text",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "validate-text"]
+            },
+            "description": "Validates topic or custom-difficulty text (spelling, language, length). Optional: context (topic | customDifficulty), language (en | he)."
+          }
         }
           ]
         },
         {
           "name": "🎯 Session",
-          "description": "Start, submit answers, finalize game session",
+          "description": "Start, submit answers, finalize game session, validate active session",
           "item": [
         {
           "name": "Get Surprise Pick",
@@ -1638,6 +1627,24 @@
               "path": ["game", "session", "finalize"]
             },
             "description": "Finalizes a game session and saves it to history"
+          }
+        },
+        {
+          "name": "Validate Game Session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/game/validate-session/{{gameId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["game", "validate-session", "{{gameId}}"]
+            },
+            "description": "Checks whether the given gameId is a valid active session for the current user (e.g. after reload)."
           }
         }
           ]

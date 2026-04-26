@@ -13,11 +13,13 @@ import {
 	Post,
 	Put,
 	Query,
+	Res,
 	StreamableFile,
 	UploadedFile,
 	UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 
 import {
 	API_ENDPOINTS,
@@ -41,9 +43,9 @@ import {
 	CurrentUserId,
 	NoCache,
 	Public,
-	RequireEmailVerified,
 	RequireUserStatus,
 	Roles,
+	SkipResponseFormatter,
 } from '@common/decorators';
 import { UserDataPipe } from '@common/pipes';
 import { UserCoreService } from '@internal/modules';
@@ -131,7 +133,6 @@ export class UserController {
 	}
 
 	@Put('profile')
-	@RequireEmailVerified()
 	@RequireUserStatus(UserStatus.ACTIVE)
 	async updateUserProfile(
 		@CurrentUserId() userId: string | null,
@@ -161,7 +162,8 @@ export class UserController {
 
 	@Get('me/avatar')
 	@NoCache()
-	async getMyAvatar(@CurrentUserId() userId: string | null) {
+	@SkipResponseFormatter()
+	async getMyAvatar(@CurrentUserId() userId: string | null, @Res({ passthrough: true }) res: Response) {
 		if (!userId) {
 			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
@@ -169,17 +171,26 @@ export class UserController {
 		if (!image) {
 			throw new NotFoundException(ErrorCode.NOT_FOUND);
 		}
+		res.set({
+			'Content-Type': image.mime,
+			'Cache-Control': 'no-cache, no-store, must-revalidate',
+		});
 		return new StreamableFile(image.buffer, { type: image.mime });
 	}
 
 	@Get(':id/avatar')
 	@Public()
 	@NoCache()
-	async getAvatarById(@Param('id') id: string) {
+	@SkipResponseFormatter()
+	async getAvatarById(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
 		const image = await this.userService.getAvatarImage(id);
 		if (!image) {
 			throw new NotFoundException(ErrorCode.NOT_FOUND);
 		}
+		res.set({
+			'Content-Type': image.mime,
+			'Cache-Control': 'no-cache, no-store, must-revalidate',
+		});
 		return new StreamableFile(image.buffer, { type: image.mime });
 	}
 

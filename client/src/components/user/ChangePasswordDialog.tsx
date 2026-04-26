@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle, Key } from 'lucide-react';
+import { CheckCircle2, Key, XCircle } from 'lucide-react';
 
 import { LengthKey } from '@shared/constants';
 import { validatePasswordMatch, validateStringLength } from '@shared/validation';
@@ -40,6 +40,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 	const [passwordFieldErrors, setPasswordFieldErrors] = useState<
 		Record<string, ChangePasswordValidationErrorKey | undefined>
 	>({});
+	const [confirmPasswordBlurred, setConfirmPasswordBlurred] = useState(false);
 	const changePassword = useChangePassword();
 
 	const validatePasswordField = (name: string, value: string): ChangePasswordValidationErrorKey | null => {
@@ -110,6 +111,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 			});
 			setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
 			setPasswordFieldErrors({});
+			setConfirmPasswordBlurred(false);
 			onOpenChange(false);
 			logger.authSuccess(t(AuthKey.PASSWORD_UPDATED_SUCCESS));
 		} catch (error) {
@@ -123,6 +125,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 		if (shouldClose) {
 			setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
 			setPasswordFieldErrors({});
+			setConfirmPasswordBlurred(false);
 		}
 		onOpenChange(shouldClose);
 	};
@@ -190,14 +193,21 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
 								type='password'
 								value={passwordData.confirmPassword}
 								onChange={handlePasswordChange}
+								onBlur={() => {
+									setConfirmPasswordBlurred(true);
+								}}
 								error={!!passwordFieldErrors.confirmPassword}
 								placeholder={t(AuthKey.CONFIRM_NEW_PASSWORD_PLACEHOLDER)}
 							/>
 							{passwordData.confirmPassword &&
-								passwordData.newPassword === passwordData.confirmPassword &&
-								!passwordFieldErrors.confirmPassword && (
-									<CheckCircle className={cn('form-success-icon', SEMANTIC_ICON_TEXT.success)} />
-								)}
+							passwordData.newPassword === passwordData.confirmPassword &&
+							!passwordFieldErrors.confirmPassword ? (
+								<CheckCircle2 className={cn('form-success-icon', SEMANTIC_ICON_TEXT.success)} />
+							) : confirmPasswordBlurred &&
+							  passwordData.confirmPassword.length > 0 &&
+							  passwordData.newPassword !== passwordData.confirmPassword ? (
+								<XCircle className={cn('form-success-icon', SEMANTIC_ICON_TEXT.destructive)} />
+							) : null}
 						</div>
 						{passwordFieldErrors.confirmPassword && (
 							<p className='text-sm text-destructive flex items-center gap-1'>

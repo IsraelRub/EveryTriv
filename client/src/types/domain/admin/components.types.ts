@@ -10,23 +10,6 @@ import type {
 } from '@shared/types';
 
 import type { AdminKey } from '@/constants';
-import type { ClearOperation } from './admin.types';
-
-export interface ManagementActionsProps {
-	operations: ClearOperation[];
-	/** Two accordion columns when there are enough operations (Data & maintenance layout). */
-	splitIntoTwoColumns?: boolean;
-}
-
-export interface ConfirmClearDialogProps {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	title: string;
-	description: string;
-	itemName: string;
-	onConfirm: () => void | Promise<void>;
-	isLoading: boolean;
-}
 
 export interface UserTableRow {
 	id: string;

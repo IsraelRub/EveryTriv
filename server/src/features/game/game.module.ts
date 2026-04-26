@@ -12,6 +12,7 @@ import { UserModule } from '../user';
 import { GameController } from './game.controller';
 import { GameService } from './game.service';
 import { AiProvidersController } from './triviaGeneration/aiProviders.controller';
+import { TopicDifficultyGateService } from './triviaGeneration/topicDifficultyGate.service';
 import { TriviaGenerationService } from './triviaGeneration/triviaGeneration.service';
 
 @Module({
@@ -25,7 +26,14 @@ import { TriviaGenerationService } from './triviaGeneration/triviaGeneration.ser
 		ValidationModule,
 	],
 	controllers: [GameController, AiProvidersController],
-	providers: [GameService, TriviaGenerationService, CustomDifficultyPipe, TriviaRequestPipe, StartGameSessionPipe],
+	providers: [
+		GameService,
+		TriviaGenerationService,
+		TopicDifficultyGateService,
+		CustomDifficultyPipe,
+		TriviaRequestPipe,
+		StartGameSessionPipe,
+	],
 	exports: [GameService],
 })
 export class GameModule {}

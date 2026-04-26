@@ -74,12 +74,15 @@ export interface ExitGameButtonProps {
 
 export interface SingleSessionDialogsProps {
 	showErrorDialog: boolean;
-	setShowErrorDialog: (open: boolean) => void;
-	/** Raw error for translation (axios, Error, or message-only). */
+	setShowErrorDialog: (open: boolean | ((prev: boolean) => boolean)) => void;
+
 	sessionError: unknown | null;
 	showCreditsWarning: boolean;
 	setShowCreditsWarning: (open: boolean) => void;
 	onSafeExitFromLoading: () => void;
+
+	showBackToGameSettings?: boolean;
+	onBackToGameSettings?: () => void;
 }
 
 export interface TopicWithMeta {
@@ -112,6 +115,8 @@ export interface GameSettingsFormProps {
 	maxPlayers?: number;
 	onMaxPlayersChange?: (count: number) => void;
 	showMaxPlayers?: boolean;
+
+	hideInlineFieldAlerts?: boolean;
 }
 
 export interface SurpriseMeDialogProps {

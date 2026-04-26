@@ -20,6 +20,7 @@ export const selectStreak = (state: RootState) => state.gameSession.streak;
 export const selectGameLoading = (state: RootState) => state.gameSession.loading;
 export const selectGameLoadingStep = (state: RootState) => state.gameSession.loadingStep;
 export const selectGameStartTime = (state: RootState) => state.gameSession.gameStartTime;
+export const selectQuestionStartTime = (state: RootState) => state.gameSession.questionStartTime;
 export const selectTimeSpent = (state: RootState) => state.gameSession.timeSpent;
 export const selectIsGameFinalized = (state: RootState) => state.gameSession.isGameFinalized;
 export const selectCreditsDeducted = (state: RootState) => state.gameSession.creditsDeducted;

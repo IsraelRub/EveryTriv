@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -26,7 +26,7 @@ import {
 } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { AudioKey, ExitReason, LoadingMessages, QUERY_KEYS, ROUTES } from '@/constants';
+import { AudioKey, ExitReason, LoadingMessages, QUERY_KEYS, Routes } from '@/constants';
 import type { TriviaRequestWithSignal, UseSingleSessionReturn } from '@/types';
 import { audioService, gameHistoryService, gameService, clientLogger as logger } from '@/services';
 import {
@@ -68,6 +68,7 @@ import {
 	selectIsGameFinalized,
 	selectLastScoreEarned,
 	selectLocale,
+	selectQuestionStartTime,
 	selectSelectedAnswer,
 	selectStreak,
 } from '@/redux/selectors';
@@ -92,10 +93,13 @@ import {
 	updateTimeSpent,
 } from '@/redux/slices';
 
+const SINGLE_SESSION_PREFLIGHT_STATE_KEY = 'singleSessionServerStarted';
+
 export function useSingleSession(): UseSingleSessionReturn {
 	const { gameId: urlGameId } = useParams<{ gameId: string }>();
 	const navigate = useNavigate();
-	const { handleClose } = useNavigationClose({ defaultRoute: ROUTES.HOME });
+	const location = useLocation();
+	const { handleClose } = useNavigationClose({ defaultRoute: Routes.HOME });
 	const currentUser = useCurrentUserData();
 	const dispatch = useAppDispatch();
 	const currentTopic = useAppSelector(selectCurrentTopic);
@@ -127,6 +131,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const loading = useAppSelector(selectGameLoading);
 	const loadingStep = useAppSelector(selectGameLoadingStep);
 	const gameStartTime = useAppSelector(selectGameStartTime);
+	const questionStartTime = useAppSelector(selectQuestionStartTime);
 	const selectedAnswer = useAppSelector(selectSelectedAnswer);
 	const answered = useAppSelector(selectAnswered);
 	const streak = useAppSelector(selectStreak);
@@ -154,8 +159,19 @@ export function useSingleSession(): UseSingleSessionReturn {
 	}, [gameId, loading, dispatch]);
 
 	const lastSessionErrorRef = useRef<unknown>(null);
+	const creditsDeductionFailedRef = useRef(false);
 
-	const [showErrorDialog, setShowErrorDialog] = useState(false);
+	const [showErrorDialog, setShowErrorDialogState] = useState(false);
+
+	useEffect(() => {
+		if (!showErrorDialog) {
+			creditsDeductionFailedRef.current = false;
+		}
+	}, [showErrorDialog]);
+
+	const setShowErrorDialog = useCallback((open: boolean | ((prev: boolean) => boolean)) => {
+		setShowErrorDialogState(prev => (typeof open === 'function' ? open(prev) : open));
+	}, []);
 	const [sessionError, setSessionError] = useState<unknown | null>(null);
 
 	const setDialogError = useCallback((error: unknown) => {
@@ -166,20 +182,31 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const clearDialogError = useCallback(() => {
 		lastSessionErrorRef.current = null;
 		setSessionError(null);
+		creditsDeductionFailedRef.current = false;
 	}, []);
 
 	const handleSafeExitFromLoading = useCallback(() => {
+		creditsDeductionFailedRef.current = false;
 		const err = lastSessionErrorRef.current;
 		lastSessionErrorRef.current = null;
 		setSessionError(null);
 		setShowErrorDialog(false);
 		dispatch(resetGameSession());
 		if (isTriviaGenerationDeclinedLoadError(err)) {
-			navigate(ROUTES.GAME_SINGLE);
+			navigate(Routes.GAME_SINGLE);
 			return;
 		}
 		handleClose();
-	}, [dispatch, handleClose, navigate]);
+	}, [dispatch, handleClose, navigate, setShowErrorDialog]);
+
+	const navigateToGameSettings = useCallback(() => {
+		creditsDeductionFailedRef.current = false;
+		lastSessionErrorRef.current = null;
+		setSessionError(null);
+		setShowErrorDialog(false);
+		dispatch(resetGameSession());
+		navigate(Routes.GAME_SINGLE);
+	}, [dispatch, navigate, setShowErrorDialog]);
 	const [showCreditsWarning, setShowCreditsWarning] = useState(false);
 
 	const questionsLoadedRef = useRef(false);
@@ -187,16 +214,15 @@ export function useSingleSession(): UseSingleSessionReturn {
 	const loadInProgressRef = useRef(false);
 	const serverSessionGameIdRef = useRef<string | null>(null);
 	const loadGenerationRef = useRef(0);
-	const creditsDeductionFailedRef = useRef(false);
 
 	const prevSettingsRef = useRef<{ topic: string; difficulty: string; mode: GameMode }>({
 		topic: '',
 		difficulty: '',
 		mode: GameMode.QUESTION_LIMITED,
 	});
-	const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-	const answerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-	const fetchingQuestionsHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const answerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const fetchingQuestionsHintTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const unlimitedCreditStepLockRef = useRef(false);
 	const initialLoadValuesRef = useRef<{
 		maxQuestionsPerGame: number | undefined;
 		answerCount: number | undefined;
@@ -371,6 +397,8 @@ export function useSingleSession(): UseSingleSessionReturn {
 		dispatch,
 		gameId,
 		setDialogError,
+		setShowErrorDialog,
+		showErrorDialog,
 	]);
 
 	useEffect(() => {
@@ -457,42 +485,59 @@ export function useSingleSession(): UseSingleSessionReturn {
 				if (ignore) return;
 				if (currentUser?.id && sessionGameId) {
 					dispatch(setLoading({ loading: true, loadingStep: LoadingMessages.INITIALIZING_SESSION }));
-					const sessionStartPromise = startGameSessionMutation.mutateAsync({
-						gameId: sessionGameId,
-						topic: currentTopic ?? DEFAULT_GAME_CONFIG.defaultTopic,
-						difficulty: currentDifficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty,
-						gameMode: currentGameMode ?? GameMode.QUESTION_LIMITED,
-						outputLanguage: locale,
-					});
-					const sessionStartTimeoutMs = 15 * TIME_PERIODS_MS.SECOND;
-					const timeoutPromise = new Promise<never>((_, reject) => {
-						setTimeout(() => reject(new Error('Session start timed out')), sessionStartTimeoutMs);
-					});
-					try {
-						await Promise.race([sessionStartPromise, timeoutPromise]);
-						if (ignore) return;
-						if (thisLoadGeneration === loadGenerationRef.current) {
-							serverSessionGameIdRef.current = sessionGameId;
-							logger.gameInfo('Server session gameId stored (before trivia fetch)', {
-								serverSessionGameId: sessionGameId,
-								reduxGameId: gameId ?? undefined,
-							});
-						}
-					} catch (sessionError) {
-						if (ignore) return;
-						const sessionErrorMessage = getErrorMessage(sessionError);
-						const isTimeout =
-							sessionErrorMessage.includes('timed out') || sessionErrorMessage.includes('Session start timed out');
-						logger.gameError('Failed to start game session on server', {
-							errorInfo: { message: sessionErrorMessage },
+					const routeState = location.state;
+					const preflightSessionGameId =
+						isRecord(routeState) &&
+						hasProperty(routeState, SINGLE_SESSION_PREFLIGHT_STATE_KEY) &&
+						VALIDATORS.string(routeState[SINGLE_SESSION_PREFLIGHT_STATE_KEY])
+							? routeState[SINGLE_SESSION_PREFLIGHT_STATE_KEY]
+							: undefined;
+					const skipDuplicateSessionStart = preflightSessionGameId === sessionGameId;
+
+					if (skipDuplicateSessionStart) {
+						serverSessionGameIdRef.current = sessionGameId;
+						logger.gameInfo('Skipping duplicate game session/start (preflight already succeeded)', {
 							gameId: sessionGameId,
 						});
-						serverSessionGameIdRef.current = null;
-						throw new Error(
-							isTimeout
-								? ERROR_MESSAGES.api.TRIVIA_GENERATION_SLOW_OR_RATE_LIMIT
-								: ERROR_MESSAGES.game.FAILED_TO_INITIALIZE_GAME_SESSION(sessionErrorMessage)
-						);
+						void navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: {} });
+					} else {
+						const sessionStartPromise = startGameSessionMutation.mutateAsync({
+							gameId: sessionGameId,
+							topic: currentTopic ?? DEFAULT_GAME_CONFIG.defaultTopic,
+							difficulty: currentDifficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty,
+							gameMode: currentGameMode ?? GameMode.QUESTION_LIMITED,
+							outputLanguage: locale,
+						});
+						const sessionStartTimeoutMs = 15 * TIME_PERIODS_MS.SECOND;
+						const timeoutPromise = new Promise<never>((_, reject) => {
+							setTimeout(() => reject(new Error('Session start timed out')), sessionStartTimeoutMs);
+						});
+						try {
+							await Promise.race([sessionStartPromise, timeoutPromise]);
+							if (ignore) return;
+							if (thisLoadGeneration === loadGenerationRef.current) {
+								serverSessionGameIdRef.current = sessionGameId;
+								logger.gameInfo('Server session gameId stored (before trivia fetch)', {
+									serverSessionGameId: sessionGameId,
+									reduxGameId: gameId ?? undefined,
+								});
+							}
+						} catch (sessionError) {
+							if (ignore) return;
+							const sessionErrorMessage = getErrorMessage(sessionError);
+							const isTimeout =
+								sessionErrorMessage.includes('timed out') || sessionErrorMessage.includes('Session start timed out');
+							logger.gameError('Failed to start game session on server', {
+								errorInfo: { message: sessionErrorMessage },
+								gameId: sessionGameId,
+							});
+							serverSessionGameIdRef.current = null;
+							throw new Error(
+								isTimeout
+									? ERROR_MESSAGES.api.TRIVIA_GENERATION_SLOW_OR_RATE_LIMIT
+									: ERROR_MESSAGES.game.FAILED_TO_INITIALIZE_GAME_SESSION(sessionErrorMessage)
+							);
+						}
 					}
 				}
 
@@ -651,12 +696,6 @@ export function useSingleSession(): UseSingleSessionReturn {
 				serverSessionGameIdRef.current = null;
 				questionsLoadedRef.current = false;
 				initialLoadValuesRef.current = null;
-				if (errorTimeoutRef.current) {
-					clearTimeout(errorTimeoutRef.current);
-				}
-				errorTimeoutRef.current = setTimeout(() => {
-					handleSafeExitFromLoading();
-				}, TIME_PERIODS_MS.THREE_SECONDS);
 			} finally {
 				isLoadingRef.current = false;
 				loadInProgressRef.current = false;
@@ -673,10 +712,6 @@ export function useSingleSession(): UseSingleSessionReturn {
 			if (fetchingQuestionsHintTimeoutRef.current) {
 				clearTimeout(fetchingQuestionsHintTimeoutRef.current);
 				fetchingQuestionsHintTimeoutRef.current = null;
-			}
-			if (errorTimeoutRef.current) {
-				clearTimeout(errorTimeoutRef.current);
-				errorTimeoutRef.current = null;
 			}
 			if (answerTimeoutRef.current) {
 				clearTimeout(answerTimeoutRef.current);
@@ -776,6 +811,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		triviaMutation,
 		finalizeGameSession,
 		setDialogError,
+		setShowErrorDialog,
 	]);
 
 	const recordAnswerHistory = useCallback(
@@ -869,6 +905,10 @@ export function useSingleSession(): UseSingleSessionReturn {
 				}, TIME_PERIODS_MS.ONE_AND_HALF_SECONDS);
 				return;
 			} else if (isUnlimited && !isAdmin) {
+				if (unlimitedCreditStepLockRef.current) {
+					logger.gameInfo('Unlimited per-question credit deduction already in progress; skipping duplicate step');
+					return;
+				}
 				const currentTotalCredits = creditBalance?.totalCredits ?? 0;
 
 				if (currentTotalCredits <= 0) {
@@ -911,6 +951,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 					setShowCreditsWarning(true);
 				}
 
+				unlimitedCreditStepLockRef.current = true;
 				deductCredits.mutate(
 					{
 						questionsPerRequest: 1,
@@ -918,9 +959,11 @@ export function useSingleSession(): UseSingleSessionReturn {
 					},
 					{
 						onSuccess: () => {
+							unlimitedCreditStepLockRef.current = false;
 							dispatch(moveToNextQuestionAction());
 						},
 						onError: error => {
+							unlimitedCreditStepLockRef.current = false;
 							const message = getErrorMessage(error);
 							logger.gameError('Failed to deduct credits for next question', { errorInfo: { message } });
 							dispatch(finalizeGame());
@@ -975,6 +1018,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 			streak,
 			lastScoreEarned,
 			setDialogError,
+			setShowErrorDialog,
 		]
 	);
 
@@ -995,13 +1039,8 @@ export function useSingleSession(): UseSingleSessionReturn {
 		const submittingQuestionIndex = currentQuestionIndex;
 
 		dispatch(setAnswered(true));
-		const timeSpent = Math.max(
-			1,
-			Math.floor(
-				(Date.now() - (gameStartTime ?? Date.now()) - submittingQuestionIndex * TIME_PERIODS_MS.THIRTY_SECONDS) /
-					TIME_PERIODS_MS.SECOND
-			)
-		);
+		const timeAnchor = questionStartTime ?? gameStartTime ?? Date.now();
+		const timeSpent = Math.max(1, calculateElapsedSeconds(timeAnchor));
 
 		if (!serverSessionGameIdRef.current) {
 			logger.gameError('Cannot submit answer: server session was not initialized', {
@@ -1114,6 +1153,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		currentQuestionIndex,
 		gameId,
 		gameStartTime,
+		questionStartTime,
 		streak,
 		correctAnswers,
 		recordAnswerHistory,
@@ -1121,6 +1161,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		submitAnswerToSessionMutation,
 		dispatch,
 		setDialogError,
+		setShowErrorDialog,
 	]);
 
 	const handleExitGame = useCallback(() => {
@@ -1190,8 +1231,21 @@ export function useSingleSession(): UseSingleSessionReturn {
 	}, [dispatch]);
 
 	const navigateToPayment = useCallback(() => {
-		navigate(ROUTES.PAYMENT);
+		navigate(Routes.PAYMENT);
 	}, [navigate]);
+
+	useEffect(() => {
+		return () => {
+			if (answerTimeoutRef.current) {
+				clearTimeout(answerTimeoutRef.current);
+				answerTimeoutRef.current = null;
+			}
+			if (fetchingQuestionsHintTimeoutRef.current) {
+				clearTimeout(fetchingQuestionsHintTimeoutRef.current);
+				fetchingQuestionsHintTimeoutRef.current = null;
+			}
+		};
+	}, []);
 
 	return {
 		loading,
@@ -1212,6 +1266,7 @@ export function useSingleSession(): UseSingleSessionReturn {
 		setShowCreditsWarning,
 		handleExitGame,
 		handleSafeExitFromLoading,
+		navigateToGameSettings,
 		isTimeLimited,
 		timeLimit,
 		gameStartTime,

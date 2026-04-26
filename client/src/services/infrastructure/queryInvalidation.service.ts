@@ -1,7 +1,10 @@
 import type { QueryClient } from '@tanstack/react-query';
 
+import type { BasicUser, UserProfileResponseType } from '@shared/types';
+
 import { QUERY_KEYS } from '@/constants';
 import { clientLogger as logger } from '@/services';
+import { userProfileToBasicUser } from '@/utils';
 
 const REFETCH_ALL = { refetchType: 'all' as const };
 
@@ -11,24 +14,21 @@ class QueryInvalidationService {
 
 		if (userId) {
 			promises.push(
-				queryClient.invalidateQueries({
+				queryClient.resetQueries({
 					queryKey: QUERY_KEYS.analytics.user(),
 					exact: false,
-					...REFETCH_ALL,
 				})
 			);
 			promises.push(
-				queryClient.invalidateQueries({
+				queryClient.resetQueries({
 					queryKey: QUERY_KEYS.trivia.gameHistory('current'),
 					exact: false,
-					...REFETCH_ALL,
 				})
 			);
 			promises.push(
-				queryClient.invalidateQueries({
+				queryClient.resetQueries({
 					queryKey: QUERY_KEYS.admin.userStatistics(userId),
 					exact: true,
-					...REFETCH_ALL,
 				})
 			);
 		}
@@ -219,6 +219,43 @@ class QueryInvalidationService {
 			}),
 		];
 		await Promise.all(promises);
+	}
+
+	async syncUserProfileResponseFromMutation(
+		queryClient: QueryClient,
+		profileResponse: UserProfileResponseType
+	): Promise<void> {
+		if (!profileResponse?.profile) {
+			return;
+		}
+
+		const basicUser = userProfileToBasicUser(profileResponse.profile);
+		const profileKey = QUERY_KEYS.user.profile();
+		const currentUserKeyPrefix = QUERY_KEYS.auth.currentUser();
+
+		try {
+			await Promise.all([
+				queryClient.cancelQueries({ queryKey: profileKey }),
+				queryClient.cancelQueries({ queryKey: currentUserKeyPrefix }),
+			]);
+		} catch {
+			// best-effort cancel before cache write
+		}
+
+		queryClient.setQueryData(profileKey, profileResponse, { updatedAt: Date.now() });
+		queryClient.setQueriesData(
+			{ queryKey: currentUserKeyPrefix },
+			(prev: BasicUser | undefined) => ({
+				...basicUser,
+				needsLegalAcceptance: prev?.needsLegalAcceptance ?? false,
+			}),
+			{ updatedAt: Date.now() }
+		);
+
+		await Promise.all([
+			queryClient.invalidateQueries({ queryKey: profileKey, exact: true, refetchType: 'none' }),
+			queryClient.invalidateQueries({ queryKey: currentUserKeyPrefix, exact: false, refetchType: 'none' }),
+		]);
 	}
 }
 

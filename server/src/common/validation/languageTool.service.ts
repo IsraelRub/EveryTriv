@@ -398,11 +398,18 @@ export class LanguageToolService {
 		const suggestions: string[] = [];
 		const words = input.split(/\s+/);
 		const containsLatinScript = /[a-zA-Z]/.test(input);
+		const stripWordEdges = (w: string) => w.replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, '');
+
+		const allowedExactWordRepeats = new Set(['that']);
 
 		for (let i = 0; i < words.length - 1; i++) {
 			const currentWord = words[i];
 			const nextWord = words[i + 1];
-			if (currentWord != null && nextWord != null && currentWord.toLowerCase() === nextWord.toLowerCase()) {
+			if (currentWord == null || nextWord == null) continue;
+			const a = stripWordEdges(currentWord).toLowerCase();
+			const b = stripWordEdges(nextWord).toLowerCase();
+			if (a.length > 0 && a === b) {
+				if (allowedExactWordRepeats.has(a)) continue;
 				errors.push('Repeated word detected');
 				suggestions.push('Consider removing the repeated word');
 				break;
@@ -416,8 +423,14 @@ export class LanguageToolService {
 		}
 
 		if (containsLatinScript) {
+			// Ignore short ALL-CAPS tokens (NASA, FBI, DNA) when detecting "shouting"
 			const wordsWithLatinCaps = words.filter(
-				word => word.length > 1 && /[a-zA-Z]/.test(word) && word === word.toUpperCase()
+				word =>
+					word.length >= 5 &&
+					/[a-zA-Z]/.test(word) &&
+					word === word.toUpperCase() &&
+					/[A-Z]/.test(word) &&
+					!/\d/.test(word)
 			);
 			if (
 				words.length > 0 &&
@@ -427,7 +440,8 @@ export class LanguageToolService {
 				suggestions.push('Consider using normal capitalization');
 			}
 
-			const veryShortWords = words.filter(word => word.length === 1 && /[a-zA-Z]/.test(word));
+			// Allow common English one-letter words (articles, pronouns, vocative "O").
+			const veryShortWords = words.filter(word => word.length === 1 && /[a-zA-Z]/.test(word) && !/^[aio]$/i.test(word));
 			if (veryShortWords.length > 0) {
 				errors.push('Single character words detected');
 				suggestions.push('Consider expanding single character words');

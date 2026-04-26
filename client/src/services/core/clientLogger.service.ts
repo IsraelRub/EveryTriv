@@ -3,7 +3,7 @@ import { BaseLoggerService } from '@shared/services';
 import type { LogMessageFn, LogMeta } from '@shared/types';
 import { getErrorMessage, sanitizeLogMessage } from '@shared/utils';
 
-import { AudioKey, LOGGER_CSS_COLORS, TOAST_ENABLED_METHODS, ToastType } from '@/constants';
+import { AudioKey, LOGGER_CSS_COLORS, TOAST_ENABLED_METHODS, ToastEnabledLogMethod, ToastType } from '@/constants';
 import type {
 	LogComponentErrorFn,
 	LogPaymentErrorFn,
@@ -98,7 +98,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('userError'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.USER_ERROR),
 			},
 		});
 	};
@@ -111,7 +111,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Warning',
 				audioKey: AudioKey.WARNING,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('userWarn'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.USER_WARN),
 			},
 		});
 	};
@@ -124,7 +124,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Success',
 				audioKey: AudioKey.SUCCESS,
 				duration: TIME_PERIODS_MS.THREE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('userSuccess'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.USER_SUCCESS),
 			},
 		});
 	};
@@ -155,7 +155,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Authentication error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('authError'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.AUTH_ERROR),
 			},
 		});
 	}
@@ -168,7 +168,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Success',
 				audioKey: AudioKey.SUCCESS,
 				duration: TIME_PERIODS_MS.THREE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('authSuccess'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.AUTH_SUCCESS),
 			},
 		});
 	};
@@ -183,7 +183,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'System error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('systemError'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.SYSTEM_ERROR),
 			},
 		});
 	}
@@ -197,7 +197,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Request failed',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('apiError'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.API_ERROR),
 			},
 		});
 	};
@@ -210,7 +210,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Update failed',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('apiUpdateError'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.API_UPDATE_ERROR),
 			},
 		});
 	};
@@ -224,7 +224,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Game error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('gameError'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.GAME_ERROR),
 			},
 		});
 	};
@@ -238,7 +238,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Payment failed',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.EIGHT_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('paymentFailed'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.PAYMENT_FAILED),
 			},
 		});
 	};
@@ -251,7 +251,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Payment Successful',
 				audioKey: AudioKey.SUCCESS,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('paymentSuccess'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.PAYMENT_SUCCESS),
 			},
 		});
 	};
@@ -265,7 +265,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Access denied',
 				audioKey: AudioKey.WARNING,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('securityDenied'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.SECURITY_DENIED),
 			},
 		});
 	};
@@ -278,7 +278,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Security warning',
 				audioKey: AudioKey.WARNING,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('securityWarn'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.SECURITY_WARN),
 			},
 		});
 	};
@@ -291,7 +291,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Security error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('securityError'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.SECURITY_ERROR),
 			},
 		});
 	};
@@ -305,7 +305,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Component error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('navigationComponentError'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.NAVIGATION_COMPONENT_ERROR),
 			},
 		});
 	};
@@ -319,7 +319,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Service error',
 				audioKey: AudioKey.ERROR,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('providerError'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.PROVIDER_ERROR),
 			},
 		});
 	};
@@ -337,7 +337,7 @@ class ClientLoggerService extends BaseLoggerService {
 				title: 'Service fallback',
 				audioKey: AudioKey.WARNING,
 				duration: TIME_PERIODS_MS.FIVE_SECONDS,
-				enabled: TOAST_ENABLED_METHODS.has('providerFallback'),
+				enabled: TOAST_ENABLED_METHODS.has(ToastEnabledLogMethod.PROVIDER_FALLBACK),
 			},
 		});
 	};

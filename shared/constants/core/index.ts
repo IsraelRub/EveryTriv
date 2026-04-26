@@ -1,5 +1,7 @@
 export * from './api.constants';
 
+export * from './binarySize.constants';
+
 export * from './avatar.constants';
 
 export * from './retryLimits.constants';

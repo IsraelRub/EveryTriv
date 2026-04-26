@@ -21,6 +21,10 @@ import type { CreditsPurchaseResponse, PaymentDialogProps, PayPalButtonInstance 
 import { clientLogger as logger } from '@/services';
 import { cn, getTranslatedErrorMessage } from '@/utils';
 import {
+	formatPriceForPurchaseCurrency,
+	getDefaultPurchaseCurrencyFromLanguageTag,
+} from '@/utils/domain/purchaseCurrency.utils';
+import {
 	Alert,
 	AlertDescription,
 	AlertDialog,
@@ -50,11 +54,11 @@ import {
 import { usePurchaseCredits } from '@/hooks';
 
 function isManualCreditPaymentMethodEnabledInClient(): boolean {
-	return import.meta.env.VITE_ENABLE_MANUAL_CREDIT_PAYMENT === 'true' || import.meta.env.MODE === 'development';
+	return import.meta.env.VITE_ENABLE_MANUAL_CREDIT_PAYMENT === 'true' || import.meta.env.DEV;
 }
 
 export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: PaymentDialogProps) {
-	const { t } = useTranslation(['payment', 'loading', 'common', 'errors']);
+	const { t, i18n } = useTranslation(['payment', 'loading', 'common', 'errors']);
 	const purchaseCredits = usePurchaseCredits();
 	const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(PaymentMethod.PAYPAL);
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -62,6 +66,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 	const [paypalButtonContainer, setPaypalButtonContainer] = useState<HTMLDivElement | null>(null);
 	const paypalButtonRef = useRef<PayPalButtonInstance | null>(null);
 	const paypalScriptRef = useRef<HTMLScriptElement | null>(null);
+	const paypalInitInFlightRef = useRef(false);
 	const [paypalOrderRequest, setPaypalOrderRequest] = useState<PayPalOrderRequest | null>(null);
 	const [paypalCheckoutStarted, setPaypalCheckoutStarted] = useState(false);
 	const [paypalWidgetReady, setPaypalWidgetReady] = useState(false);
@@ -75,6 +80,13 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 	);
 
 	const totalCredits = useMemo(() => pkg.credits + (pkg.bonus ?? 0), [pkg.credits, pkg.bonus]);
+
+	const purchaseCurrency = useMemo(() => getDefaultPurchaseCurrencyFromLanguageTag(i18n.language), [i18n.language]);
+
+	const formattedPackagePrice = useMemo(
+		() => formatPriceForPurchaseCurrency(purchaseCurrency, pkg.price, pkg.priceIls ?? 0),
+		[purchaseCurrency, pkg.price, pkg.priceIls]
+	);
 
 	const handlePaymentSuccess = useCallback(
 		(result: CreditsPurchaseResponse) => {
@@ -204,7 +216,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 	]);
 
 	const loadPayPalScript = useCallback(
-		(clientId: string, environment: string) => {
+		(clientId: string, environment: string, currencyCode: string) => {
 			if (window.paypal) {
 				renderPayPalButton();
 				return;
@@ -227,8 +239,10 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 			}
 
 			const script = document.createElement('script');
-			const env = environment === 'production' ? '' : 'sandbox';
-			script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&currency=USD&intent=capture${env ? `&buyer-country=US` : ''}`;
+			const isSandbox = environment !== 'production';
+			const buyerCountry =
+				isSandbox && currencyCode.toUpperCase() === 'ILS' ? '&buyer-country=IL' : isSandbox ? '&buyer-country=US' : '';
+			script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=${encodeURIComponent(currencyCode)}&intent=capture${buyerCountry}`;
 			script.async = true;
 			script.onload = () => {
 				renderPayPalButton();
@@ -261,7 +275,11 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 
 			if (result.status === PaymentStatus.REQUIRES_ACTION && result.paypalOrderRequest) {
 				setPaypalOrderRequest(result.paypalOrderRequest);
-				loadPayPalScript(result.paypalOrderRequest.clientId, result.paypalOrderRequest.environment);
+				loadPayPalScript(
+					result.paypalOrderRequest.clientId,
+					result.paypalOrderRequest.environment,
+					result.paypalOrderRequest.currencyCode
+				);
 			} else if (result.status === PaymentStatus.COMPLETED) {
 				handlePaymentSuccess(result);
 			} else {
@@ -279,6 +297,9 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 			setPaypalCheckoutStarted(false);
 		}
 	}, [pkg.id, purchaseCredits, handlePaymentSuccess, loadPayPalScript, t]);
+
+	const initializePayPalRef = useRef(initializePayPal);
+	initializePayPalRef.current = initializePayPal;
 
 	const handleManualPayment = useCallback(async () => {
 		setIsProcessing(true);
@@ -331,6 +352,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 
 	useEffect(() => {
 		if (!open) {
+			paypalInitInFlightRef.current = false;
 			cleanupPayPal();
 			setPaypalOrderRequest(null);
 			setIsProcessing(false);
@@ -351,16 +373,14 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 			return;
 		}
 
-		void initializePayPal();
-	}, [
-		open,
-		selectedMethod,
-		paypalCheckoutStarted,
-		paypalButtonContainer,
-		paypalOrderRequest,
-		initializePayPal,
-		cleanupPayPal,
-	]);
+		if (paypalInitInFlightRef.current) {
+			return;
+		}
+		paypalInitInFlightRef.current = true;
+		void initializePayPalRef.current().finally(() => {
+			paypalInitInFlightRef.current = false;
+		});
+	}, [open, selectedMethod, paypalCheckoutStarted, paypalButtonContainer, paypalOrderRequest, cleanupPayPal]);
 
 	useEffect(() => {
 		return () => {
@@ -405,7 +425,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 								)}
 								<div className='flex justify-between text-lg font-bold pt-2 border-t'>
 									<span>{t(PaymentKey.TOTAL_LABEL)}</span>
-									<span>{pkg.priceDisplay}</span>
+									<span>{formattedPackagePrice}</span>
 								</div>
 							</CardContent>
 						</Card>
@@ -414,14 +434,14 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 							<Label className='text-base font-semibold'>{t(PaymentKey.PAYMENT_METHOD)}</Label>
 							{manualMethodAvailable ? (
 								<RadioGroup value={selectedMethod} onValueChange={handlePaymentMethodChange} className='space-y-2'>
-									<Card className='flex items-center space-x-2 p-4 hover:bg-accent cursor-pointer'>
+									<Card className='flex items-center gap-2 p-4 hover:bg-accent cursor-pointer'>
 										<RadioGroupItem value={PaymentMethod.PAYPAL} id='paypal' />
 										<Label htmlFor='paypal' className='flex-1 cursor-pointer flex items-center gap-2'>
 											<FaPaypal className='h-5 w-5 text-white' />
-											<span>PayPal</span>
+											<span>{t(PaymentKey.PAYPAL_BRAND)}</span>
 										</Label>
 									</Card>
-									<Card className='flex items-center space-x-2 p-4 hover:bg-accent cursor-pointer'>
+									<Card className='flex items-center gap-2 p-4 hover:bg-accent cursor-pointer'>
 										<RadioGroupItem value={PaymentMethod.MANUAL_CREDIT} id='manual' />
 										<Label htmlFor='manual' className='flex-1 cursor-pointer flex items-center gap-2'>
 											<CreditCard className='h-5 w-5' />
@@ -433,7 +453,7 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 								<p className='text-sm text-muted-foreground'>
 									<span className='inline-flex items-center gap-2 font-medium text-foreground'>
 										<FaPaypal className='h-5 w-5' />
-										PayPal
+										{t(PaymentKey.PAYPAL_BRAND)}
 									</span>
 								</p>
 							)}
@@ -482,8 +502,8 @@ export function PaymentDialog({ open, onOpenChange, package: pkg, onSuccess }: P
 										<Spinner size={ComponentSize.SM} message={t(LoadingKey.PROCESSING)} messageInline />
 									) : (
 										<>
-											<CreditCard className='mr-2 h-4 w-4' />
-											{t(PaymentKey.PAY_AMOUNT, { amount: pkg.priceDisplay })}
+											<CreditCard className='me-2 h-4 w-4' />
+											{t(PaymentKey.PAY_AMOUNT, { amount: formattedPackagePrice })}
 										</>
 									)}
 								</Button>

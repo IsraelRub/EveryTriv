@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import type { LucideIcon } from 'lucide-react';
 
 import type { DataTableColumnType, SortDirection, VariantBase } from '@/constants';
 import type { PaginationButtonsProps } from './components.types';
@@ -29,6 +30,7 @@ export interface DataTableProps<T> {
 	emptyState?: {
 		title: string;
 		description: string;
+		icon?: LucideIcon;
 	};
 	emptyValue?: string;
 	sortBy?: string;

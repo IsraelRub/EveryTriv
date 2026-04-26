@@ -1,7 +1,7 @@
-import { API_ENDPOINTS, HTTP_TIMEOUTS, Locale, ValidateTextContext } from '@shared/constants';
+import { API_ENDPOINTS, HTTP_TIMEOUTS, Locale, ValidateTextContext, VALIDATION_COUNT } from '@shared/constants';
 import type {
 	AdminGameStatistics,
-	ClearOperationResponse,
+	GameDifficulty,
 	GameSessionValidationResponse,
 	LanguageValidationResult,
 	TriviaResponse,
@@ -44,6 +44,24 @@ class GameService {
 		}
 	}
 
+	async validateTriviaTopic(params: {
+		topic: string;
+		difficulty: GameDifficulty;
+		outputLanguage: Locale;
+	}): Promise<{ ok: true }> {
+		try {
+			const apiResponse = await apiService.post<{ ok: true }>(API_ENDPOINTS.GAME.VALIDATE_TRIVIA_TOPIC, params);
+			return apiResponse.data;
+		} catch (error) {
+			logger.gameError('Failed to validate trivia topic', {
+				errorInfo: { message: getErrorMessage(error) },
+				topic: params.topic,
+				difficulty: params.difficulty,
+			});
+			throw error;
+		}
+	}
+
 	async validateText(
 		text: string,
 		context?: ValidateTextContext,
@@ -80,26 +98,9 @@ class GameService {
 		}
 	}
 
-	async clearAllGameHistory(): Promise<ClearOperationResponse> {
-		try {
-			logger.userInfo('Clearing all game history');
-			const response = await apiService.delete<ClearOperationResponse>(
-				API_ENDPOINTS.MAINTENANCE.DATA_GAME_HISTORY_CLEAR_ALL
-			);
-			const result = response.data;
-			logger.userInfo('All game history cleared successfully', { deletedCount: result.deletedCount });
-			return result;
-		} catch (error) {
-			logger.userError('Failed to clear all game history', {
-				errorInfo: { message: getErrorMessage(error) },
-			});
-			throw error;
-		}
-	}
-
 	async getAllTriviaQuestions(params?: { limit?: number; offset?: number }): Promise<TriviaQuestionsResponse> {
 		try {
-			const limit = params?.limit ?? 500;
+			const limit = params?.limit ?? VALIDATION_COUNT.ADMIN_TRIVIA_LIST.DEFAULT_LIMIT;
 			const offset = params?.offset ?? 0;
 			const query = new URLSearchParams({ limit: String(limit), offset: String(offset) }).toString();
 			logger.gameInfo('Fetching trivia questions (admin)', { limit, offset });
@@ -109,21 +110,6 @@ class GameService {
 			return result;
 		} catch (error) {
 			logger.gameError('Failed to get all trivia questions', { errorInfo: { message: getErrorMessage(error) } });
-			throw error;
-		}
-	}
-
-	async clearAllTrivia(): Promise<ClearOperationResponse> {
-		try {
-			logger.userInfo('Clearing all trivia questions');
-			const response = await apiService.delete<ClearOperationResponse>(API_ENDPOINTS.MAINTENANCE.DATA_TRIVIA_CLEAR_ALL);
-			const result = response.data;
-			logger.userInfo('All trivia questions cleared successfully', { deletedCount: result.deletedCount });
-			return result;
-		} catch (error) {
-			logger.userError('Failed to clear all trivia questions', {
-				errorInfo: { message: getErrorMessage(error) },
-			});
 			throw error;
 		}
 	}

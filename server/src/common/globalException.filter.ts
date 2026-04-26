@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 
-import { HttpMethod } from '@shared/constants';
+import { HttpMethod, VALIDATION_LENGTH } from '@shared/constants';
 import type { ErrorResponse } from '@shared/types';
 import {
 	getErrorMessage,
@@ -53,7 +53,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 							message: errorMessage,
 							messages: errorArray,
 						},
-						requestBody: request.body ? JSON.stringify(request.body).substring(0, 200) : 'no body',
+						requestBody: request.body
+							? JSON.stringify(request.body).substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.LONG_PREVIEW)
+							: 'no body',
 					});
 
 					// This is a validation error with detailed error information

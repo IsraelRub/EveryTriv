@@ -58,7 +58,7 @@ export function BusinessTabContent() {
 
 	if (businessMetricsLoading) {
 		return (
-			<div className='grid grid-cols-4 gap-6'>
+			<div className='grid grid-cols-2 lg:grid-cols-4 gap-6'>
 				<Skeleton variant={SkeletonVariant.BlockTall} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 			</div>
 		);
@@ -118,7 +118,7 @@ export function BusinessTabContent() {
 							</span>
 						</AccordionTrigger>
 						<AccordionContent className='px-4'>
-							<div className='grid grid-cols-4 gap-4'>
+							<div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
 								<StatCard
 									stackIconLabel
 									icon={Users}
@@ -159,7 +159,7 @@ export function BusinessTabContent() {
 							</span>
 						</AccordionTrigger>
 						<AccordionContent className='px-4'>
-							<div className='grid grid-cols-4 gap-4'>
+							<div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
 								<StatCard
 									stackIconLabel
 									icon={Activity}

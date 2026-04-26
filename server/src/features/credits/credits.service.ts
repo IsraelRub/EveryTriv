@@ -3,8 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 
 import {
-	ADMIN_CREDIT_PACKAGES_COUNT_MAX,
-	ADMIN_CREDIT_PACKAGES_COUNT_MIN,
 	CACHE_KEYS,
 	CREDIT_PURCHASE_PACKAGES,
 	CREDITS_CONFIG_KEY_PACKAGES,
@@ -14,9 +12,9 @@ import {
 	ErrorCode,
 	GameMode,
 	GRANTED_CREDITS_CAP,
-	GRANTED_CREDITS_REFILL_INTERVAL_MS,
 	PaymentMethod,
 	TIME_DURATIONS_SECONDS,
+	TIME_PERIODS_MS,
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import type { CanPlayResponse, CreditBalance, CreditPurchaseOption } from '@shared/types';
@@ -43,6 +41,7 @@ function isCreditPackageConfigItem(value: unknown): value is CreditPackageConfig
 	const id = value.id;
 	const credits = value.credits;
 	const price = value.price;
+	const priceIls = value.priceIls;
 	const tier = value.tier;
 	return (
 		isNonEmptyString(id) &&
@@ -50,6 +49,7 @@ function isCreditPackageConfigItem(value: unknown): value is CreditPackageConfig
 		credits > 0 &&
 		VALIDATORS.number(price) &&
 		price > 0 &&
+		(priceIls === undefined || (VALIDATORS.number(priceIls) && priceIls > 0)) &&
 		(tier === undefined || VALIDATORS.string(tier))
 	);
 }
@@ -78,7 +78,7 @@ export class CreditsService {
 			return null;
 		}
 		const anchor = user.lastGrantedCreditsRefillAt ?? user.createdAt;
-		const next = new Date(anchor.getTime() + GRANTED_CREDITS_REFILL_INTERVAL_MS);
+		const next = new Date(anchor.getTime() + TIME_PERIODS_MS.DAY);
 		return next.toISOString();
 	}
 
@@ -108,7 +108,7 @@ export class CreditsService {
 			return user;
 		}
 		const anchor = user.lastGrantedCreditsRefillAt ?? user.createdAt;
-		const nextEligibleMs = anchor.getTime() + GRANTED_CREDITS_REFILL_INTERVAL_MS;
+		const nextEligibleMs = anchor.getTime() + TIME_PERIODS_MS.DAY;
 		if (Date.now() < nextEligibleMs) {
 			return user;
 		}
@@ -179,16 +179,25 @@ export class CreditsService {
 	}
 
 	private mapConfigToPurchaseOption(pkg: CreditPackageConfigItem): CreditPurchaseOption {
-		const priceDisplay = `$${Number(pkg.price).toFixed(2)}`;
-		const pricePerCredit = pkg.credits > 0 ? pkg.price / pkg.credits : 0;
+		const defaults = CREDIT_PURCHASE_PACKAGES.find(p => p.id === pkg.id);
+		const priceUsd = Number(pkg.price);
+		const priceIls = pkg.priceIls ?? defaults?.priceIls ?? 0;
+		const priceDisplay = `$${priceUsd.toFixed(2)}`;
+		const priceDisplayIls = priceIls > 0 ? `₪${priceIls.toFixed(2)}` : '';
+		const pricePerCredit = pkg.credits > 0 ? priceUsd / pkg.credits : 0;
+		const pricePerCreditIls = pkg.credits > 0 && priceIls > 0 ? priceIls / pkg.credits : 0;
 		return {
 			id: pkg.id,
 			credits: pkg.credits,
-			price: pkg.price,
+			price: priceUsd,
+			priceIls,
 			priceDisplay,
+			priceDisplayIls,
 			pricePerCredit,
+			pricePerCreditIls,
 			paypalProductId: buildPaypalProductIdForCreditPackage(pkg.id),
-			paypalPrice: Number(pkg.price).toFixed(2),
+			paypalPrice: priceUsd.toFixed(2),
+			paypalPriceIls: priceIls > 0 ? priceIls.toFixed(2) : '0.00',
 			supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 		};
 	}
@@ -214,10 +223,14 @@ export class CreditsService {
 						id: pkg.id,
 						credits: pkg.credits,
 						price: pkg.price,
+						priceIls: pkg.priceIls,
 						priceDisplay: pkg.priceDisplay,
+						priceDisplayIls: pkg.priceDisplayIls,
 						pricePerCredit: pkg.pricePerCredit,
+						pricePerCreditIls: pkg.pricePerCreditIls,
 						paypalProductId: pkg.paypalProductId,
 						paypalPrice: pkg.paypalPrice,
+						paypalPriceIls: pkg.paypalPriceIls,
 						supportedMethods: pkg.supportedMethods,
 					}));
 				},
@@ -236,7 +249,15 @@ export class CreditsService {
 		if (!isCreditPackageConfigItemArray(packages)) {
 			throw new BadRequestException(ERROR_MESSAGES.validation.INVALID_INPUT_DATA);
 		}
-		if (packages.length < ADMIN_CREDIT_PACKAGES_COUNT_MIN || packages.length > ADMIN_CREDIT_PACKAGES_COUNT_MAX) {
+		for (const p of packages) {
+			if (!Number.isFinite(p.priceIls) || (p.priceIls ?? 0) <= 0) {
+				throw new BadRequestException(ERROR_MESSAGES.validation.INVALID_INPUT_DATA);
+			}
+		}
+		if (
+			packages.length < VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MIN ||
+			packages.length > VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MAX
+		) {
 			throw new BadRequestException(ERROR_MESSAGES.validation.INVALID_INPUT_DATA);
 		}
 		const ids = packages.map(p => p.id);
@@ -270,10 +291,14 @@ export class CreditsService {
 			id: pkg.id,
 			credits: pkg.credits,
 			price: pkg.price,
+			priceIls: pkg.priceIls,
 			priceDisplay: pkg.priceDisplay,
+			priceDisplayIls: pkg.priceDisplayIls,
 			pricePerCredit: pkg.pricePerCredit,
+			pricePerCreditIls: pkg.pricePerCreditIls,
 			paypalProductId: pkg.paypalProductId,
 			paypalPrice: pkg.paypalPrice,
+			paypalPriceIls: pkg.paypalPriceIls,
 			supportedMethods: pkg.supportedMethods,
 		}));
 		return { packages, isDefault: true };
@@ -557,7 +582,7 @@ export class CreditsService {
 			}
 
 			// Validate credits amount
-			if (!credits || credits <= 0 || credits > 10000) {
+			if (!credits || credits <= 0 || credits > VALIDATION_COUNT.CREDITS.MAX) {
 				throw new BadRequestException(ErrorCode.INVALID_CREDITS_AMOUNT);
 			}
 

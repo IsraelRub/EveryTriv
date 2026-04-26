@@ -3,6 +3,7 @@ export { useClipboardCopy } from './useClipboardCopy';
 export { useDebouncedValue } from './useDebouncedValue';
 
 export {
+	useAcceptLegalConsent,
 	useLogin,
 	useRegister,
 	useCurrentUser,

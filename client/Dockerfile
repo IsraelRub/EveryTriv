@@ -13,6 +13,7 @@ COPY pnpm-lock.yaml ./
 COPY client/ ./client/
 COPY server/ ./server/
 COPY shared/ ./shared/
+COPY .env.prod ./.env.prod
 
 COPY .npmrc ./
 

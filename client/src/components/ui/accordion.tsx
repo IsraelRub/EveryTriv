@@ -1,8 +1,8 @@
 import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { ChevronDown } from 'lucide-react';
 
 import { cn } from '@/utils';
+import { DisclosureChevron } from './disclosureChevron';
 
 export const Accordion = AccordionPrimitive.Root;
 
@@ -28,7 +28,7 @@ export const AccordionTrigger = forwardRef<
 			{...props}
 		>
 			{children}
-			<ChevronDown className='h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200' />
+			<DisclosureChevron className='h-4 w-4 text-muted-foreground' />
 		</AccordionPrimitive.Trigger>
 	</AccordionPrimitive.Header>
 ));

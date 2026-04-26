@@ -46,7 +46,10 @@ export class LeaderboardAnalyticsService {
 				async () => {
 					try {
 						const scoreField = LEADERBOARD_PERIOD_CONFIG[LeaderboardPeriod.GLOBAL].scoreField;
-						const fetchSize = Math.min(limit + offset + 500, 1500);
+						const fetchSize = Math.min(
+							limit + offset + VALIDATION_COUNT.LEADERBOARD.QUERY_FETCH_BUFFER,
+							VALIDATION_COUNT.LEADERBOARD.QUERY_FETCH_CAP
+						);
 						const raw = await this.userStatsRepository
 							.createQueryBuilder('userStats')
 							.innerJoinAndSelect('userStats.user', 'user')
@@ -120,7 +123,10 @@ export class LeaderboardAnalyticsService {
 							throw new BadRequestException(ERROR_MESSAGES.validation.INVALID_PERIOD_VALID_LIST(period));
 						}
 
-						const fetchSize = Math.min(limit + 500, 1500);
+						const fetchSize = Math.min(
+							limit + VALIDATION_COUNT.LEADERBOARD.QUERY_FETCH_BUFFER,
+							VALIDATION_COUNT.LEADERBOARD.QUERY_FETCH_CAP
+						);
 						const raw = await this.userStatsRepository
 							.createQueryBuilder('userStats')
 							.innerJoinAndSelect('userStats.user', 'user')

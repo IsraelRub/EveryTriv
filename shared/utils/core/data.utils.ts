@@ -25,12 +25,10 @@ export function isNonEmptyString(value: unknown): value is string {
 	return value != null && VALIDATORS.string(value) && !!value.trim();
 }
 
-/** Optional string field: blank / whitespace-only → `null`; otherwise the trimmed string. */
 export function nullIfBlankString(value: unknown): string | null {
 	return isNonEmptyString(value) ? value : null;
 }
 
-/** Query flag: `true` or `'true'` → `true`; any other value (including missing) → `false`. */
 export function parseQueryBooleanDefaultFalse(value: unknown): boolean {
 	return value === true || value === 'true';
 }

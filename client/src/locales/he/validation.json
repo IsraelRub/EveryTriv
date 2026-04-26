@@ -12,6 +12,7 @@
 	"roomCodeRequired": "נא להזין קוד חדר",
 	"userIdRequired": "נא להזין מזהה משתמש",
 	"customDifficultyInvalid": "קושי מותאם לא תקין",
+	"customDifficultyRequiresDescription": "קושי מותאם דורש תיאור. בחרו קל, בינוני או קשה, או תארו איך תרצו שהשאלות ירגישו.",
 	"customDifficultyLanguageValidationFailed": "אימות שפה נכשל. נא לנסות שוב.",
 	"topicLanguageValidationFailed": "אימות שפה נכשל. נא לנסות שוב.",
 	"passwordConfirmationRequired": "נא לאשר את הסיסמה",

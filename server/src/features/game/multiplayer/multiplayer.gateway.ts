@@ -637,7 +637,8 @@ export class MultiplayerGateway implements OnGatewayConnection, OnGatewayDisconn
 				serverStartTimestamp,
 				serverEndTimestamp,
 			});
-			client.emit('question-started', questionStartedEvent.data);
+			// Emit the full game event (same shape as broadcastToRoom) so client guards like isQuestionStartedEvent succeed.
+			client.emit(MultiplayerEvent.QUESTION_STARTED, questionStartedEvent);
 		}
 	}
 

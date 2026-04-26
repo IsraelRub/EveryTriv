@@ -26,13 +26,15 @@ import type {
 	UserAnalyticsRecord,
 	UserComparisonMetrics,
 	UserComparisonResult,
+	UserInsightItem,
+	UserInsightRecentActivity,
 	UserInsightsData,
 	UserPerformanceMetrics,
 	UserProgressAnalytics,
 	UserProgressTopic,
 	UserSummaryData,
 } from '@shared/types';
-import { calculateScoreRate, clamp, formatDate, formatTitle, getErrorMessage, sumBy } from '@shared/utils';
+import { calculateScoreRate, clamp, formatTitle, getErrorMessage, sumBy } from '@shared/utils';
 import { isGameDifficulty, isUuid } from '@shared/validation';
 
 import { GameHistoryEntity, UserEntity, UserStatsEntity } from '@internal/entities';
@@ -332,13 +334,17 @@ export class UserAnalyticsService {
 
 						if (options?.includeActivity) {
 							const activityEntries = this.buildUserActivityEntries(history, 5);
-							const activityHighlights = activityEntries.map(entry => {
-								const detail = entry.detail ? ` - ${entry.detail}` : '';
-								return `${formatDate(entry.date)}: ${entry.action.replace(/_/g, ' ')}${detail}`;
-							});
-							const insightsSet = new Set(summary.insights);
-							activityHighlights.forEach(highlight => insightsSet.add(highlight));
-							summary.insights = Array.from(insightsSet).slice(0, 10);
+							const activityItems: UserInsightRecentActivity[] = activityEntries.map(entry => ({
+								kind: 'recent_activity',
+								date: entry.date,
+								action: entry.action,
+								detail: entry.detail,
+								topic: entry.topic,
+								score: entry.score,
+								gameQuestionCount: entry.gameQuestionCount,
+								correctAnswers: entry.correctAnswers,
+							}));
+							summary.insights = [...summary.insights, ...activityItems].slice(0, 10);
 						}
 
 						response.summary = summary;
@@ -491,13 +497,17 @@ export class UserAnalyticsService {
 		);
 		const boundedHistory = history.slice(0, effectiveLimit);
 
-		return boundedHistory.map(game => ({
-			date: (game.createdAt ?? new Date()).toISOString(),
-			action: 'game_completed',
-			detail: `Score ${game.score ?? 0} / ${game.gameQuestionCount ?? 0} (${game.correctAnswers ?? 0} correct)`,
-			topic: game.topic ?? undefined,
-			durationSeconds: game.timeSpent ?? undefined,
-		}));
+		return boundedHistory.map(
+			(game): ActivityEntry => ({
+				date: (game.createdAt ?? new Date()).toISOString(),
+				action: 'game_completed',
+				topic: game.topic ?? undefined,
+				durationSeconds: game.timeSpent ?? undefined,
+				score: game.score ?? 0,
+				gameQuestionCount: game.gameQuestionCount ?? 0,
+				correctAnswers: game.correctAnswers ?? 0,
+			})
+		);
 	}
 
 	private findTopicExtremes(
@@ -614,34 +624,57 @@ export class UserAnalyticsService {
 		performance: UserPerformanceMetrics,
 		topics: UserProgressTopic[]
 	): UserInsightsData {
-		const strengths: string[] = [];
-		const improvements: string[] = [];
-		const recentHighlights: string[] = [];
+		const strengths: UserInsightItem[] = [];
+		const improvements: UserInsightItem[] = [];
+		const recentHighlights: UserInsightItem[] = [];
 
 		topics.slice(0, 5).forEach(topic => {
 			if (topic.successRate >= 75) {
-				strengths.push(`${topic.topic}: ${topic.successRate.toFixed(1)}% success (${topic.gamesPlayed} games)`);
+				strengths.push({
+					kind: 'strength_topic',
+					topic: topic.topic,
+					successRate: Number(topic.successRate.toFixed(1)),
+					gamesPlayed: topic.gamesPlayed,
+				});
 			} else if (topic.successRate <= 55 && topic.gamesPlayed >= 3) {
-				improvements.push(`${topic.topic}: ${topic.successRate.toFixed(1)}% success – recommended to practice`);
+				improvements.push({
+					kind: 'improvement_topic',
+					topic: topic.topic,
+					successRate: Number(topic.successRate.toFixed(1)),
+					gamesPlayed: topic.gamesPlayed,
+				});
 			}
 		});
 
 		(stats.recentActivity ?? []).slice(0, 3).forEach(activity => {
-			const action = activity.action.replace(/_/g, ' ');
-			const detail = activity.detail ? ` (${activity.detail})` : '';
-			recentHighlights.push(`${formatDate(activity.date)} – ${action}${detail}`);
+			recentHighlights.push({
+				kind: 'recent_activity',
+				date: activity.date,
+				action: activity.action,
+				detail: activity.detail,
+				topic: activity.topic,
+				score: activity.score,
+				gameQuestionCount: activity.gameQuestionCount,
+				correctAnswers: activity.correctAnswers,
+			});
 		});
 
 		if (performance.bestStreak && performance.bestStreak >= 5) {
-			strengths.unshift(`Best streak of ${performance.bestStreak} consecutive days of playing`);
+			strengths.unshift({
+				kind: 'best_streak',
+				days: performance.bestStreak,
+			});
 		}
 
 		if (performance.weakestTopic) {
-			improvements.push(`Topic to improve: ${performance.weakestTopic}`);
+			improvements.push({
+				kind: 'improve_weakest_topic',
+				topic: performance.weakestTopic,
+			});
 		}
 
 		if (recentHighlights.length === 0 && stats.totalGames > 0) {
-			recentHighlights.push('Last game completed successfully – keep it up!');
+			recentHighlights.push({ kind: 'fallback_highlight' });
 		}
 
 		return {
@@ -659,16 +692,13 @@ export class UserAnalyticsService {
 		const recommendations: SystemRecommendation[] = [];
 
 		if (stats.successRate < 60) {
+			const rate = stats.successRate.toFixed(1);
 			recommendations.push({
 				id: 'user-rec-success-rate',
 				type: 'performance',
-				title: 'Low answer accuracy',
-				description: `Your current success rate is ${stats.successRate.toFixed(1)}%.`,
-				message: 'Try solving puzzles at an easier difficulty level to build confidence.',
-				action: 'Start a series of games in your favorite topics at easy level.',
 				priority: RecommendationPriority.MEDIUM,
-				estimatedImpact: 'Gradual improvement in answer accuracy',
 				implementationEffort: 'low',
+				i18nParams: { rate },
 			});
 		}
 
@@ -678,16 +708,13 @@ export class UserAnalyticsService {
 			.map(topic => topic.topic);
 
 		if (slowTopics.length > 0) {
+			const topicsJoined = slowTopics.join(', ');
 			recommendations.push({
 				id: 'user-rec-time-management',
 				type: 'performance',
-				title: 'Response time longer than usual',
-				description: `Your average response time is particularly high in topics: ${slowTopics.join(', ')}.`,
-				message: 'Practice games with time limits to sharpen your speed.',
-				action: 'Play in "Time Attack" mode in these topics twice a day.',
 				priority: RecommendationPriority.MEDIUM,
-				estimatedImpact: 'Improved puzzle solving speed',
 				implementationEffort: 'medium',
+				i18nParams: { topics: topicsJoined },
 			});
 		}
 
@@ -695,12 +722,7 @@ export class UserAnalyticsService {
 			recommendations.push({
 				id: 'user-rec-engagement',
 				type: 'engagement',
-				title: 'Maintain your game streak',
-				description: 'Your active day streak is relatively short.',
-				message: 'To improve your streak, it is recommended to play at least one short game every day.',
-				action: 'Set a daily reminder for a short game of five questions.',
 				priority: RecommendationPriority.LOW,
-				estimatedImpact: 'Increased daily engagement',
 				implementationEffort: 'low',
 			});
 		}
@@ -904,13 +926,17 @@ export class UserAnalyticsService {
 
 			// Use recentActivity from UserStatsEntity; topic in display form
 			const recentActivity =
-				userStats.recentActivity?.map(activity => ({
-					date: new Date(activity.createdAt).toISOString(),
-					action: 'game_completed',
-					detail: `Score: ${activity.score}, Topic: ${formatTitle(activity.topic ?? '')}`,
-					topic: formatTitle(activity.topic ?? ''),
-					durationSeconds: activity.timeSpent,
-				})) ?? [];
+				userStats.recentActivity?.map(
+					(activity): ActivityEntry => ({
+						date: new Date(activity.createdAt).toISOString(),
+						action: 'game_completed',
+						topic: formatTitle(activity.topic ?? ''),
+						durationSeconds: activity.timeSpent,
+						score: activity.score,
+						gameQuestionCount: activity.totalQuestions,
+						correctAnswers: activity.correctAnswers,
+					})
+				) ?? [];
 
 			return {
 				userId,

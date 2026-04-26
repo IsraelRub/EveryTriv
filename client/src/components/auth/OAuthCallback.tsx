@@ -12,15 +12,20 @@ import {
 	AuthKey,
 	ButtonSize,
 	ComponentSize,
-	getRegisterOptionalAvatarSearch,
 	QUERY_KEYS,
-	ROUTES,
+	Routes,
 	SEMANTIC_ICON_TEXT,
-	STORAGE_KEYS,
+	StorageKeys,
 	VariantBase,
 } from '@/constants';
 import { authService, clientLogger as logger, queryClient, queryInvalidationService, storageService } from '@/services';
-import { cn, getAuthCurrentUserQueryKey, readAuthTokenSnapshotForQueryKey } from '@/utils';
+import {
+	applyPostLoginNavigation,
+	cn,
+	getAuthCurrentUserQueryKey,
+	readAuthTokenSnapshotForQueryKey,
+	safeSessionStorageRemove,
+} from '@/utils';
 import { Alert, AlertDescription, AlertIcon, Button, Card, HomeButton, Spinner } from '@/components';
 
 export function OAuthCallback() {
@@ -59,11 +64,8 @@ export function OAuthCallback() {
 
 				// Handle error in callback
 				if (error) {
-					try {
-						sessionStorage.removeItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION);
-					} catch {
-						// ignore
-					}
+					safeSessionStorageRemove(StorageKeys.OAUTH_INITIATED_FROM_REGISTRATION);
+					safeSessionStorageRemove(StorageKeys.REGISTRATION_EMAIL_PENDING_OPTIONAL_AVATAR);
 					// Create object for getErrorMessage to handle OAuth errors with description
 					const oauthErrorObj = errorDescription ? { error, error_description: errorDescription } : error;
 					const userMessage = getErrorMessage(oauthErrorObj);
@@ -84,7 +86,7 @@ export function OAuthCallback() {
 					setTimeout(() => {
 						const errorParam =
 							error === OAuthErrorType.INVALID_CLIENT ? OAuthErrorType.INVALID_CLIENT : OAuthErrorType.OAUTH_FAILED;
-						navigate(ROUTES.HOME, { state: { authError: errorParam }, replace: true });
+						navigate(Routes.HOME, { state: { authError: errorParam }, replace: true });
 					}, TIME_PERIODS_MS.FIVE_SECONDS);
 					return;
 				}
@@ -101,10 +103,10 @@ export function OAuthCallback() {
 						throw new Error(ERROR_MESSAGES.user.FAILED_TO_RETRIEVE_USER_DATA);
 					}
 
-					await storageService.setString(STORAGE_KEYS.AUTH_TOKEN, accessToken);
+					await storageService.setString(StorageKeys.AUTH_TOKEN, accessToken);
 					if (refreshToken) {
-						await storageService.setString(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
-						await storageService.setString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, refreshToken);
+						await storageService.setString(StorageKeys.REFRESH_TOKEN, refreshToken);
+						await storageService.setString(StorageKeys.PERSISTENT_REFRESH_TOKEN, refreshToken);
 					}
 
 					logger.authDebug('Attempting to get current user');
@@ -135,40 +137,19 @@ export function OAuthCallback() {
 
 					logger.authLogin('User authenticated successfully', { userId: user.id });
 
-					let oauthFromRegistration = false;
-					try {
-						oauthFromRegistration = sessionStorage.getItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION) === '1';
-						sessionStorage.removeItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION);
-					} catch {
-						// sessionStorage unavailable
+					if (!user.needsLegalAcceptance) {
+						safeSessionStorageRemove(StorageKeys.OAUTH_INITIATED_FROM_REGISTRATION);
+						safeSessionStorageRemove(StorageKeys.REGISTRATION_EMAIL_PENDING_OPTIONAL_AVATAR);
 					}
 
-					const needsProfile = !user.firstName;
+					logger.authDebug('Redirecting user after OAuth', {
+						needsProfile: !user.firstName,
+					});
 
-					logger.authDebug('Redirecting user', { needsProfile });
-
-					if (oauthFromRegistration) {
-						if (needsProfile) {
-							try {
-								sessionStorage.setItem(STORAGE_KEYS.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE, '1');
-							} catch {
-								// sessionStorage unavailable
-							}
-							navigate(ROUTES.COMPLETE_PROFILE, { replace: true });
-						} else {
-							navigate({ pathname: ROUTES.REGISTER, search: getRegisterOptionalAvatarSearch() }, { replace: true });
-						}
-					} else if (needsProfile) {
-						navigate(ROUTES.COMPLETE_PROFILE, { replace: true });
-					} else {
-						navigate(ROUTES.HOME, { replace: true });
-					}
+					applyPostLoginNavigation(navigate, user);
 				} else {
-					try {
-						sessionStorage.removeItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION);
-					} catch {
-						// ignore
-					}
+					safeSessionStorageRemove(StorageKeys.OAUTH_INITIATED_FROM_REGISTRATION);
+					safeSessionStorageRemove(StorageKeys.REGISTRATION_EMAIL_PENDING_OPTIONAL_AVATAR);
 					// No success flag
 					logger.authError('OAuth callback without success parameter', { params });
 					setErrorMessage(getErrorMessage(OAuthErrorType.NO_TOKEN));
@@ -176,15 +157,12 @@ export function OAuthCallback() {
 					setStatus(CallbackStatus.ERROR);
 
 					setTimeout(() => {
-						navigate(ROUTES.HOME, { state: { authError: OAuthErrorType.NO_TOKEN }, replace: true });
+						navigate(Routes.HOME, { state: { authError: OAuthErrorType.NO_TOKEN }, replace: true });
 					}, TIME_PERIODS_MS.THREE_SECONDS);
 				}
 			} catch (error) {
-				try {
-					sessionStorage.removeItem(STORAGE_KEYS.OAUTH_INITIATED_FROM_REGISTRATION);
-				} catch {
-					// ignore
-				}
+				safeSessionStorageRemove(StorageKeys.OAUTH_INITIATED_FROM_REGISTRATION);
+				safeSessionStorageRemove(StorageKeys.REGISTRATION_EMAIL_PENDING_OPTIONAL_AVATAR);
 				const message = getErrorMessage(error);
 				logger.authError('Unexpected error in OAuth callback', {
 					errorInfo: { message },
@@ -195,7 +173,7 @@ export function OAuthCallback() {
 				setStatus(CallbackStatus.ERROR);
 
 				setTimeout(() => {
-					navigate(ROUTES.HOME, { state: { authError: OAuthErrorType.UNEXPECTED_ERROR }, replace: true });
+					navigate(Routes.HOME, { state: { authError: OAuthErrorType.UNEXPECTED_ERROR }, replace: true });
 				}, TIME_PERIODS_MS.THREE_SECONDS);
 			}
 		};

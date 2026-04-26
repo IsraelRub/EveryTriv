@@ -1,6 +1,6 @@
 import { API_ENDPOINTS, HTTP_CLIENT_CONFIG, type Locale } from '@shared/constants';
 import type { PublicWaitingRoomDto } from '@shared/types';
-import { getErrorMessage, isPublicWaitingRoomList } from '@shared/utils';
+import { getErrorMessage, isCancelledOrAbortError, isPublicWaitingRoomList } from '@shared/utils';
 
 import { apiService, clientLogger as logger } from '@/services';
 
@@ -35,6 +35,9 @@ export async function fetchPublicWaitingMultiplayerRooms(params: {
 		}
 		return data;
 	} catch (error) {
+		if (isCancelledOrAbortError(error)) {
+			throw error;
+		}
 		logger.gameError('Failed to fetch public waiting multiplayer rooms', {
 			errorInfo: { message: getErrorMessage(error) },
 		});

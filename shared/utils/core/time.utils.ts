@@ -3,10 +3,6 @@ import { VALIDATORS } from '@shared/validation';
 
 import { isNonEmptyString } from './data.utils';
 
-/**
- * Optional date from JSON or query: missing / blank → `undefined`;
- * otherwise `Date` (invalid ISO still yields an invalid `Date` for `@IsDate` to reject).
- */
 export function parseOptionalJsonDate(value: unknown): Date | undefined {
 	if (value == null || value === '') {
 		return undefined;

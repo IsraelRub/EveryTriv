@@ -8,7 +8,7 @@ import { VALIDATION_COUNT } from '@shared/constants';
 import { getCorrectAnswerIndex } from '@shared/utils';
 
 import {
-	ANIMATION_DELAYS,
+	AnimationDelays,
 	ANSWER_LETTER_KEYS,
 	AnswerButtonState,
 	GameKey,
@@ -114,7 +114,7 @@ export const AnswerButton = memo(function AnswerButton({
 							key={index}
 							initial={{ opacity: 0, y: 10 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: index * ANIMATION_DELAYS.STAGGER_SMALL }}
+							transition={{ delay: index * AnimationDelays.STAGGER_SMALL }}
 							onClick={() => onAnswerClick(index)}
 							disabled={answered}
 							className={answerButtonVariants({ state: buttonState })}

@@ -1,4 +1,5 @@
 export * from './api.types';
+export * from './storage.types';
 export * from './i18n.types';
 export * from './interceptors.types';
 export * from './logger.types';

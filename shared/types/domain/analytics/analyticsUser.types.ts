@@ -91,10 +91,57 @@ export interface UserProgressAnalytics {
 	};
 }
 
+export interface UserInsightStrengthTopic {
+	readonly kind: 'strength_topic';
+	readonly topic: string;
+	readonly successRate: number;
+	readonly gamesPlayed: number;
+}
+
+export interface UserInsightImprovementTopic {
+	readonly kind: 'improvement_topic';
+	readonly topic: string;
+	readonly successRate: number;
+	readonly gamesPlayed: number;
+}
+
+export interface UserInsightBestStreak {
+	readonly kind: 'best_streak';
+	readonly days: number;
+}
+
+export interface UserInsightWeakestTopic {
+	readonly kind: 'improve_weakest_topic';
+	readonly topic: string;
+}
+
+export interface UserInsightRecentActivity {
+	readonly kind: 'recent_activity';
+	readonly date: string;
+	readonly action: string;
+	readonly detail?: string;
+	readonly topic?: string;
+	readonly score?: number;
+	readonly gameQuestionCount?: number;
+	readonly correctAnswers?: number;
+}
+
+export interface UserInsightFallbackHighlight {
+	readonly kind: 'fallback_highlight';
+}
+
+export type UserInsightItem =
+	| UserInsightStrengthTopic
+	| UserInsightImprovementTopic
+	| UserInsightBestStreak
+	| UserInsightWeakestTopic
+	| UserInsightRecentActivity
+	| UserInsightFallbackHighlight;
+
 export interface UserInsightsData {
-	strengths: string[];
-	improvements: string[];
-	recentHighlights: string[];
+	strengths: UserInsightItem[];
+	improvements: UserInsightItem[];
+	recentHighlights: UserInsightItem[];
 }
 
 export interface UserComparisonMetrics {
@@ -126,7 +173,7 @@ export interface UserSummaryData {
 		topTopics: string[];
 	};
 	performance: UserPerformanceMetrics;
-	insights: string[];
+	insights: UserInsightItem[];
 }
 
 export interface UnifiedUserAnalyticsResponse {

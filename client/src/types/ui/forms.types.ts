@@ -1,5 +1,4 @@
-import { InputHTMLAttributes, type ComponentProps, type ReactElement } from 'react';
-import type { FieldPath, FieldValues } from 'react-hook-form';
+import { InputHTMLAttributes, type ComponentProps, type ReactElement, type TextareaHTMLAttributes } from 'react';
 
 import { ClientValidationType } from '@shared/constants';
 
@@ -17,14 +16,11 @@ export interface FormField {
 	validationOptions?: ValidationHookOptions;
 }
 
-export type FormFieldContextValue<
-	TFieldValues extends FieldValues = FieldValues,
-	TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
-> = {
-	name: TName;
-};
-
 export type InputProps = ComponentProps<'input'> & { error?: boolean };
+
+export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
+	error?: boolean;
+};
 
 export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' | 'value' | 'onChange' | 'className'> {
 	value: number;
@@ -32,6 +28,8 @@ export interface NumberInputProps extends Omit<ComponentProps<'input'>, 'type' |
 	min: number;
 	max: number;
 	step?: number;
+
+	error?: boolean;
 	label?: string;
 	labelIcon?: ReactElement | null;
 }

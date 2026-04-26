@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown } from 'lucide-react';
 
 import { formatDate } from '@shared/utils';
 
@@ -10,6 +9,7 @@ import { cn } from '@/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DisclosureChevron } from '@/components/ui/disclosureChevron';
 
 export function LegalDocumentPage({
 	icon,
@@ -73,12 +73,7 @@ export function LegalDocumentPage({
 								onClick={toggleExpandCollapseAll}
 								className='gap-2'
 							>
-								<ChevronDown
-									className={cn(
-										'h-5 w-5 shrink-0 transition-transform duration-200 md:h-6 md:w-6',
-										allExpanded && 'rotate-180'
-									)}
-								/>
+								<DisclosureChevron expanded={allExpanded} className='h-5 w-5 md:h-6 md:w-6' />
 								{t(allExpanded ? LegalKey.ACCORDION_CLOSE_ALL : LegalKey.ACCORDION_OPEN_ALL)}
 							</Button>
 						</div>

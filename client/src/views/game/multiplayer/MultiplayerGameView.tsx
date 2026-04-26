@@ -7,20 +7,26 @@ import { MULTIPLAYER_TIME_PER_QUESTION, RoomStatus, TIME_PERIODS_MS } from '@sha
 import { calculateElapsedSeconds, getCorrectAnswerIndex, getDisplayNameFromUserFields } from '@shared/utils';
 
 import {
+	AlertVariant,
 	AudioKey,
 	AvatarSize,
+	ButtonSize,
 	ComponentSize,
 	ExitGameButtonVariant,
 	GameKey,
 	GameSessionHudCounterLayout,
 	LoadingMessages,
-	ROUTES,
+	Routes,
 	TimerMode,
+	VariantBase,
 } from '@/constants';
 import { audioService } from '@/services';
 import { cn } from '@/utils';
 import {
+	Alert,
+	AlertDescription,
 	AnswerButton,
+	Button,
 	Card,
 	CardContent,
 	CardHeader,
@@ -39,13 +45,25 @@ export function MultiplayerGameView() {
 	const navigate = useNavigate();
 
 	const currentUser = useCurrentUserData();
-	const { room, gameState, leaderboard, submitAnswer, leaveRoom, loadingStep, displayMessage } = useMultiplayer(roomId);
+	const {
+		room,
+		gameState,
+		leaderboard,
+		submitAnswer,
+		leaveRoom,
+		joinRoom,
+		loadingStep,
+		displayMessage,
+		isConnected,
+		error,
+	} = useMultiplayer(roomId);
 	const revealPhase = useAppSelector(state => state.multiplayer.revealPhase);
 	const answerCountsForQuestionId = useAppSelector(state => state.multiplayer.answerCountsForQuestionId);
 
 	const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 
 	const [selectionLocked, setSelectionLocked] = useState(false);
+	const [resyncPrompt, setResyncPrompt] = useState(false);
 
 	const selectedAnswerRef = useRef<number | null>(null);
 	selectedAnswerRef.current = selectedAnswer;
@@ -98,6 +116,19 @@ export function MultiplayerGameView() {
 		setSelectionLocked(false);
 	}, [gameState?.currentQuestionIndex]);
 
+	useEffect(() => {
+		if (room?.status !== RoomStatus.PLAYING || gameState != null) {
+			setResyncPrompt(false);
+			return undefined;
+		}
+		const timeoutId = window.setTimeout(() => {
+			setResyncPrompt(true);
+		}, TIME_PERIODS_MS.EIGHT_SECONDS);
+		return () => {
+			window.clearTimeout(timeoutId);
+		};
+	}, [room?.status, room?.roomId, gameState]);
+
 	// Lock selection when reveal phase starts (server ended question)
 	useEffect(() => {
 		if (revealPhase) setSelectionLocked(true);
@@ -107,7 +138,7 @@ export function MultiplayerGameView() {
 	useEffect(() => {
 		if (room?.status !== RoomStatus.FINISHED || !roomId) return;
 		const timeoutId = setTimeout(() => {
-			navigate(ROUTES.MULTIPLAYER_SUMMARY.replace(':roomId', roomId));
+			navigate(Routes.MULTIPLAYER_SUMMARY.replace(':roomId', roomId));
 		}, TIME_PERIODS_MS.ONE_AND_HALF_SECONDS);
 		return () => clearTimeout(timeoutId);
 	}, [room?.status, roomId, navigate]);
@@ -138,18 +169,59 @@ export function MultiplayerGameView() {
 	}, []);
 
 	if (!room || !gameState) {
+		const showDisconnected =
+			room != null &&
+			!isConnected &&
+			(room.status === RoomStatus.PLAYING || room.status === RoomStatus.STARTING || room.status === RoomStatus.WAITING);
+		const showStuckResync =
+			resyncPrompt &&
+			isConnected &&
+			room != null &&
+			room.status === RoomStatus.PLAYING &&
+			gameState == null &&
+			roomId != null;
+
+		let headline: string;
+		if (showDisconnected) {
+			headline = t(LoadingMessages.MULTIPLAYER_RECONNECTING);
+		} else if (showStuckResync) {
+			headline = t(LoadingMessages.MULTIPLAYER_RESYNCING_ROOM);
+		} else {
+			headline = t(displayMessage);
+		}
+
 		return (
 			<main className='view-main animate-fade-in-only'>
-				<div className='max-w-md mx-auto h-full flex items-center justify-center text-center space-y-4'>
+				<div className='max-w-md mx-auto h-full flex flex-col items-center justify-center text-center gap-4 px-4'>
 					<Spinner size={ComponentSize.XL} className='mx-auto text-primary' />
 					<motion.h2
-						key={loadingStep}
+						key={`${loadingStep}-${showDisconnected}-${showStuckResync}`}
 						initial={{ opacity: 0, y: 10 }}
 						animate={{ opacity: 1, y: 0 }}
 						className='text-xl font-semibold'
 					>
-						{t(displayMessage)}
+						{headline}
 					</motion.h2>
+					{showDisconnected && (
+						<Alert variant={AlertVariant.DEFAULT} className='text-start'>
+							<AlertDescription>{t(LoadingMessages.MULTIPLAYER_RECONNECTING)}</AlertDescription>
+						</Alert>
+					)}
+					{showStuckResync && (
+						<div className='flex w-full max-w-sm flex-col items-stretch gap-3'>
+							<Alert variant={AlertVariant.DEFAULT} className='text-start'>
+								<AlertDescription>{t(LoadingMessages.MULTIPLAYER_RESYNCING_ROOM)}</AlertDescription>
+							</Alert>
+							<Button type='button' variant={VariantBase.DEFAULT} size={ButtonSize.MD} onClick={() => joinRoom(roomId)}>
+								{t(LoadingMessages.MULTIPLAYER_RESYNC_ACTION)}
+							</Button>
+						</div>
+					)}
+					{error != null && error !== '' && !showDisconnected && (
+						<Alert variant={AlertVariant.DESTRUCTIVE} className='text-start'>
+							<AlertDescription>{error}</AlertDescription>
+						</Alert>
+					)}
 				</div>
 			</main>
 		);
@@ -182,18 +254,27 @@ export function MultiplayerGameView() {
 							<CardHeader className='py-2 px-4'>
 								<CardTitle className='text-sm'>{t(GameKey.STANDINGS)}</CardTitle>
 							</CardHeader>
-							<CardContent className='pt-0 px-4 pb-3'>
-								<div className='flex flex-wrap gap-x-4 gap-y-2'>
-									{(leaderboard.length > 0 ? leaderboard : (room?.players ?? [])).map((player, index) => {
-										const isFirst = index === 0 && leaderboard.length > 0;
-										return (
-											<div key={player.userId} className={cn('flex items-center gap-2', isFirst && 'font-semibold')}>
-												<UserAvatar source={player} size={AvatarSize.SM} />
-												<span className='text-sm truncate max-w-28'>{getDisplayNameFromUserFields(player)}</span>
-												<span className='text-sm font-bold tabular-nums'>{'score' in player ? player.score : 0}</span>
-											</div>
-										);
-									})}
+							<CardContent className='flex min-h-0 flex-col px-4 pb-3 pt-0'>
+								<div className='max-h-36 min-h-0 overflow-y-auto overflow-x-hidden pr-1'>
+									<div className='flex flex-wrap gap-x-4 gap-y-2'>
+										{(leaderboard.length > 0 ? leaderboard : (room?.players ?? [])).map((player, index) => {
+											const isFirst = index === 0 && leaderboard.length > 0;
+											return (
+												<div
+													key={player.userId}
+													className={cn('flex min-w-0 max-w-full items-center gap-2', isFirst && 'font-semibold')}
+												>
+													<UserAvatar source={player} size={AvatarSize.SM} />
+													<span className='max-w-[10rem] truncate text-sm sm:max-w-[12rem]'>
+														{getDisplayNameFromUserFields(player)}
+													</span>
+													<span className='shrink-0 text-sm font-bold tabular-nums'>
+														{'score' in player ? player.score : 0}
+													</span>
+												</div>
+											);
+										})}
+									</div>
 								</div>
 							</CardContent>
 						</Card>
@@ -225,7 +306,7 @@ export function MultiplayerGameView() {
 									variant={ExitGameButtonVariant.ROOM}
 									onConfirm={() => {
 										leaveRoom();
-										navigate(ROUTES.MULTIPLAYER);
+										navigate(Routes.MULTIPLAYER);
 									}}
 								/>
 							</div>

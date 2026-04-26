@@ -363,7 +363,7 @@ export interface LogMeta {
 	gameMode?: GameMode;
 	overrideGameId?: string | null;
 	gameModes?: GameMode[];
-	/** LLM declined to generate (machine reason from trivia pipeline) */
+
 	generationDeclinedReason?: string;
 	gameQuestionCount?: number;
 	googleId?: string;
@@ -479,6 +479,7 @@ export interface LogMeta {
 	questionsPerRequest?: number;
 	rank?: number;
 	reason?: string;
+	redacted?: boolean;
 	recommendations?: unknown[];
 	recommendationsCount?: number;
 	recentGames?: Array<{ topic?: string; difficulty?: string; score?: number; correctAnswers?: number }>;

@@ -3,7 +3,7 @@ import { matchPath, useLocation } from 'react-router-dom';
 
 import { RoomStatus } from '@shared/constants';
 
-import { AudioKey, ROUTES } from '@/constants';
+import { AudioKey, Routes } from '@/constants';
 import { audioService } from '@/services';
 import {
 	selectGameId,
@@ -32,8 +32,8 @@ export function useRouteBasedMusic() {
 		const prevPath = prevPathnameRef.current;
 		const isInitialMount = prevPath === null;
 
-		const isSinglePlayRoute = matchPath({ path: ROUTES.GAME_SINGLE_PLAY, end: true }, currentPath) != null;
-		const isMultiplayerPlayRoute = matchPath({ path: ROUTES.MULTIPLAYER_PLAY, end: false }, currentPath) != null;
+		const isSinglePlayRoute = matchPath({ path: Routes.GAME_SINGLE_PLAY, end: true }, currentPath) != null;
+		const isMultiplayerPlayRoute = matchPath({ path: Routes.MULTIPLAYER_PLAY, end: false }, currentPath) != null;
 		const isGameRoute = isSinglePlayRoute || isMultiplayerPlayRoute;
 
 		const isSinglePlayerGameActive = isSinglePlayRoute && !!(gameId && questions.length > 0 && !isGameFinalized);
@@ -64,8 +64,8 @@ export function useRouteBasedMusic() {
 			// Switching back to background music (game ended or navigated away)
 			audioService.stop(AudioKey.GAME_MUSIC);
 			// Play GAME_END sound effect when navigating away from game route (single or multiplayer)
-			const wasOnSinglePlay = prevPath && matchPath({ path: ROUTES.GAME_SINGLE_PLAY, end: true }, prevPath);
-			const wasOnMultiplayerPlay = prevPath && matchPath({ path: ROUTES.MULTIPLAYER_PLAY, end: false }, prevPath);
+			const wasOnSinglePlay = prevPath && matchPath({ path: Routes.GAME_SINGLE_PLAY, end: true }, prevPath);
+			const wasOnMultiplayerPlay = prevPath && matchPath({ path: Routes.MULTIPLAYER_PLAY, end: false }, prevPath);
 			if (!isInitialMount && prevPath && prevPath !== currentPath && (wasOnSinglePlay ?? wasOnMultiplayerPlay)) {
 				audioService.play(AudioKey.GAME_END);
 			}

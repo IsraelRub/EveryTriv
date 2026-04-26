@@ -28,7 +28,6 @@ function isGameSessionQuestion(value: unknown): value is GameSessionQuestion {
 	);
 }
 
-/** Optional field: absent, or array of strings. */
 function isOptionalStringArray(value: unknown): boolean {
 	return value == null || (Array.isArray(value) && value.every((item): item is string => VALIDATORS.string(item)));
 }

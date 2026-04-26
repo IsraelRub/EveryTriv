@@ -11,7 +11,7 @@ import {
 	AlertVariant,
 	ButtonSize,
 	DIFFICULTY_UI_CONFIG,
-	GAME_MODES_UI_CONFIG,
+	GAME_MODE_PRESENTATION,
 	GameKey,
 	isTopicBadgeType,
 	TextLanguageStatus,
@@ -79,6 +79,7 @@ export function GameSettingsForm({
 	maxPlayers,
 	onMaxPlayersChange,
 	showMaxPlayers = false,
+	hideInlineFieldAlerts = false,
 }: GameSettingsFormProps): JSX.Element {
 	const { t } = useTranslation('game');
 	const locale = useAppSelector(selectLocale);
@@ -126,6 +127,14 @@ export function GameSettingsForm({
 		const listHasName = (name: string) => list.some(t => namesMatch(t.name, name));
 		const canShowTopic = (name: string) => matchesLocaleText(name, locale);
 
+		const resolveTopicsPlayedCount = (topicName: string): number | undefined => {
+			if (!topicsPlayed) return undefined;
+			const direct = topicsPlayed[topicName];
+			if (VALIDATORS.number(direct)) return direct;
+			const entry = Object.entries(topicsPlayed).find(([k]) => namesMatch(k, topicName));
+			return entry != null && VALIDATORS.number(entry[1]) ? entry[1] : undefined;
+		};
+
 		// Add basic topics first (excluding duplicates); t(GameKey.BASIC_TOPICS, { returnObjects: true })
 		const basicLabels = (() => {
 			const raw = t(GameKey.BASIC_TOPICS, { returnObjects: true });
@@ -139,13 +148,24 @@ export function GameSettingsForm({
 			}
 		});
 
-		// Add most played topic (if exists, excluding basic topics)
+		// Most played: new row, or upgrade existing (e.g. same name as a basic suggestion)
 		if (mostPlayedTopic && canShowTopic(mostPlayedTopic)) {
-			if (!listHasName(mostPlayedTopic)) {
+			const gameCount = resolveTopicsPlayedCount(mostPlayedTopic);
+			const existingIdx = list.findIndex(t => namesMatch(t.name, mostPlayedTopic));
+			if (existingIdx >= 0) {
+				const existing = list.at(existingIdx);
+				if (existing) {
+					list[existingIdx] = {
+						name: existing.name,
+						type: TopicBadgeType.MOST_PLAYED,
+						gameCount,
+					};
+				}
+			} else {
 				list.push({
 					name: mostPlayedTopic,
 					type: TopicBadgeType.MOST_PLAYED,
-					gameCount: topicsPlayed?.[mostPlayedTopic],
+					gameCount,
 				});
 			}
 		}
@@ -156,7 +176,7 @@ export function GameSettingsForm({
 				list.push({
 					name: t,
 					type: TopicBadgeType.YOUR,
-					gameCount: topicsPlayed?.[t],
+					gameCount: resolveTopicsPlayedCount(t),
 				});
 			}
 		});
@@ -172,8 +192,10 @@ export function GameSettingsForm({
 	}, [mostPlayedTopic, userTopics, popularTopics, analytics?.game?.topicsPlayed, locale, t]);
 
 	// Determine visibility based on selectedMode or default behavior
-	const shouldShowQuestionLimit = selectedMode ? GAME_MODES_UI_CONFIG[selectedMode]?.showQuestionLimit : showMaxPlayers; // If multiplayer (showMaxPlayers=true), show question limit
-	const shouldShowTimeLimit = selectedMode ? GAME_MODES_UI_CONFIG[selectedMode]?.showTimeLimit : false; // Never show time limit in multiplayer
+	const shouldShowQuestionLimit = selectedMode
+		? GAME_MODE_PRESENTATION[selectedMode]?.showQuestionLimit
+		: showMaxPlayers;
+	const shouldShowTimeLimit = selectedMode ? GAME_MODE_PRESENTATION[selectedMode]?.showTimeLimit : false;
 
 	const questionsLimitInput =
 		shouldShowQuestionLimit && maxQuestionsPerGame !== undefined && onMaxQuestionsPerGameChange ? (
@@ -188,6 +210,15 @@ export function GameSettingsForm({
 			/>
 		) : null;
 
+	const isTopicFieldError =
+		!hideInlineFieldAlerts &&
+		(!!topicError || (!!topicLanguageError && topicLanguageStatus === TextLanguageStatus.INVALID));
+
+	const isCustomDifficultyFieldError =
+		!hideInlineFieldAlerts &&
+		(!!customDifficultyError ||
+			(!!customDifficultyLanguageError && customDifficultyLanguageStatus === TextLanguageStatus.INVALID));
+
 	return (
 		<div className='space-y-6 py-4'>
 			{/* Topic Selection */}
@@ -200,8 +231,10 @@ export function GameSettingsForm({
 					placeholder={t(GameKey.ENTER_TOPIC_OR_LEAVE_EMPTY)}
 					value={topic}
 					onChange={e => onTopicChange(e.target.value)}
+					error={isTopicFieldError}
+					aria-invalid={isTopicFieldError}
 				/>
-				{topicError && (
+				{topicError && !hideInlineFieldAlerts && (
 					<Alert variant={AlertVariant.DESTRUCTIVE} className='py-2'>
 						<AlertDescription className='text-xs'>{topicError}</AlertDescription>
 					</Alert>
@@ -222,11 +255,12 @@ export function GameSettingsForm({
 						<div className='flex flex-col gap-2'>
 							{topicsList
 								.filter(t => t.type === TopicBadgeType.MOST_PLAYED)
-								.map(({ name, type }) => {
+								.map(({ name, type, gameCount }) => {
 									const isSelected = namesMatch(topic, name);
 									const badge = isTopicBadgeType(type) ? (TOPIC_BADGE_META[type] ?? null) : null;
 									const BadgeIcon = badge?.icon;
 									const chipType: TopicBadgeType = isTopicBadgeType(type) ? type : TopicBadgeType.BASIC;
+									const showPlayMetric = VALIDATORS.number(gameCount) && gameCount > 0;
 									return (
 										<Button
 											key={name}
@@ -240,19 +274,32 @@ export function GameSettingsForm({
 												{name}
 											</span>
 											{badge && (
-												<Badge
-													variant={badge.variant}
+												<div
 													className={cn(
-														'text-[10px] py-0 px-1.5 h-4 flex items-center gap-0.5',
-														type === TopicBadgeType.MOST_PLAYED && 'ms-auto gap-1',
-														badge.badgeClassName
+														'flex items-center gap-1.5 shrink-0',
+														type === TopicBadgeType.MOST_PLAYED && 'ms-auto'
 													)}
 												>
-													{BadgeIcon && <BadgeIcon className={cn('h-2.5 w-2.5', badge.iconClassName)} />}
-													{isTopicBadgeType(type) && TOPIC_BADGE_LABEL_KEYS[type]
-														? t(TOPIC_BADGE_LABEL_KEYS[type])
-														: badge?.label}
-												</Badge>
+													<Badge
+														variant={badge.variant}
+														className={cn(
+															'text-[10px] py-0 px-1.5 h-4 flex items-center gap-0.5',
+															badge.badgeClassName
+														)}
+													>
+														{BadgeIcon && <BadgeIcon className={cn('h-2.5 w-2.5', badge.iconClassName)} />}
+														{isTopicBadgeType(type) && TOPIC_BADGE_LABEL_KEYS[type]
+															? t(TOPIC_BADGE_LABEL_KEYS[type])
+															: badge?.label}
+													</Badge>
+													{showPlayMetric && (
+														<span className='text-[10px] tabular-nums text-muted-foreground whitespace-nowrap'>
+															{t(GameKey.TOPIC_MOST_PLAYED_QUESTION_COUNT, {
+																count: gameCount,
+															})}
+														</span>
+													)}
+												</div>
 											)}
 										</Button>
 									);
@@ -311,7 +358,7 @@ export function GameSettingsForm({
 					<Gauge className='h-4 w-4 text-muted-foreground' />
 					{t(GameKey.DIFFICULTY)}
 				</Label>
-				<div className='grid grid-cols-4 gap-2'>
+				<div className='grid grid-cols-2 md:grid-cols-4 gap-2'>
 					{Object.values(DifficultyLevel)
 						.sort((a, b) => (DIFFICULTY_CONFIG[a]?.order ?? 0) - (DIFFICULTY_CONFIG[b]?.order ?? 0))
 						.flatMap(level => {
@@ -353,8 +400,9 @@ export function GameSettingsForm({
 								}
 							}}
 							className='min-h-[80px]'
+							error={isCustomDifficultyFieldError}
 						/>
-						{customDifficultyError && (
+						{customDifficultyError && !hideInlineFieldAlerts && (
 							<Alert variant={AlertVariant.DESTRUCTIVE} className='py-2'>
 								<AlertDescription className='text-xs'>{customDifficultyError}</AlertDescription>
 							</Alert>

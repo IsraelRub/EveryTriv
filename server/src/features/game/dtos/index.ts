@@ -7,3 +7,4 @@ export * from './surprisePickQuery.dto';
 export * from './startGameSession.dto';
 export * from './submitAnswerToSession.dto';
 export * from './triviaRequest.dto';
+export * from './validateTriviaTopic.dto';

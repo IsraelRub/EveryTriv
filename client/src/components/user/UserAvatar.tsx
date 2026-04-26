@@ -18,13 +18,8 @@ export const UserAvatar = memo(function UserAvatar({
 	pointerEventsNone = false,
 	variant = AvatarVariant.DEFAULT,
 }: UserAvatarProps) {
-	const { avatarId, avatarUrl } = useMemo(
-		() => ({
-			avatarId: avatarIdProp ?? source?.avatar ?? undefined,
-			avatarUrl: source?.avatarUrl ?? undefined,
-		}),
-		[source, avatarIdProp]
-	);
+	const avatarId = avatarIdProp ?? source?.avatar ?? undefined;
+	const avatarUrl = source?.avatarUrl ?? undefined;
 
 	const rawSrc = src ?? getAvatarImageSource(avatarUrl, avatarId);
 	const imageSrc = rawSrc ? (toAbsoluteAvatarUrl(rawSrc, ApiConfig.baseUrl) ?? rawSrc) : undefined;

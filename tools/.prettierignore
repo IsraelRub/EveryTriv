@@ -13,12 +13,8 @@ build/
 .output/
 out/
 
-# Environment files
+# Environment — machine-specific values live in root `.env` only (gitignored); no `*.local` env files.
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
 # Logs
 logs/

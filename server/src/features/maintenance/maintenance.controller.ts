@@ -1,8 +1,9 @@
-import { Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import { Controller, Delete, ForbiddenException, Get, Param, Post } from '@nestjs/common';
 
-import { UserRole } from '@shared/constants';
+import { ERROR_MESSAGES, UserRole } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { AppConfig } from '@config';
 import { CurrentUser, Roles } from '@common/decorators';
 import { serverLogger as logger } from '@internal/services';
 import type { TokenPayload } from '@internal/types';
@@ -16,6 +17,12 @@ export class MaintenanceController {
 		private readonly userStatsMaintenanceService: UserStatsMaintenanceService,
 		private readonly dataMaintenanceService: DataMaintenanceService
 	) {}
+
+	private assertBulkDataMaintenanceEnabled(): void {
+		if (!AppConfig.enableAdminDataMaintenance) {
+			throw new ForbiddenException(ERROR_MESSAGES.validation.ADMIN_DATA_MAINTENANCE_DISABLED);
+		}
+	}
 
 	// User stats consistency endpoints
 
@@ -124,6 +131,7 @@ export class MaintenanceController {
 	@Delete('data/game-history/clear-all')
 	@Roles(UserRole.ADMIN)
 	async clearAllGameHistory(@CurrentUser() user: TokenPayload) {
+		this.assertBulkDataMaintenanceEnabled();
 		try {
 			const result = await this.dataMaintenanceService.clearAllGameHistory();
 
@@ -151,6 +159,7 @@ export class MaintenanceController {
 	@Delete('data/trivia/clear-all')
 	@Roles(UserRole.ADMIN)
 	async clearAllTrivia(@CurrentUser() user: TokenPayload) {
+		this.assertBulkDataMaintenanceEnabled();
 		try {
 			const result = await this.dataMaintenanceService.clearAllTrivia();
 
@@ -178,6 +187,7 @@ export class MaintenanceController {
 	@Delete('data/user-stats/clear-all')
 	@Roles(UserRole.ADMIN)
 	async clearAllUserStats(@CurrentUser() user: TokenPayload) {
+		this.assertBulkDataMaintenanceEnabled();
 		try {
 			const result = await this.dataMaintenanceService.clearAllUserStats();
 
@@ -205,6 +215,7 @@ export class MaintenanceController {
 	@Post('data/test-users/cleanup')
 	@Roles(UserRole.ADMIN)
 	async cleanupTestUsers(@CurrentUser() user: TokenPayload) {
+		this.assertBulkDataMaintenanceEnabled();
 		try {
 			const result = await this.dataMaintenanceService.cleanupTestUsers();
 

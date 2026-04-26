@@ -14,7 +14,7 @@ import {
 	Users,
 } from 'lucide-react';
 
-import { AlertIconSize, LegalKey, ROUTES } from '@/constants';
+import { AlertIconSize, LegalKey, Routes } from '@/constants';
 import type { LegalDocumentSectionSpec } from '@/types';
 import { NavLink } from '@/components/navigation/NavLink';
 import { AlertIcon } from '@/components/ui/alert';
@@ -241,7 +241,7 @@ export function buildTermsOfServiceSections(t: TFunction<'legal'>): LegalDocumen
 						<p>Email: legal@everytriv.com</p>
 						<p>
 							Website:{' '}
-							<NavLink to={ROUTES.CONTACT} className='link-primary'>
+							<NavLink to={Routes.CONTACT} className='link-primary'>
 								{t(LegalKey.CONTACT_PAGE)}
 							</NavLink>
 						</p>

@@ -31,6 +31,11 @@ export interface ProfileEditDialogProps {
 	onOpenChange: (open: boolean) => void;
 }
 
+export interface OptionalAvatarWelcomeDialogProps {
+	open: boolean;
+	onDismiss: () => void;
+}
+
 export interface ChangePasswordDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;

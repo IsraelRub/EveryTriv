@@ -9,7 +9,7 @@ build/
 dist-temp/
 *.tsbuildinfo
 
-# Environment variables (keep `.env.example` tracked)
+# Environment variables — ignore all `.env*` except tracked templates (real `.env` stays private).
 .env*
 !.env.example
 
@@ -37,6 +37,7 @@ Thumbs.db
 # Logs (used by server)
 logs/
 *.log
+*.log.[0-9]*
 
 # Uploads (used by server)
 uploads/

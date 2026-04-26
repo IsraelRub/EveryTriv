@@ -10,7 +10,7 @@ import {
 	LegalDocumentKind,
 	LegalDocumentLayoutVariant,
 	LegalKey,
-	ROUTES,
+	Routes,
 	VariantBase,
 } from '@/constants';
 import type { LegalDocumentModalProps } from '@/types';
@@ -34,7 +34,7 @@ export function LegalDocumentModal({ open, onOpenChange, document }: LegalDocume
 	}, [document, t]);
 
 	const titleKey = document === LegalDocumentKind.PRIVACY ? LegalKey.PRIVACY_POLICY : LegalKey.TERMS_OF_SERVICE;
-	const fullPageTo = document === LegalDocumentKind.PRIVACY ? ROUTES.PRIVACY : ROUTES.TERMS;
+	const fullPageTo = document === LegalDocumentKind.PRIVACY ? Routes.PRIVACY : Routes.TERMS;
 	const icon =
 		document === LegalDocumentKind.PRIVACY ? (
 			<Shield className='h-6 w-6 text-primary md:h-8 md:w-8' />

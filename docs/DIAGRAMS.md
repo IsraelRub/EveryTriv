@@ -630,7 +630,6 @@ erDiagram
         timestamp last_granted_credits_refill_at
         timestamp last_login
         boolean is_active
-        boolean email_verified
         string role
         jsonb preferences
         jsonb achievements

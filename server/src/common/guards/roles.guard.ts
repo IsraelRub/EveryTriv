@@ -64,12 +64,6 @@ export class RolesGuard implements CanActivate {
 			});
 		}
 
-		logger.securityLogin('Role check passed', {
-			userId: user.sub,
-			role: userRole,
-			requiredRoles,
-		});
-
 		return true;
 	}
 }

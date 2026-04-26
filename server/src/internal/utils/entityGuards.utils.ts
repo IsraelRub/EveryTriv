@@ -72,8 +72,11 @@ export const isCreditPurchaseOptionArray = createArrayGuard((value: unknown): va
 		hasBasicValue(value.id, 'string') &&
 		hasBasicValue(value.credits, 'number') &&
 		hasBasicValue(value.price, 'number') &&
+		hasBasicValue(value.priceIls, 'number') &&
 		hasBasicValue(value.priceDisplay, 'string') &&
 		hasBasicValue(value.pricePerCredit, 'number') &&
+		hasOptionalBasicValue(value.priceDisplayIls, 'string') &&
+		hasOptionalBasicValue(value.pricePerCreditIls, 'number') &&
 		hasOptionalBasicValue(value.description, 'string') &&
 		hasOptionalBasicValue(value.currency, 'string') &&
 		hasOptionalBasicValue(value.bonus, 'number') &&
@@ -81,6 +84,7 @@ export const isCreditPurchaseOptionArray = createArrayGuard((value: unknown): va
 		hasOptionalBasicValue(value.popular, 'boolean') &&
 		hasOptionalBasicValue(value.paypalProductId, 'string') &&
 		hasOptionalBasicValue(value.paypalPrice, 'string') &&
+		hasOptionalBasicValue(value.paypalPriceIls, 'string') &&
 		(value.supportedMethods === undefined || Array.isArray(value.supportedMethods))
 	);
 });

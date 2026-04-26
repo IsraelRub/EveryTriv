@@ -14,7 +14,8 @@ export interface BasicUser {
 	avatar?: number;
 
 	avatarUrl?: string;
-	emailVerified?: boolean;
+
+	needsLegalAcceptance?: boolean;
 }
 
 export interface UserProfile extends BasicUser, BaseEntity {
@@ -28,6 +29,8 @@ export interface UserPrivacyPreferences {
 
 export interface UserGamePreferences {
 	defaultDifficulty: DifficultyLevel;
+
+	defaultCustomDifficultyDescription?: string;
 	defaultTopic?: string;
 	defaultGameMode?: GameMode;
 	timeLimit?: number;
@@ -52,7 +55,6 @@ export type UserPreferencesPatch = Omit<Partial<UserPreferences>, 'game'> & {
 
 export interface User extends UserProfile {
 	status: UserStatus;
-	emailVerified: boolean;
 	lastLogin?: Date;
 	authProvider: AuthProvider;
 	credits: number;

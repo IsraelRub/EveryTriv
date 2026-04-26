@@ -7,25 +7,15 @@ import { LengthKey } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 import { validateStringLength } from '@shared/validation';
 
-import {
-	AlertIconSize,
-	AuthKey,
-	ComponentSize,
-	getRegisterOptionalAvatarSearch,
-	LoadingKey,
-	ProfileNameField,
-	QUERY_KEYS,
-	ROUTES,
-	STORAGE_KEYS,
-} from '@/constants';
+import { AlertIconSize, AuthKey, ComponentSize, LoadingKey, ProfileNameField, Routes, StorageKeys } from '@/constants';
 import type { CompleteProfileProps, ProfileFieldErrors } from '@/types';
-import { authService, clientLogger as logger, queryClient } from '@/services';
+import { authService, clientLogger as logger, queryClient, queryInvalidationService } from '@/services';
 import {
-	getAuthCurrentUserQueryKey,
 	getTranslatedErrorMessage,
-	readAuthTokenSnapshotForQueryKey,
+	safeSessionStorageGet,
+	safeSessionStorageRemove,
+	safeSessionStorageSet,
 	translateValidationMessage,
-	userProfileToBasicUser,
 } from '@/utils';
 import { AlertIcon, Button, Card, CloseButton, Input, Label, Spinner } from '@/components';
 
@@ -107,21 +97,12 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 
 				if (profileResponse.profile) {
 					try {
-						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
-						await queryClient.cancelQueries({
-							queryKey: getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-						});
-					} catch (cancelError) {
-						logger.userDebug('Complete profile: cancelQueries before cache write failed (ignored)', {
-							errorInfo: { message: getErrorMessage(cancelError) },
+						await queryInvalidationService.syncUserProfileResponseFromMutation(queryClient, profileResponse);
+					} catch (syncError) {
+						logger.userDebug('Complete profile: cache sync failed (ignored)', {
+							errorInfo: { message: getErrorMessage(syncError) },
 						});
 					}
-					queryClient.setQueryData(QUERY_KEYS.user.profile(), profileResponse, { updatedAt: Date.now() });
-					queryClient.setQueryData(
-						getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-						userProfileToBasicUser(profileResponse.profile),
-						{ updatedAt: Date.now() }
-					);
 				}
 
 				// Call optional onComplete callback
@@ -129,20 +110,16 @@ export function CompleteProfile({ onComplete }: CompleteProfileProps) {
 					onComplete({ username: form.firstName, bio: form.lastName });
 				}
 
-				let pendingOptionalAvatar = false;
-				try {
-					pendingOptionalAvatar = sessionStorage.getItem(STORAGE_KEYS.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE) === '1';
-					sessionStorage.removeItem(STORAGE_KEYS.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE);
-				} catch {
-					// sessionStorage unavailable
-				}
+				const pendingOptionalAvatar = safeSessionStorageGet(StorageKeys.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE) === '1';
+				safeSessionStorageRemove(StorageKeys.PENDING_OPTIONAL_AVATAR_AFTER_PROFILE);
 
 				if (pendingOptionalAvatar) {
-					logger.userInfo('Redirecting to optional avatar step after profile completion');
-					navigate({ pathname: ROUTES.REGISTER, search: getRegisterOptionalAvatarSearch() }, { replace: true });
+					logger.userInfo('Redirecting home with optional avatar welcome after profile completion');
+					safeSessionStorageSet(StorageKeys.SHOW_OPTIONAL_AVATAR_ON_HOME, '1');
+					navigate(Routes.HOME, { replace: true });
 				} else {
 					logger.userInfo('Redirecting to home after profile completion');
-					navigate(ROUTES.HOME, { replace: true });
+					navigate(Routes.HOME, { replace: true });
 				}
 			} catch (err) {
 				const message = getErrorMessage(err);

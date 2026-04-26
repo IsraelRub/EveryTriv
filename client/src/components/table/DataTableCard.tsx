@@ -1,6 +1,6 @@
 import { memo, type ReactElement } from 'react';
 
-import { SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant } from '@/constants';
+import { EMPTY_STATE_LUCIDE_ICON, SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, UiDensity } from '@/constants';
 import type { DataTableCardHeaderProps, DataTableCardProps } from '@/types';
 import { cn } from '@/utils';
 import { Card, CardContent, CardHeader, EmptyState, PaginationButtons, Skeleton } from '@/components';
@@ -53,7 +53,14 @@ function DataTableCardInner<T>({
 		}
 		if (data.length === 0 && emptyState) {
 			return (
-				<EmptyState data='items' title={emptyState.title} description={emptyState.description} showPlayNow={false} />
+				<EmptyState
+					data='items'
+					icon={emptyState.icon ?? EMPTY_STATE_LUCIDE_ICON.tableNoRows}
+					title={emptyState.title}
+					description={emptyState.description}
+					density={UiDensity.COMPACT}
+					showPlayNow={false}
+				/>
 			);
 		}
 		if (data.length === 0) {

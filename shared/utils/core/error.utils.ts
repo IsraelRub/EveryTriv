@@ -1,12 +1,21 @@
 import {
+	ERROR_CODE_ENUM_LIKE_PATTERN,
+	ERROR_CODE_TO_USER_MESSAGE,
+	ERROR_CODE_VALUES,
+	ERROR_DEBUG_NO_STACK_TRACE,
+	ERROR_MESSAGE_PATTERN_MAP,
 	ERROR_MESSAGES,
-	ErrorCode,
+	ERROR_TYPE_TO_MESSAGE,
+	GENERIC_BAD_REQUEST_WRAPPER_MESSAGES,
 	HTTP_NETWORK_ERROR_CODES_SET,
 	HTTP_STATUS_CODES,
 	HTTP_TIMEOUT_ERROR_CODES_SET,
 	NEST_EXCEPTION_NAMES,
+	NESTED_ERROR_MESSAGE_MAX_DEPTH,
+	NESTED_ERROR_MESSAGE_PRIORITY_KEYS,
+	type ErrorCode,
 } from '../../constants';
-import type { ProviderAuthError, ProviderRateLimitError } from '../../types';
+import type { ErrorResponseData, ProviderAuthError, ProviderRateLimitError } from '../../types';
 import { VALIDATORS } from '../../validation';
 import { hasProperty, isNonEmptyString, isRecord } from './data.utils';
 
@@ -22,7 +31,7 @@ export function isErrorWithProperties(error: unknown): error is { name?: string;
 }
 
 const extractNestedErrorMessage = (value: unknown, depth: number = 0): string | null => {
-	if (depth > 5 || value == null) {
+	if (depth > NESTED_ERROR_MESSAGE_MAX_DEPTH || value == null) {
 		return null;
 	}
 
@@ -42,16 +51,7 @@ const extractNestedErrorMessage = (value: unknown, depth: number = 0): string | 
 	}
 
 	if (isRecord(value)) {
-		const prioritizedKeys: readonly string[] = [
-			'message',
-			'error_description',
-			'error',
-			'detail',
-			'description',
-			'errors',
-		];
-
-		for (const key of prioritizedKeys) {
+		for (const key of NESTED_ERROR_MESSAGE_PRIORITY_KEYS) {
 			if (key in value) {
 				const prioritizedValue = extractNestedErrorMessage(value[key], depth + 1);
 				if (prioritizedValue) {
@@ -71,78 +71,6 @@ const extractNestedErrorMessage = (value: unknown, depth: number = 0): string | 
 	return null;
 };
 
-const ERROR_TYPE_TO_MESSAGE: Record<string, string> = {
-	JsonWebTokenError: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	TokenExpiredError: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	NotBeforeError: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	QueryFailedError: ERROR_MESSAGES.database.DATABASE_OPERATION_FAILED,
-	ConnectionTimeoutError: ERROR_MESSAGES.database.DATABASE_OPERATION_FAILED,
-	RedisError: ERROR_MESSAGES.cache.CACHE_OPERATION_FAILED,
-};
-
-// Structured error pattern mapping for message content
-const ERROR_PATTERN_MAP: { pattern: RegExp; message: string }[] = [
-	{ pattern: /validation/i, message: ERROR_MESSAGES.validation.INVALID_INPUT_DATA },
-	{ pattern: /redis|cache/i, message: ERROR_MESSAGES.cache.CACHE_OPERATION_FAILED },
-	{
-		pattern: /database|query failed|connection.*refused|sql/i,
-		message: ERROR_MESSAGES.database.DATABASE_OPERATION_FAILED,
-	},
-	{ pattern: /timeout/i, message: ERROR_MESSAGES.timeout.REQUEST_TIMEOUT },
-	{ pattern: /rate limit|too many requests/i, message: ERROR_MESSAGES.api.RATE_LIMIT_EXCEEDED },
-	{ pattern: /memory|out of memory/i, message: ERROR_MESSAGES.general.INSUFFICIENT_RESOURCES },
-	{ pattern: /enoent|file not found/i, message: ERROR_MESSAGES.storage.FILE_NOT_FOUND },
-	{
-		pattern: /serializ|deserializ|failed to get item|failed to set item|failed to clear storage/i,
-		message: ERROR_MESSAGES.storage.STORAGE_OPERATION_FAILED,
-	},
-	{
-		pattern: /ai provider|generation failed|invalid response format|unable to generate/i,
-		message: ERROR_MESSAGES.provider.INVALID_PROVIDER_RESPONSE,
-	},
-	{ pattern: /eacces|permission denied/i, message: ERROR_MESSAGES.auth.PERMISSION_DENIED },
-];
-
-const ERROR_CODE_TO_USER_MESSAGE: Partial<Record<ErrorCode, string>> = {
-	[ErrorCode.UNAUTHORIZED]: ERROR_MESSAGES.auth.UNAUTHORIZED,
-	[ErrorCode.FORBIDDEN]: ERROR_MESSAGES.auth.FORBIDDEN,
-	[ErrorCode.USER_NOT_AUTHENTICATED]: ERROR_MESSAGES.auth.UNAUTHORIZED,
-	[ErrorCode.AUTHENTICATION_TOKEN_REQUIRED]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	[ErrorCode.INVALID_CREDENTIALS]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	[ErrorCode.INVALID_REFRESH_TOKEN]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	[ErrorCode.TOKEN_REFRESH_FAILED]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	[ErrorCode.AUTHENTICATION_FAILED_GENERIC]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	[ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	[ErrorCode.NOT_FOUND]: ERROR_MESSAGES.api.NOT_FOUND,
-	[ErrorCode.VALIDATION_ERROR]: ERROR_MESSAGES.validation.INPUT_VALIDATION_FAILED,
-	[ErrorCode.INTERNAL_SERVER_ERROR]: ERROR_MESSAGES.api.INTERNAL_SERVER_ERROR,
-	[ErrorCode.NETWORK_ERROR]: ERROR_MESSAGES.api.NETWORK_ERROR,
-	[ErrorCode.USER_DATA_VALIDATION_FAILED]: ERROR_MESSAGES.validation.INPUT_VALIDATION_FAILED,
-	[ErrorCode.AVATAR_ID_OUT_OF_RANGE]: ERROR_MESSAGES.user.AVATAR_ID_OUT_OF_RANGE,
-	[ErrorCode.AVATAR_UPLOAD_FILE_TOO_LARGE]: ERROR_MESSAGES.user.AVATAR_UPLOAD_FILE_TOO_LARGE,
-	[ErrorCode.AVATAR_UPLOAD_INVALID_TYPE]: ERROR_MESSAGES.user.AVATAR_UPLOAD_INVALID_TYPE,
-	[ErrorCode.SEARCH_QUERY_TOO_SHORT]: ERROR_MESSAGES.user.SEARCH_QUERY_REQUIRED,
-	[ErrorCode.REQUIRED_USER_ID]: ERROR_MESSAGES.user.USER_ID_REQUIRED,
-	[ErrorCode.ROOM_NOT_FOUND]: ERROR_MESSAGES.api.NOT_FOUND,
-	[ErrorCode.HOST_USER_NOT_FOUND]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
-	[ErrorCode.ARRAY_EMPTY_OR_ITEM_NOT_FOUND]: ERROR_MESSAGES.client.ARRAY_EMPTY_OR_ITEM_NOT_FOUND,
-	[ErrorCode.GAME_DATA_USER_ID_REQUIRED]: ERROR_MESSAGES.validation.GAME_DATA_USER_ID_REQUIRED,
-	[ErrorCode.GAME_ID_REQUIRED]: ERROR_MESSAGES.validation.GAME_ID_REQUIRED,
-	[ErrorCode.EVENT_TYPE_REQUIRED]: ERROR_MESSAGES.validation.EVENT_TYPE_REQUIRED,
-	[ErrorCode.QUESTION_GENERATION_TIMEOUT]: ERROR_MESSAGES.timeout.REQUEST_TIMEOUT,
-	[ErrorCode.AI_RETURNED_EMPTY_RESPONSE]: ERROR_MESSAGES.provider.INVALID_PROVIDER_RESPONSE,
-	[ErrorCode.RESPONSE_CONTENT_EMPTY]: ERROR_MESSAGES.provider.INVALID_PROVIDER_RESPONSE,
-	[ErrorCode.NO_GROQ_MODEL_AVAILABLE]: ERROR_MESSAGES.provider.NO_GROQ_MODEL_AVAILABLE,
-	[ErrorCode.CACHE_SYNC_ERROR]: ERROR_MESSAGES.cache.CACHE_OPERATION_FAILED,
-	[ErrorCode.REDIS_ERROR]: ERROR_MESSAGES.cache.CACHE_OPERATION_FAILED,
-	[ErrorCode.DATABASE_PASSWORD_REQUIRED]: ERROR_MESSAGES.config.DATABASE_PASSWORD_REQUIRED,
-	[ErrorCode.PAYMENT_NOT_COMPLETED]: ERROR_MESSAGES.payment.PAYMENT_NOT_COMPLETED,
-	[ErrorCode.FAILED_TO_INITIALIZE_PAYPAL]: ERROR_MESSAGES.payment.FAILED_TO_INITIALIZE_PAYPAL,
-	[ErrorCode.INSUFFICIENT_CREDITS]: ERROR_MESSAGES.game.INSUFFICIENT_CREDITS,
-};
-
-const ERROR_CODE_VALUES = new Set<string>(Object.values(ErrorCode));
-
 function isErrorCodeValue(code: string): code is ErrorCode {
 	return ERROR_CODE_VALUES.has(code);
 }
@@ -155,8 +83,12 @@ function getMessageForErrorCode(code: string): string {
 }
 
 const isErrorCode = (message: string): boolean => {
-	return message === message.toUpperCase() && /^[A-Z_]+$/.test(message);
+	return message === message.toUpperCase() && ERROR_CODE_ENUM_LIKE_PATTERN.test(message);
 };
+
+function mapFlatApiErrorString(value: string): string {
+	return isErrorCode(value) ? getMessageForErrorCode(value) : value;
+}
 
 export function getErrorCode(error: unknown): string | undefined {
 	if (error instanceof Error && error.message && isErrorCodeValue(error.message)) {
@@ -166,6 +98,69 @@ export function getErrorCode(error: unknown): string | undefined {
 		return error.message;
 	}
 	return undefined;
+}
+
+function collectStringErrorsFromDetail(detail: unknown): string[] {
+	if (!Array.isArray(detail)) {
+		return [];
+	}
+	return detail
+		.filter((item): item is string => VALIDATORS.string(item) && item.trim().length > 0)
+		.map(item => item.trim());
+}
+
+export function pickPrimaryClientErrorString(data: ErrorResponseData): string | undefined {
+	if (VALIDATORS.string(data.code)) {
+		const trimmedCode = data.code.trim();
+		if (trimmedCode.length > 0) {
+			return trimmedCode;
+		}
+	}
+
+	const trimmedMessage = VALIDATORS.string(data.message) ? data.message.trim() : '';
+	const stringErrors = collectStringErrorsFromDetail(data.errors);
+
+	if (stringErrors.length > 0) {
+		if (trimmedMessage.length === 0 || GENERIC_BAD_REQUEST_WRAPPER_MESSAGES.has(trimmedMessage)) {
+			return stringErrors.join('; ');
+		}
+	}
+
+	if (trimmedMessage.length > 0) {
+		return data.message as string;
+	}
+	if (VALIDATORS.string(data.error) && data.error.trim().length > 0) {
+		return data.error.trim();
+	}
+	if (VALIDATORS.string(data.detail) && data.detail.trim().length > 0) {
+		return data.detail.trim();
+	}
+	if (VALIDATORS.string(data.description) && data.description.trim().length > 0) {
+		return data.description.trim();
+	}
+	return undefined;
+}
+
+function recordToErrorResponseData(record: Record<string, unknown>): ErrorResponseData {
+	return {
+		message: VALIDATORS.string(record.message) ? record.message : undefined,
+		code: VALIDATORS.string(record.code) ? record.code : undefined,
+		error: VALIDATORS.string(record.error) ? record.error : undefined,
+		detail: VALIDATORS.string(record.detail) ? record.detail : undefined,
+		description: VALIDATORS.string(record.description) ? record.description : undefined,
+		errors:
+			record.errors !== undefined && record.errors !== null
+				? (record.errors as ErrorResponseData['errors'])
+				: undefined,
+	};
+}
+
+function resolveMessageFromApiErrorRecord(record: Record<string, unknown>): string | null {
+	const picked = pickPrimaryClientErrorString(recordToErrorResponseData(record));
+	if (picked == null || picked.trim() === '') {
+		return null;
+	}
+	return mapFlatApiErrorString(picked);
 }
 
 const getHttpErrorMessage = (error: Error & { code?: string; response?: unknown }): string | null => {
@@ -183,19 +178,14 @@ const getHttpErrorMessage = (error: Error & { code?: string; response?: unknown 
 	const response = isRecord(error.response) ? error.response : undefined;
 	const responseData = response && 'data' in response && isRecord(response.data) ? response.data : undefined;
 
-	// Try response data fields in priority order
 	if (responseData) {
-		if ('message' in responseData && VALIDATORS.string(responseData.message)) {
-			const msg = responseData.message;
-			return isErrorCode(msg) ? getMessageForErrorCode(msg) : msg;
-		}
-		if ('error' in responseData && VALIDATORS.string(responseData.error)) {
-			const errMsg = responseData.error;
-			return isErrorCode(errMsg) ? getMessageForErrorCode(errMsg) : errMsg;
+		const fromBody = resolveMessageFromApiErrorRecord(responseData);
+		if (fromBody !== null) {
+			return fromBody;
 		}
 		const nestedMessage = extractNestedErrorMessage(responseData);
 		if (nestedMessage) {
-			return nestedMessage;
+			return mapFlatApiErrorString(nestedMessage);
 		}
 	}
 
@@ -268,7 +258,7 @@ const getErrorInstanceMessage = (error: Error): string => {
 	}
 
 	// Check error pattern mapping (message content)
-	for (const { pattern, message: mappedMessage } of ERROR_PATTERN_MAP) {
+	for (const { pattern, message: mappedMessage } of ERROR_MESSAGE_PATTERN_MAP) {
 		if (pattern.test(normalizedMessage)) {
 			return mappedMessage;
 		}
@@ -290,28 +280,14 @@ const getErrorInstanceMessage = (error: Error): string => {
 };
 
 const getRecordErrorMessage = (error: Record<string, unknown>): string | null => {
-	// Check if message property exists and is a string
-	if ('message' in error && VALIDATORS.string(error.message)) {
-		const message = error.message;
-		// Check if message is an error code (uppercase with underscores) – map to user-facing message
-		if (isErrorCode(message)) {
-			return getMessageForErrorCode(message);
-		}
-		// Check if message contains "validation" (but not error codes)
-		if (message.toLowerCase().includes('validation')) {
-			return ERROR_MESSAGES.validation.INVALID_INPUT_DATA;
-		}
-		// Return the message as-is
-		return message;
+	const fromApi = resolveMessageFromApiErrorRecord(error);
+	if (fromApi !== null) {
+		return fromApi;
 	}
 
-	// Try nested message
 	const nestedMessage = extractNestedErrorMessage(error);
 	if (nestedMessage) {
-		if (isErrorCode(nestedMessage)) {
-			return getMessageForErrorCode(nestedMessage);
-		}
-		return nestedMessage;
+		return mapFlatApiErrorString(nestedMessage);
 	}
 
 	return null;
@@ -325,7 +301,7 @@ export function getErrorMessage(error: unknown): string {
 
 	// Handle string errors (e.g. from API) – map if it's an error code
 	if (VALIDATORS.string(error)) {
-		return isErrorCode(error) ? getMessageForErrorCode(error) : error;
+		return mapFlatApiErrorString(error);
 	}
 
 	// Handle null/undefined
@@ -346,9 +322,9 @@ export function getErrorMessage(error: unknown): string {
 
 export function getErrorStack(error: unknown): string {
 	if (error instanceof Error) {
-		return error.stack ?? 'No stack trace available';
+		return error.stack ?? ERROR_DEBUG_NO_STACK_TRACE;
 	}
-	return 'No stack trace available';
+	return ERROR_DEBUG_NO_STACK_TRACE;
 }
 
 export function getErrorType(error: unknown): string {
@@ -477,11 +453,7 @@ export function getErrorStatusCode(error: unknown): number | null {
 }
 
 export function isNetworkError(error: unknown): boolean {
-	if (!(error instanceof Error)) {
-		return false;
-	}
-
-	if (!isRecord(error)) {
+	if (!(error instanceof Error) || !isRecord(error)) {
 		return false;
 	}
 
@@ -490,11 +462,7 @@ export function isNetworkError(error: unknown): boolean {
 }
 
 export function isTimeoutError(error: unknown): boolean {
-	if (!(error instanceof Error)) {
-		return false;
-	}
-
-	if (!isRecord(error)) {
+	if (!(error instanceof Error) || !isRecord(error)) {
 		return false;
 	}
 
@@ -518,4 +486,11 @@ export function isClientError(error: unknown): boolean {
 	}
 
 	return statusCode >= HTTP_STATUS_CODES.BAD_REQUEST && statusCode < HTTP_STATUS_CODES.SERVER_ERROR_MIN;
+}
+
+export function isCancelledOrAbortError(error: unknown): boolean {
+	if (isErrorWithProperties(error) && error.name === 'AbortError') {
+		return true;
+	}
+	return getErrorMessage(error) === 'Request was cancelled';
 }

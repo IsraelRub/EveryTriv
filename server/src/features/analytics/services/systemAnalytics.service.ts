@@ -77,59 +77,47 @@ export class SystemAnalyticsService implements OnModuleInit, OnModuleDestroy {
 		try {
 			const recommendations: SystemRecommendation[] = [];
 
-			if (this.performanceData.responseTime > 2000) {
+			if (this.performanceData.responseTime > TIME_PERIODS_MS.TWO_SECONDS) {
+				const responseTimeMs = String(this.performanceData.responseTime);
 				recommendations.push({
 					id: 'perf-001',
 					type: 'performance',
-					title: 'High Response Time',
-					description: `Server response time is ${this.performanceData.responseTime}ms, above optimal levels`,
-					message: 'Consider optimizing database queries or adding caching',
-					action: 'Review slow query logs and optimize frequently accessed endpoints',
 					priority: RecommendationPriority.HIGH,
-					estimatedImpact: 'Improve user experience and reduce server load',
 					implementationEffort: 'medium',
+					i18nParams: { responseTimeMs },
 				});
 			}
 
 			if (this.securityData.authentication.failedLogins > SYSTEM_HEALTH_THRESHOLDS.FAILED_LOGINS_ATTENTION_COUNT) {
+				const failedLogins = String(this.securityData.authentication.failedLogins);
 				recommendations.push({
 					id: 'sec-001',
 					type: 'security',
-					title: 'High Failed Login Attempts',
-					description: `There have been ${this.securityData.authentication.failedLogins} failed login attempts`,
-					message: 'Consider implementing rate limiting or CAPTCHA',
-					action: 'Review authentication logs and implement additional security measures',
 					priority: RecommendationPriority.HIGH,
-					estimatedImpact: 'Reduce risk of brute force attacks',
 					implementationEffort: 'low',
+					i18nParams: { failedLogins },
 				});
 			}
 
 			if (this.performanceData.memoryUsage > SYSTEM_HEALTH_THRESHOLDS.MEMORY_USAGE_RECOMMENDATION_PERCENT) {
+				const memoryUsage = this.performanceData.memoryUsage.toFixed(1);
 				recommendations.push({
 					id: 'perf-002',
 					type: 'performance',
-					title: 'High Memory Usage',
-					description: `Server memory usage is ${this.performanceData.memoryUsage.toFixed(1)}%, approaching capacity`,
-					message: 'Consider optimizing memory usage or scaling resources',
-					action: 'Review memory-intensive operations and optimize data structures',
 					priority: RecommendationPriority.MEDIUM,
-					estimatedImpact: 'Prevent memory leaks and improve system stability',
 					implementationEffort: 'medium',
+					i18nParams: { memoryUsage },
 				});
 			}
 
 			if (this.performanceData.errorRate > SYSTEM_HEALTH_THRESHOLDS.ERROR_RATE_ATTENTION_PERCENT) {
+				const errorRate = this.performanceData.errorRate.toFixed(2);
 				recommendations.push({
 					id: 'perf-003',
 					type: 'performance',
-					title: 'High Error Rate',
-					description: `Error rate is ${this.performanceData.errorRate.toFixed(2)}%, above acceptable threshold`,
-					message: 'Review error logs and address common failure points',
-					action: 'Investigate and fix recurring errors, improve error handling',
 					priority: RecommendationPriority.HIGH,
-					estimatedImpact: 'Improve system reliability and user experience',
 					implementationEffort: 'high',
+					i18nParams: { errorRate },
 				});
 			}
 

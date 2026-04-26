@@ -14,10 +14,6 @@ function messageIndicatesTriviaDeclined(message: string): boolean {
 	return TRIVIA_DECLINED_MESSAGE_SET.has(message.trim());
 }
 
-/**
- * True when the server refused trivia generation with a structured "declined" message (HTTP 400 + known copy).
- * Used to route the user back to single-player setup instead of home.
- */
 export function isTriviaGenerationDeclinedLoadError(error: unknown): boolean {
 	if (!isRecord(error) || !('response' in error) || !isRecord(error.response)) {
 		return false;

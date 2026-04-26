@@ -41,7 +41,7 @@ import {
 } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { STORAGE_KEYS, VALIDATION_MESSAGES } from '@/constants';
+import { StorageKeys, VALIDATION_MESSAGES } from '@/constants';
 import type { AuthResponse, EnhancedRequestConfig } from '@/types';
 import { clientLogger as logger, storageService } from '@/services';
 import { authRequestInterceptor, InterceptorsService } from './interceptors.service';
@@ -84,6 +84,8 @@ class ApiService {
 	private baseURL: string;
 	private readonly interceptors: InterceptorsService;
 	private activeRequests = new Map<string, Promise<ApiResponse<unknown>>>();
+
+	private refreshTokenInFlight: Promise<RefreshTokenResponse> | null = null;
 
 	private isValidApiResponse<T>(response: ApiResponse<unknown>): response is ApiResponse<T> {
 		return hasProperty(response, 'data') && hasProperty(response, 'success');
@@ -263,16 +265,22 @@ class ApiService {
 				dataKeys: isRecord(data) ? Object.keys(data) : undefined,
 			});
 
+			const isRefreshEndpoint = url === API_ENDPOINTS.AUTH.REFRESH;
+
 			if (data && (method === HttpMethod.POST || method === HttpMethod.PUT || method === HttpMethod.PATCH)) {
 				requestBody = JSON.stringify(data);
 
 				// Debug logging for request body (runs in all environments)
-				logger.apiDebug('Request body prepared', {
-					url,
-					method,
-					requestBody,
-					body: isRecord(data) ? data : undefined,
-				});
+				if (isRefreshEndpoint) {
+					logger.apiDebug('Request body prepared', { url, method, redacted: true });
+				} else {
+					logger.apiDebug('Request body prepared', {
+						url,
+						method,
+						requestBody,
+						body: isRecord(data) ? data : undefined,
+					});
+				}
 			} else {
 				// Log when body is not prepared
 				logger.apiDebug('Request body not prepared', {
@@ -323,12 +331,16 @@ class ApiService {
 					fetchConfig.headers && 'Content-Type' in fetchConfig.headers
 						? fetchConfig.headers['Content-Type']
 						: undefined;
-				logger.apiDebug('Fetch config prepared', {
-					url,
-					method,
-					valueLength: VALIDATORS.string(fetchConfig.body) ? fetchConfig.body.length : 0,
-					...(contentTypeValue && { contentType: contentTypeValue }),
-				});
+				if (isRefreshEndpoint) {
+					logger.apiDebug('Fetch config prepared', { url, method, redacted: true });
+				} else {
+					logger.apiDebug('Fetch config prepared', {
+						url,
+						method,
+						valueLength: VALIDATORS.string(fetchConfig.body) ? fetchConfig.body.length : 0,
+						...(contentTypeValue && { contentType: contentTypeValue }),
+					});
+				}
 			}
 
 			// Execute fetch
@@ -408,8 +420,8 @@ class ApiService {
 	}
 
 	private async clearTokensAndThrowSessionExpired(): Promise<never> {
-		await storageService.delete(STORAGE_KEYS.AUTH_TOKEN);
-		await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
+		await storageService.delete(StorageKeys.AUTH_TOKEN);
+		await storageService.delete(StorageKeys.REFRESH_TOKEN);
 		const sessionExpiredError = new Error(ERROR_MESSAGES.api.SESSION_EXPIRED);
 		sessionExpiredError.name = 'SessionExpiredError';
 		throw sessionExpiredError;
@@ -436,7 +448,7 @@ class ApiService {
 
 			if (response.status === 401 && originalRequest && !hasAttemptedRefresh && !isAuthEndpoint) {
 				// Check if we have a refresh token before attempting refresh
-				const refreshTokenResult = await storageService.getString(STORAGE_KEYS.REFRESH_TOKEN);
+				const refreshTokenResult = await storageService.getString(StorageKeys.REFRESH_TOKEN);
 				const hasRefreshToken = refreshTokenResult.success && refreshTokenResult.data;
 
 				if (hasRefreshToken) {
@@ -448,7 +460,7 @@ class ApiService {
 						// Add a small delay to ensure token is fully stored
 						await delay(TIME_PERIODS_MS.FIFTY_MILLISECONDS);
 
-						const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+						const tokenResult = await storageService.getString(StorageKeys.AUTH_TOKEN);
 						if (!tokenResult.success || !tokenResult.data) {
 							await this.clearTokensAndThrowSessionExpired();
 						}
@@ -509,9 +521,10 @@ class ApiService {
 			const isClientError =
 				response.status >= HTTP_STATUS_CODES.BAD_REQUEST && response.status < HTTP_STATUS_CODES.SERVER_ERROR_MIN;
 
-			const errorMessage = getErrorMessage(
-				errorData.code ?? errorData.message ?? errorData.error ?? `HTTP ${response.status}: ${response.statusText}`
-			);
+			let errorMessage = getErrorMessage(errorData);
+			if (errorMessage === ERROR_MESSAGES.general.UNKNOWN_ERROR) {
+				errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+			}
 
 			const errorResponse: ApiError & {
 				isServerError: boolean;
@@ -612,11 +625,11 @@ class ApiService {
 
 		// Store tokens securely using centralized constants
 		if (authResult.accessToken) {
-			await storageService.setString(STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
+			await storageService.setString(StorageKeys.AUTH_TOKEN, authResult.accessToken);
 		}
 		if (authResult.refreshToken) {
-			await storageService.setString(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
-			await storageService.setString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.setString(StorageKeys.REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.setString(StorageKeys.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
 		}
 
 		return authResult;
@@ -629,8 +642,10 @@ class ApiService {
 			email: credentials.email,
 			password: credentials.password,
 		};
-		if (credentials.firstName) registerPayload.firstName = credentials.firstName;
-		if (credentials.lastName) registerPayload.lastName = credentials.lastName;
+		const firstNameTrimmed = credentials.firstName?.trim();
+		const lastNameTrimmed = credentials.lastName?.trim();
+		if (firstNameTrimmed) registerPayload.firstName = firstNameTrimmed;
+		if (lastNameTrimmed) registerPayload.lastName = lastNameTrimmed;
 
 		logger.authRegister('Calling register API', {
 			emails: { current: credentials.email },
@@ -656,11 +671,11 @@ class ApiService {
 		// to ensure they're available immediately for subsequent requests
 		if (authResult.accessToken) {
 			// Clear any existing token first to prevent conflicts
-			await storageService.delete(STORAGE_KEYS.AUTH_TOKEN);
-			await storageService.setString(STORAGE_KEYS.AUTH_TOKEN, authResult.accessToken);
+			await storageService.delete(StorageKeys.AUTH_TOKEN);
+			await storageService.setString(StorageKeys.AUTH_TOKEN, authResult.accessToken);
 
 			// Verify token was stored correctly
-			const storedTokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+			const storedTokenResult = await storageService.getString(StorageKeys.AUTH_TOKEN);
 			const storedToken = storedTokenResult.success ? storedTokenResult.data : null;
 
 			logger.authInfo('Access token stored', {
@@ -671,9 +686,9 @@ class ApiService {
 			});
 		}
 		if (authResult.refreshToken) {
-			await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
-			await storageService.setString(STORAGE_KEYS.REFRESH_TOKEN, authResult.refreshToken);
-			await storageService.setString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.delete(StorageKeys.REFRESH_TOKEN);
+			await storageService.setString(StorageKeys.REFRESH_TOKEN, authResult.refreshToken);
+			await storageService.setString(StorageKeys.PERSISTENT_REFRESH_TOKEN, authResult.refreshToken);
 			logger.authInfo('Refresh token stored');
 		}
 
@@ -706,13 +721,27 @@ class ApiService {
 			}
 		} finally {
 			// Always clear local tokens
-			await storageService.delete(STORAGE_KEYS.AUTH_TOKEN);
-			await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
+			await storageService.delete(StorageKeys.AUTH_TOKEN);
+			await storageService.delete(StorageKeys.REFRESH_TOKEN);
 		}
 	}
 
 	async refreshToken(): Promise<RefreshTokenResponse> {
-		const refreshTokenResult = await storageService.getString(STORAGE_KEYS.REFRESH_TOKEN);
+		if (this.refreshTokenInFlight) {
+			return this.refreshTokenInFlight;
+		}
+		const promise = this.executeRefreshToken();
+		this.refreshTokenInFlight = promise;
+		promise.finally(() => {
+			if (this.refreshTokenInFlight === promise) {
+				this.refreshTokenInFlight = null;
+			}
+		});
+		return promise;
+	}
+
+	private async executeRefreshToken(): Promise<RefreshTokenResponse> {
+		const refreshTokenResult = await storageService.getString(StorageKeys.REFRESH_TOKEN);
 		const refreshToken = refreshTokenResult.success ? refreshTokenResult.data : null;
 		if (!refreshToken) {
 			throw new Error(ERROR_MESSAGES.api.NO_REFRESH_TOKEN_AVAILABLE);
@@ -724,7 +753,7 @@ class ApiService {
 
 		// Store new access token
 		if (response.data.accessToken) {
-			await storageService.setString(STORAGE_KEYS.AUTH_TOKEN, response.data.accessToken);
+			await storageService.setString(StorageKeys.AUTH_TOKEN, response.data.accessToken);
 		}
 
 		return response.data;
@@ -732,6 +761,11 @@ class ApiService {
 
 	async getCurrentUser(): Promise<BasicUser> {
 		const response = await this.get<BasicUser>(API_ENDPOINTS.AUTH.ME);
+		return response.data;
+	}
+
+	async acceptLegalConsent(): Promise<BasicUser> {
+		const response = await this.post<BasicUser>(API_ENDPOINTS.AUTH.LEGAL_ACCEPTANCE, { accepted: true });
 		return response.data;
 	}
 

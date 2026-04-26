@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { CACHE_KEYS, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { CACHE_KEYS, TIME_DURATIONS_SECONDS, VALIDATION_COUNT } from '@shared/constants';
 import type { AnalyticsEventData, TrackEventResponse } from '@shared/types';
 import { getErrorMessage, isStringArray } from '@shared/utils';
 
@@ -24,7 +24,7 @@ export class AnalyticsTrackerService {
 				const eventsList =
 					existingEventsResult.success && existingEventsResult.data != null ? existingEventsResult.data : [];
 				eventsList.push(eventId);
-				if (eventsList.length > 1000) {
+				if (eventsList.length > VALIDATION_COUNT.LIST_QUERY.LIMIT_MAX) {
 					eventsList.shift();
 				}
 				await this.cacheService.set(userEventsKey, eventsList, TIME_DURATIONS_SECONDS.MONTH);

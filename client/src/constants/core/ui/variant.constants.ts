@@ -20,9 +20,14 @@ export enum ToastVariant {
 	INFO = 'info',
 }
 
-export enum TabsListVariant {
+export enum UiDensity {
 	DEFAULT = 'default',
 	COMPACT = 'compact',
+}
+
+export enum TabsListVariant {
+	DEFAULT = UiDensity.DEFAULT,
+	COMPACT = UiDensity.COMPACT,
 	SECONDARY = 'secondary',
 }
 

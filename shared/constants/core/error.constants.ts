@@ -13,6 +13,7 @@ export enum ErrorCode {
 	FAILED_TO_PURCHASE_CREDITS = 'FAILED_TO_PURCHASE_CREDITS',
 	INVALID_PACKAGE_ID = 'INVALID_PACKAGE_ID',
 	INVALID_CREDITS_PACKAGE = 'INVALID_CREDITS_PACKAGE',
+	CREDITS_PACKAGE_PRICE_ILS_MISSING = 'CREDITS_PACKAGE_PRICE_ILS_MISSING',
 	INVALID_CREDITS_AMOUNT = 'INVALID_CREDITS_AMOUNT',
 	INVALID_PAYMENT_INTENT_ID = 'INVALID_PAYMENT_INTENT_ID',
 	PAYMENT_NOT_COMPLETED = 'PAYMENT_NOT_COMPLETED',
@@ -32,11 +33,6 @@ export enum ErrorCode {
 	ACCOUNT_IS_INACTIVE = 'ACCOUNT_IS_INACTIVE',
 	TOKEN_GENERATION_FAILED = 'TOKEN_GENERATION_FAILED',
 	TOKEN_REFRESH_FAILED = 'TOKEN_REFRESH_FAILED',
-
-	// Email verification
-	VERIFICATION_TOKEN_INVALID_OR_EXPIRED = 'VERIFICATION_TOKEN_INVALID_OR_EXPIRED',
-	EMAIL_ALREADY_VERIFIED = 'EMAIL_ALREADY_VERIFIED',
-	EMAIL_VERIFICATION_REQUIRED = 'EMAIL_VERIFICATION_REQUIRED',
 
 	// Google / OAuth profile
 	GOOGLE_PROFILE_MISSING_IDENTIFIER = 'GOOGLE_PROFILE_MISSING_IDENTIFIER',
@@ -202,6 +198,8 @@ export const ERROR_MESSAGES = {
 		FAILED_TO_RETRIEVE_PAYMENT_HISTORY: 'Failed to retrieve payment history',
 		PAYMENT_NOT_COMPLETED: 'Payment not completed',
 		FAILED_TO_INITIALIZE_PAYPAL: 'Failed to initialize PayPal',
+		CREDITS_PACKAGE_PRICE_ILS_MISSING:
+			'This credit package has no Israeli Shekel (ILS) price configured. Please switch to English (USD) or contact support.',
 	},
 	provider: {
 		INVALID_GROQ_RESPONSE: 'Invalid Groq response format',
@@ -245,7 +243,11 @@ export const ERROR_MESSAGES = {
 		GAME_ID_REQUIRED: 'Game ID is required',
 		EVENT_TYPE_REQUIRED: 'Event type is required',
 		ADMIN_ACCESS_DENIED: 'Access denied: Admin role required',
+		ADMIN_DATA_MAINTENANCE_DISABLED:
+			'Bulk data maintenance is disabled in this environment. Set ENABLE_ADMIN_DATA_MAINTENANCE=true on the server only if you intentionally need these API operations (the admin UI for bulk clears is not included in production client builds).',
 		INVALID_DIFFICULTY_LEVEL: (level: string) => `Invalid difficulty level: ${level}`,
+		CUSTOM_DIFFICULTY_REQUIRES_DESCRIPTION:
+			'Custom difficulty requires a description. Choose easy, medium, hard, or enter how you want the questions to feel.',
 		INVALID_GAME_MODE: (mode: string) => `Invalid game mode: ${mode}`,
 		FAILED_TO_CREATE_CUSTOM_DIFFICULTY_STRING: 'Failed to create custom difficulty string',
 		GAME_DATA_USER_ID_REQUIRED: 'userId is required in GameData',
@@ -273,6 +275,107 @@ export const ERROR_MESSAGES = {
 		UNRECOGNIZABLE_TEXT: 'The text you entered does not appear to be valid. Please enter meaningful text.',
 	},
 } as const;
+
+export const NESTED_ERROR_MESSAGE_MAX_DEPTH = 5;
+
+export const NESTED_ERROR_MESSAGE_PRIORITY_KEYS: readonly string[] = [
+	'message',
+	'error_description',
+	'error',
+	'detail',
+	'description',
+	'errors',
+] as const;
+
+export const ERROR_TYPE_TO_MESSAGE: Record<string, string> = {
+	JsonWebTokenError: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	TokenExpiredError: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	NotBeforeError: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	QueryFailedError: ERROR_MESSAGES.database.DATABASE_OPERATION_FAILED,
+	ConnectionTimeoutError: ERROR_MESSAGES.database.DATABASE_OPERATION_FAILED,
+	RedisError: ERROR_MESSAGES.cache.CACHE_OPERATION_FAILED,
+};
+
+export type ErrorMessagePatternEntry = Readonly<{ pattern: RegExp; message: string }>;
+
+export const ERROR_MESSAGE_PATTERN_MAP: readonly ErrorMessagePatternEntry[] = [
+	{ pattern: /validation/i, message: ERROR_MESSAGES.validation.INVALID_INPUT_DATA },
+	{ pattern: /redis|cache/i, message: ERROR_MESSAGES.cache.CACHE_OPERATION_FAILED },
+	{
+		pattern: /database|query failed|connection.*refused|sql/i,
+		message: ERROR_MESSAGES.database.DATABASE_OPERATION_FAILED,
+	},
+	{ pattern: /timeout/i, message: ERROR_MESSAGES.timeout.REQUEST_TIMEOUT },
+	{ pattern: /rate limit|too many requests/i, message: ERROR_MESSAGES.api.RATE_LIMIT_EXCEEDED },
+	{ pattern: /memory|out of memory/i, message: ERROR_MESSAGES.general.INSUFFICIENT_RESOURCES },
+	{ pattern: /enoent|file not found/i, message: ERROR_MESSAGES.storage.FILE_NOT_FOUND },
+	{
+		pattern: /serializ|deserializ|failed to get item|failed to set item|failed to clear storage/i,
+		message: ERROR_MESSAGES.storage.STORAGE_OPERATION_FAILED,
+	},
+	{
+		pattern: /ai provider|generation failed|invalid response format|unable to generate/i,
+		message: ERROR_MESSAGES.provider.INVALID_PROVIDER_RESPONSE,
+	},
+	{ pattern: /eacces|permission denied/i, message: ERROR_MESSAGES.auth.PERMISSION_DENIED },
+];
+
+export const ERROR_CODE_TO_USER_MESSAGE: Partial<Record<ErrorCode, string>> = {
+	[ErrorCode.UNAUTHORIZED]: ERROR_MESSAGES.auth.UNAUTHORIZED,
+	[ErrorCode.FORBIDDEN]: ERROR_MESSAGES.auth.FORBIDDEN,
+	[ErrorCode.USER_NOT_AUTHENTICATED]: ERROR_MESSAGES.auth.UNAUTHORIZED,
+	[ErrorCode.AUTHENTICATION_TOKEN_REQUIRED]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	[ErrorCode.INVALID_CREDENTIALS]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	[ErrorCode.INVALID_REFRESH_TOKEN]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	[ErrorCode.TOKEN_REFRESH_FAILED]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	[ErrorCode.AUTHENTICATION_FAILED_GENERIC]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	[ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	[ErrorCode.NOT_FOUND]: ERROR_MESSAGES.api.NOT_FOUND,
+	[ErrorCode.VALIDATION_ERROR]: ERROR_MESSAGES.validation.INPUT_VALIDATION_FAILED,
+	[ErrorCode.INTERNAL_SERVER_ERROR]: ERROR_MESSAGES.api.INTERNAL_SERVER_ERROR,
+	[ErrorCode.NETWORK_ERROR]: ERROR_MESSAGES.api.NETWORK_ERROR,
+	[ErrorCode.USER_DATA_VALIDATION_FAILED]: ERROR_MESSAGES.validation.INPUT_VALIDATION_FAILED,
+	[ErrorCode.AVATAR_ID_OUT_OF_RANGE]: ERROR_MESSAGES.user.AVATAR_ID_OUT_OF_RANGE,
+	[ErrorCode.AVATAR_UPLOAD_FILE_TOO_LARGE]: ERROR_MESSAGES.user.AVATAR_UPLOAD_FILE_TOO_LARGE,
+	[ErrorCode.AVATAR_UPLOAD_INVALID_TYPE]: ERROR_MESSAGES.user.AVATAR_UPLOAD_INVALID_TYPE,
+	[ErrorCode.SEARCH_QUERY_TOO_SHORT]: ERROR_MESSAGES.user.SEARCH_QUERY_REQUIRED,
+	[ErrorCode.REQUIRED_USER_ID]: ERROR_MESSAGES.user.USER_ID_REQUIRED,
+	[ErrorCode.ROOM_NOT_FOUND]: ERROR_MESSAGES.api.NOT_FOUND,
+	[ErrorCode.HOST_USER_NOT_FOUND]: ERROR_MESSAGES.auth.AUTHENTICATION_FAILED,
+	[ErrorCode.ARRAY_EMPTY_OR_ITEM_NOT_FOUND]: ERROR_MESSAGES.client.ARRAY_EMPTY_OR_ITEM_NOT_FOUND,
+	[ErrorCode.GAME_DATA_USER_ID_REQUIRED]: ERROR_MESSAGES.validation.GAME_DATA_USER_ID_REQUIRED,
+	[ErrorCode.GAME_ID_REQUIRED]: ERROR_MESSAGES.validation.GAME_ID_REQUIRED,
+	[ErrorCode.EVENT_TYPE_REQUIRED]: ERROR_MESSAGES.validation.EVENT_TYPE_REQUIRED,
+	[ErrorCode.QUESTION_GENERATION_TIMEOUT]: ERROR_MESSAGES.timeout.REQUEST_TIMEOUT,
+	[ErrorCode.AI_RETURNED_EMPTY_RESPONSE]: ERROR_MESSAGES.provider.INVALID_PROVIDER_RESPONSE,
+	[ErrorCode.RESPONSE_CONTENT_EMPTY]: ERROR_MESSAGES.provider.INVALID_PROVIDER_RESPONSE,
+	[ErrorCode.NO_GROQ_MODEL_AVAILABLE]: ERROR_MESSAGES.provider.NO_GROQ_MODEL_AVAILABLE,
+	[ErrorCode.CACHE_SYNC_ERROR]: ERROR_MESSAGES.cache.CACHE_OPERATION_FAILED,
+	[ErrorCode.REDIS_ERROR]: ERROR_MESSAGES.cache.CACHE_OPERATION_FAILED,
+	[ErrorCode.DATABASE_PASSWORD_REQUIRED]: ERROR_MESSAGES.config.DATABASE_PASSWORD_REQUIRED,
+	[ErrorCode.PAYMENT_NOT_COMPLETED]: ERROR_MESSAGES.payment.PAYMENT_NOT_COMPLETED,
+	[ErrorCode.FAILED_TO_INITIALIZE_PAYPAL]: ERROR_MESSAGES.payment.FAILED_TO_INITIALIZE_PAYPAL,
+	[ErrorCode.CREDITS_PACKAGE_PRICE_ILS_MISSING]: ERROR_MESSAGES.payment.CREDITS_PACKAGE_PRICE_ILS_MISSING,
+	[ErrorCode.INSUFFICIENT_CREDITS]: ERROR_MESSAGES.game.INSUFFICIENT_CREDITS,
+};
+
+export const GENERIC_BAD_REQUEST_WRAPPER_MESSAGES = new Set<string>([
+	'Language validation failed',
+	'Trivia request validation failed',
+	'Trivia request transformation failed',
+	'Payment data validation failed',
+	'User data validation failed',
+	'Invalid session start payload',
+	'Invalid trivia request payload structure',
+	'Invalid request body format',
+	'Invalid JSON format in request body',
+]);
+
+export const ERROR_CODE_VALUES = new Set<string>(Object.values(ErrorCode));
+
+export const ERROR_CODE_ENUM_LIKE_PATTERN = /^[A-Z_]+$/;
+
+export const ERROR_DEBUG_NO_STACK_TRACE = 'No stack trace available';
 
 export const NEST_EXCEPTION_NAMES = new Set<string>([
 	'BadGatewayException',

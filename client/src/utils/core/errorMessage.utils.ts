@@ -18,6 +18,9 @@ const VALIDATION_MESSAGE_TO_KEY: Record<string, string> = {
 		ErrorsKey.TRIVIA_DECLINED_INSUFFICIENT_VERIFIABLE_FACTS,
 	[ERROR_MESSAGES.validation.INPUT_VALIDATION_FAILED]: ErrorsKey.INPUT_VALIDATION_FAILED,
 	[ERROR_MESSAGES.validation.INVALID_INPUT_DATA]: ErrorsKey.INVALID_INPUT_DATA,
+	[ERROR_MESSAGES.validation.CUSTOM_DIFFICULTY_REQUIRES_DESCRIPTION]: ErrorsKey.CUSTOM_DIFFICULTY_REQUIRES_DESCRIPTION,
+
+	'Validation failed': ErrorsKey.INPUT_VALIDATION_FAILED,
 };
 
 const VALIDATION_PATTERNS: Array<{
@@ -51,6 +54,16 @@ export function translateValidationMessage(message: string, t: TFunction): strin
 	if (typeof message !== 'string') return message;
 	const trimmed = message.trim();
 	if (!trimmed) return message;
+
+	if (trimmed.includes('; ')) {
+		const segments = trimmed
+			.split('; ')
+			.map(s => s.trim())
+			.filter(s => s.length > 0);
+		if (segments.length > 1) {
+			return segments.map(part => translateValidationMessage(part, t)).join('; ');
+		}
+	}
 
 	const exactKey = VALIDATION_MESSAGE_TO_KEY[trimmed];
 	if (exactKey) return t(exactKey);

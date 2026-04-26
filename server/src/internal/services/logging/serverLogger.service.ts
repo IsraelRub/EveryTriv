@@ -1,9 +1,17 @@
 import { LogLevel } from '@shared/constants';
 import { BaseLoggerService } from '@shared/services';
 import type { LoggerConfigUpdate, LogMessageFn, LogMeta } from '@shared/types';
-import { hasProperty, hasPropertyOfType, isNonEmptyString, isRecord, sanitizeLogMessage } from '@shared/utils';
+import {
+	formatDateTime,
+	hasProperty,
+	hasPropertyOfType,
+	isNonEmptyString,
+	isRecord,
+	sanitizeLogMessage,
+} from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
+import { SERVER_LOG_FILE_DEFAULTS } from '@internal/constants';
 import type { TraceStorage } from '@internal/types';
 
 // Conditional imports for Node.js modules
@@ -22,11 +30,33 @@ if (typeof process !== 'undefined' && process.versions?.node) {
 	}
 }
 
+function envFlagTrue(raw: string | undefined): boolean {
+	if (raw === undefined) return false;
+	const v = raw.trim().toLowerCase();
+	return v === '1' || v === 'true' || v === 'yes';
+}
+
+function parsePositiveIntEnv(raw: string | undefined, fallback: number, maxCap: number): number {
+	if (raw === undefined || raw.trim() === '') return fallback;
+	const n = Number.parseInt(raw, 10);
+	if (!Number.isFinite(n) || n < 1) return fallback;
+	return Math.min(n, maxCap);
+}
+
+function parseNonNegativeIntEnv(raw: string | undefined, fallback: number): number {
+	if (raw === undefined || raw.trim() === '') return fallback;
+	const n = Number.parseInt(raw, 10);
+	if (!Number.isFinite(n) || n < 0) return fallback;
+	return n;
+}
+
 class ServerLoggerService extends BaseLoggerService {
 	private readonly traceStorage: TraceStorage;
 	private logDir: string;
 	private logFile: string;
 	private errorCounts: Map<string, number>;
+	private logMaxBytes: number;
+	private logMaxArchivedFiles: number;
 
 	constructor(config?: LoggerConfigUpdate) {
 		super(config);
@@ -39,6 +69,8 @@ class ServerLoggerService extends BaseLoggerService {
 			enableUserActivityLogging: config?.enableUserActivityLogging ?? true,
 		};
 		this.errorCounts = new Map();
+		this.logMaxBytes = SERVER_LOG_FILE_DEFAULTS.maxFileBytes;
+		this.logMaxArchivedFiles = SERVER_LOG_FILE_DEFAULTS.maxArchivedFiles;
 		if (typeof process === 'undefined' || !path || !VALIDATORS.function(path.join)) {
 			this.logDir = '';
 			this.logFile = '';
@@ -46,8 +78,17 @@ class ServerLoggerService extends BaseLoggerService {
 		}
 		this.logDir = process.env.LOG_DIR ?? 'logs';
 		this.logFile = path.join(this.logDir, 'server.log');
+		this.logMaxBytes = parseNonNegativeIntEnv(process.env.LOG_MAX_FILE_BYTES, SERVER_LOG_FILE_DEFAULTS.maxFileBytes);
+		this.logMaxArchivedFiles = parsePositiveIntEnv(
+			process.env.LOG_MAX_ARCHIVED_FILES,
+			SERVER_LOG_FILE_DEFAULTS.maxArchivedFiles,
+			SERVER_LOG_FILE_DEFAULTS.maxArchivedFilesCap
+		);
 		this.ensureLogDirectory();
-		this.clearLogFile();
+		const clearOnStart = envFlagTrue(process.env.LOG_CLEAR_ON_START);
+		if (clearOnStart) {
+			this.clearLogFile();
+		}
 	}
 
 	protected error: LogMessageFn = (message, meta) => {
@@ -82,7 +123,7 @@ class ServerLoggerService extends BaseLoggerService {
 	}
 
 	private clearLogFile(): void {
-		if (!fs) return;
+		if (!fs || !this.logFile) return;
 		try {
 			fs.writeFileSync(this.logFile, '', 'utf8');
 		} catch {
@@ -90,18 +131,44 @@ class ServerLoggerService extends BaseLoggerService {
 		}
 	}
 
+	private archivedLogPath(index: number): string {
+		return `${this.logFile}.${index}`;
+	}
+
+	private rotateActiveLogIfNeeded(nextChunkBytes: number): void {
+		if (!fs || !this.logFile || this.logMaxBytes <= 0) return;
+		let currentSize = 0;
+		try {
+			if (!fs.existsSync(this.logFile)) return;
+			currentSize = fs.statSync(this.logFile).size;
+		} catch {
+			return;
+		}
+		if (currentSize + nextChunkBytes <= this.logMaxBytes) return;
+		const max = this.logMaxArchivedFiles;
+		try {
+			if (fs.existsSync(this.archivedLogPath(max))) {
+				fs.unlinkSync(this.archivedLogPath(max));
+			}
+			for (let i = max - 1; i >= 1; i--) {
+				const from = this.archivedLogPath(i);
+				const to = this.archivedLogPath(i + 1);
+				if (fs.existsSync(from)) {
+					fs.renameSync(from, to);
+				}
+			}
+			if (fs.existsSync(this.logFile)) {
+				fs.renameSync(this.logFile, this.archivedLogPath(1));
+			}
+		} catch {
+			return;
+		}
+	}
+
 	private writeToFile(level: LogLevel, message: string, meta?: LogMeta): void {
-		if (!fs) return;
+		if (!this.config.enableFile || !fs || !this.logFile) return;
 		const now = new Date();
-		const localTimestamp = now.toLocaleString(undefined, {
-			year: 'numeric',
-			month: '2-digit',
-			day: '2-digit',
-			hour: '2-digit',
-			minute: '2-digit',
-			second: '2-digit',
-			hour12: false,
-		});
+		const localTimestamp = formatDateTime(now, '', true);
 		const logEntry = {
 			timestamp: now.toISOString(),
 			level,
@@ -111,6 +178,8 @@ class ServerLoggerService extends BaseLoggerService {
 			traceId: this.traceId,
 		};
 		const logLine = `[${localTimestamp}] ${level}: ${message} | ${JSON.stringify(logEntry.meta)}\n`;
+		const lineBytes = Buffer.byteLength(logLine, 'utf8');
+		this.rotateActiveLogIfNeeded(lineBytes);
 		try {
 			fs.appendFileSync(this.logFile, logLine, 'utf8');
 		} catch {

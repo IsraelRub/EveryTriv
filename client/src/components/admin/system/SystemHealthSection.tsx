@@ -4,16 +4,18 @@ import { useQuery } from '@tanstack/react-query';
 import {
 	Activity,
 	AlertTriangle,
-	CheckCircle,
+	CheckCircle2,
 	CircleGauge,
 	Clock,
 	Cpu,
 	Database,
+	DatabaseBackup,
 	HardDrive,
 	KeyRound,
 	Layers,
 	Layers2,
 	Lightbulb,
+	LockKeyhole,
 	LogIn,
 	ScanEye,
 	Server,
@@ -24,6 +26,7 @@ import {
 
 import {
 	ERROR_MESSAGES,
+	MEBIBYTE,
 	RecommendationPriority,
 	SYSTEM_HEALTH_THRESHOLDS,
 	SystemInsightStatus,
@@ -31,10 +34,11 @@ import {
 	TIME_PERIODS_MS,
 } from '@shared/constants';
 import type { SecurityMetrics, SystemInsights, SystemPerformanceMetrics, SystemRecommendation } from '@shared/types';
-import { formatNumericValue } from '@shared/utils';
+import { formatDateTime, formatNumericValue } from '@shared/utils';
 
 import {
 	AdminKey,
+	OverallSystemStatus,
 	QUERY_KEYS,
 	SEMANTIC_ICON_TEXT,
 	SkeletonVariant,
@@ -45,7 +49,7 @@ import {
 } from '@/constants';
 import type { AdminSystemHealthDashboardBundle, SystemInsightDetailGridProps } from '@/types';
 import { analyticsService } from '@/services';
-import { cn, formatDateTime } from '@/utils';
+import { cn, translateAdminRecommendation, translateRecommendationPriority } from '@/utils';
 import {
 	Accordion,
 	AccordionContent,
@@ -62,8 +66,7 @@ import {
 	StatCard,
 } from '@/components';
 import { useUserRole } from '@/hooks';
-
-type OverallSystemStatus = 'healthy' | 'attention' | 'critical';
+import { ConsistencyManagementSection } from './ConsistencyManagementSection';
 
 function deriveOverallSystemStatus(
 	performance: SystemPerformanceMetrics | undefined,
@@ -72,27 +75,27 @@ function deriveOverallSystemStatus(
 	recommendations: SystemRecommendation[] | undefined
 ): OverallSystemStatus {
 	if (recommendations?.some(r => r.priority === RecommendationPriority.HIGH)) {
-		return 'critical';
+		return OverallSystemStatus.CRITICAL;
 	}
 	if (performance != null && performance.errorRate > SYSTEM_HEALTH_THRESHOLDS.ERROR_RATE_ATTENTION_PERCENT) {
-		return 'critical';
+		return OverallSystemStatus.CRITICAL;
 	}
 	if (security != null && security.dataSecurity.dataBreaches > 0) {
-		return 'critical';
+		return OverallSystemStatus.CRITICAL;
 	}
 	if (insights?.status === SystemInsightStatus.ATTENTION) {
-		return 'attention';
+		return OverallSystemStatus.ATTENTION;
 	}
 	if (
 		security != null &&
 		security.authentication.failedLogins > SYSTEM_HEALTH_THRESHOLDS.FAILED_LOGINS_ATTENTION_COUNT
 	) {
-		return 'attention';
+		return OverallSystemStatus.ATTENTION;
 	}
 	if (recommendations?.some(r => r.priority === RecommendationPriority.MEDIUM)) {
-		return 'attention';
+		return OverallSystemStatus.ATTENTION;
 	}
-	return 'healthy';
+	return OverallSystemStatus.HEALTHY;
 }
 
 const SYSTEM_INSIGHT_LINE_COLORS: readonly string[] = [
@@ -177,16 +180,16 @@ export function SystemHealthSection() {
 	}, [systemInsights]);
 
 	const overallLabelKey: AdminKey =
-		overallStatus === 'healthy'
+		overallStatus === OverallSystemStatus.HEALTHY
 			? AdminKey.OVERALL_STATUS_HEALTHY
-			: overallStatus === 'attention'
+			: overallStatus === OverallSystemStatus.ATTENTION
 				? AdminKey.OVERALL_STATUS_ATTENTION
 				: AdminKey.OVERALL_STATUS_CRITICAL;
 
 	const overallCardClass =
-		overallStatus === 'healthy'
+		overallStatus === OverallSystemStatus.HEALTHY
 			? 'border-emerald-500/40 bg-emerald-500/5'
-			: overallStatus === 'attention'
+			: overallStatus === OverallSystemStatus.ATTENTION
 				? 'border-amber-500/50 bg-amber-500/5'
 				: 'border-destructive/60 bg-destructive/5';
 
@@ -210,16 +213,16 @@ export function SystemHealthSection() {
 
 	return (
 		<div className='space-y-8'>
-			<div className='flex w-full justify-start'>
+			<div className='flex w-full justify-center'>
 				<Card className={cn(overallCardClass, 'w-fit max-w-full')}>
-					<CardHeader className='pb-2'>
+					<CardHeader className='pb-2 text-center'>
 						<CardTitle className='text-base font-semibold'>{t(AdminKey.SYSTEM_HEALTH_AT_A_GLANCE)}</CardTitle>
-						<CardDescription className='flex items-center gap-3 pt-2'>
+						<CardDescription className='flex items-center justify-center gap-3 pt-2'>
 							<span
 								className={
-									overallStatus === 'healthy'
+									overallStatus === OverallSystemStatus.HEALTHY
 										? 'inline-flex h-3 w-3 shrink-0 rounded-full bg-emerald-500'
-										: overallStatus === 'attention'
+										: overallStatus === OverallSystemStatus.ATTENTION
 											? 'inline-flex h-3 w-3 shrink-0 rounded-full bg-amber-500'
 											: 'inline-flex h-3 w-3 shrink-0 rounded-full bg-destructive'
 								}
@@ -236,7 +239,7 @@ export function SystemHealthSection() {
 				description={t(AdminKey.PERFORMANCE_METRICS_DESC)}
 			>
 				{systemPerformance ? (
-					<div className='grid grid-cols-4 gap-4'>
+					<div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
 						<StatCard
 							stackIconLabel
 							icon={Zap}
@@ -248,7 +251,7 @@ export function SystemHealthSection() {
 							stackIconLabel
 							icon={HardDrive}
 							label={t(AdminKey.MEMORY_USAGE)}
-							value={formatNumericValue(systemPerformance.memoryUsage / 1024 / 1024, 2, ' MB')}
+							value={formatNumericValue(systemPerformance.memoryUsage / MEBIBYTE, 2, ' MB')}
 							color={SEMANTIC_ICON_TEXT.secondary}
 						/>
 						<StatCard
@@ -293,113 +296,121 @@ export function SystemHealthSection() {
 			</SectionCard>
 
 			<div className={systemInsights != null ? 'grid grid-cols-2 gap-6' : undefined}>
-				<SectionCard
-					title={t(AdminKey.SECURITY_METRICS)}
-					icon={Layers2}
-					description={t(AdminKey.SECURITY_METRICS_DESC)}
-				>
-					{systemSecurity ? (
-						<Accordion
-							type='multiple'
-							defaultValue={[SystemSecurityAccordion.AUTH, SystemSecurityAccordion.AUTHZ, SystemSecurityAccordion.DATA]}
-							className='w-full'
-						>
-							<AccordionItem value={SystemSecurityAccordion.AUTH}>
-								<AccordionTrigger>
-									<span className='flex items-center gap-2'>
-										<LogIn className='h-5 w-5 shrink-0 text-primary' />
-										{t(AdminKey.AUTHENTICATION)}
-									</span>
-								</AccordionTrigger>
-								<AccordionContent>
-									<div className='grid grid-cols-3 gap-4'>
-										<StatCard
-											icon={AlertTriangle}
-											label={t(AdminKey.FAILED_LOGINS)}
-											value={systemSecurity.authentication.failedLogins.toLocaleString()}
-											color={SEMANTIC_ICON_TEXT.destructive}
-										/>
-										<StatCard
-											icon={CheckCircle}
-											label={t(AdminKey.SUCCESSFUL_LOGINS)}
-											value={systemSecurity.authentication.successfulLogins.toLocaleString()}
-											color={SEMANTIC_ICON_TEXT.success}
-										/>
-										<StatCard
-											icon={Shield}
-											label={t(AdminKey.ACCOUNT_LOCKOUTS)}
-											value={systemSecurity.authentication.accountLockouts.toLocaleString()}
-											color={SEMANTIC_ICON_TEXT.warning}
-										/>
-									</div>
-								</AccordionContent>
-							</AccordionItem>
-							<AccordionItem value={SystemSecurityAccordion.AUTHZ}>
-								<AccordionTrigger>
-									<span className='flex items-center gap-2'>
-										<KeyRound className='h-5 w-5 shrink-0 text-primary' />
-										{t(AdminKey.AUTHORIZATION)}
-									</span>
-								</AccordionTrigger>
-								<AccordionContent>
-									<div className='grid grid-cols-2 gap-4'>
-										<StatCard
-											icon={AlertTriangle}
-											label={t(AdminKey.UNAUTHORIZED_ATTEMPTS)}
-											value={systemSecurity.authorization.unauthorizedAttempts.toLocaleString()}
-											color={SEMANTIC_ICON_TEXT.destructive}
-										/>
-										<StatCard
-											icon={Shield}
-											label={t(AdminKey.PERMISSION_VIOLATIONS)}
-											value={systemSecurity.authorization.permissionViolations.toLocaleString()}
-											color={SEMANTIC_ICON_TEXT.orange}
-										/>
-									</div>
-								</AccordionContent>
-							</AccordionItem>
-							<AccordionItem value={SystemSecurityAccordion.DATA}>
-								<AccordionTrigger>
-									<span className='flex items-center gap-2'>
-										<Database className='h-5 w-5 shrink-0 text-primary' />
-										{t(AdminKey.DATA_SECURITY)}
-									</span>
-								</AccordionTrigger>
-								<AccordionContent>
-									<div className='grid grid-cols-3 gap-4'>
-										<StatCard
-											icon={AlertTriangle}
-											label={t(AdminKey.DATA_BREACHES)}
-											value={systemSecurity.dataSecurity.dataBreaches.toLocaleString()}
-											color={
-												systemSecurity.dataSecurity.dataBreaches > 0
-													? SEMANTIC_ICON_TEXT.destructive
-													: SEMANTIC_ICON_TEXT.success
-											}
-										/>
-										<StatCard
-											icon={Shield}
-											label={t(AdminKey.ENCRYPTION_COVERAGE)}
-											value={formatNumericValue(systemSecurity.dataSecurity.encryptionCoverage, 2, '%')}
-											color={SEMANTIC_ICON_TEXT.primary}
-										/>
-										<StatCard
-											icon={CheckCircle}
-											label={t(AdminKey.BACKUP_SUCCESS_RATE)}
-											value={formatNumericValue(systemSecurity.dataSecurity.backupSuccessRate, 2, '%')}
-											color={SEMANTIC_ICON_TEXT.success}
-										/>
-									</div>
-								</AccordionContent>
-							</AccordionItem>
-						</Accordion>
-					) : (
-						<div className='text-center py-8 text-muted-foreground'>
-							<Shield className='h-12 w-12 mx-auto mb-4 opacity-50' />
-							<p>{t(AdminKey.NO_SECURITY_METRICS_AVAILABLE)}</p>
-						</div>
-					)}
-				</SectionCard>
+				<div className='space-y-6'>
+					<SectionCard
+						title={t(AdminKey.SECURITY_METRICS)}
+						icon={Layers2}
+						description={t(AdminKey.SECURITY_METRICS_DESC)}
+					>
+						{systemSecurity ? (
+							<Accordion
+								type='multiple'
+								defaultValue={[
+									SystemSecurityAccordion.AUTH,
+									SystemSecurityAccordion.AUTHZ,
+									SystemSecurityAccordion.DATA,
+								]}
+								className='w-full'
+							>
+								<AccordionItem value={SystemSecurityAccordion.AUTH}>
+									<AccordionTrigger>
+										<span className='flex items-center gap-2'>
+											<LogIn className='h-5 w-5 shrink-0 text-primary' />
+											{t(AdminKey.AUTHENTICATION)}
+										</span>
+									</AccordionTrigger>
+									<AccordionContent>
+										<div className='grid grid-cols-3 gap-4'>
+											<StatCard
+												icon={AlertTriangle}
+												label={t(AdminKey.FAILED_LOGINS)}
+												value={systemSecurity.authentication.failedLogins.toLocaleString()}
+												color={SEMANTIC_ICON_TEXT.destructive}
+											/>
+											<StatCard
+												icon={CheckCircle2}
+												label={t(AdminKey.SUCCESSFUL_LOGINS)}
+												value={systemSecurity.authentication.successfulLogins.toLocaleString()}
+												color={SEMANTIC_ICON_TEXT.success}
+											/>
+											<StatCard
+												icon={Shield}
+												label={t(AdminKey.ACCOUNT_LOCKOUTS)}
+												value={systemSecurity.authentication.accountLockouts.toLocaleString()}
+												color={SEMANTIC_ICON_TEXT.warning}
+											/>
+										</div>
+									</AccordionContent>
+								</AccordionItem>
+								<AccordionItem value={SystemSecurityAccordion.AUTHZ}>
+									<AccordionTrigger>
+										<span className='flex items-center gap-2'>
+											<KeyRound className='h-5 w-5 shrink-0 text-primary' />
+											{t(AdminKey.AUTHORIZATION)}
+										</span>
+									</AccordionTrigger>
+									<AccordionContent>
+										<div className='grid grid-cols-2 gap-4'>
+											<StatCard
+												icon={AlertTriangle}
+												label={t(AdminKey.UNAUTHORIZED_ATTEMPTS)}
+												value={systemSecurity.authorization.unauthorizedAttempts.toLocaleString()}
+												color={SEMANTIC_ICON_TEXT.destructive}
+											/>
+											<StatCard
+												icon={Shield}
+												label={t(AdminKey.PERMISSION_VIOLATIONS)}
+												value={systemSecurity.authorization.permissionViolations.toLocaleString()}
+												color={SEMANTIC_ICON_TEXT.orange}
+											/>
+										</div>
+									</AccordionContent>
+								</AccordionItem>
+								<AccordionItem value={SystemSecurityAccordion.DATA}>
+									<AccordionTrigger>
+										<span className='flex items-center gap-2'>
+											<Database className='h-5 w-5 shrink-0 text-primary' />
+											{t(AdminKey.DATA_SECURITY)}
+										</span>
+									</AccordionTrigger>
+									<AccordionContent>
+										<div className='grid grid-cols-3 gap-4'>
+											<StatCard
+												icon={AlertTriangle}
+												label={t(AdminKey.DATA_BREACHES)}
+												value={systemSecurity.dataSecurity.dataBreaches.toLocaleString()}
+												color={
+													systemSecurity.dataSecurity.dataBreaches > 0
+														? SEMANTIC_ICON_TEXT.destructive
+														: SEMANTIC_ICON_TEXT.success
+												}
+											/>
+											<StatCard
+												icon={LockKeyhole}
+												label={t(AdminKey.ENCRYPTION_COVERAGE)}
+												value={formatNumericValue(systemSecurity.dataSecurity.encryptionCoverage, 2, '%')}
+												color={SEMANTIC_ICON_TEXT.primary}
+											/>
+											<StatCard
+												icon={DatabaseBackup}
+												label={t(AdminKey.BACKUP_SUCCESS_RATE)}
+												value={formatNumericValue(systemSecurity.dataSecurity.backupSuccessRate, 2, '%')}
+												color={SEMANTIC_ICON_TEXT.success}
+											/>
+										</div>
+									</AccordionContent>
+								</AccordionItem>
+							</Accordion>
+						) : (
+							<div className='text-center py-8 text-muted-foreground'>
+								<Shield className='h-12 w-12 mx-auto mb-4 opacity-50' />
+								<p>{t(AdminKey.NO_SECURITY_METRICS_AVAILABLE)}</p>
+							</div>
+						)}
+					</SectionCard>
+
+					<ConsistencyManagementSection />
+				</div>
 
 				{systemInsights != null && (
 					<SectionCard
@@ -585,43 +596,46 @@ export function SystemHealthSection() {
 						<AccordionContent className='px-4 pb-4'>
 							<p className='mb-4 text-sm text-muted-foreground'>{t(AdminKey.SECURITY_RECOMMENDATIONS_DESC)}</p>
 							<div className='space-y-4'>
-								{systemRecommendations.map(recommendation => (
-									<Card key={recommendation.id} className='card-accent-left-warning'>
-										<CardHeader className='pb-3'>
-											<div className='flex items-start justify-between'>
-												<div className='flex-1'>
-													<CardTitle className='mb-1 text-lg'>{recommendation.title}</CardTitle>
-													<CardDescription>{recommendation.description}</CardDescription>
+								{systemRecommendations.map(recommendation => {
+									const copy = translateAdminRecommendation(recommendation, t);
+									return (
+										<Card key={recommendation.id} className='card-accent-left-warning'>
+											<CardHeader className='pb-3'>
+												<div className='flex items-start justify-between'>
+													<div className='flex-1'>
+														<CardTitle className='mb-1 text-lg'>{copy.title}</CardTitle>
+														<CardDescription>{copy.description}</CardDescription>
+													</div>
+													<Badge
+														variant={
+															recommendation.priority === RecommendationPriority.HIGH
+																? VariantBase.DESTRUCTIVE
+																: VariantBase.SECONDARY
+														}
+													>
+														{translateRecommendationPriority(recommendation.priority, t)}
+													</Badge>
 												</div>
-												<Badge
-													variant={
-														recommendation.priority === RecommendationPriority.HIGH
-															? VariantBase.DESTRUCTIVE
-															: VariantBase.SECONDARY
-													}
-												>
-													{recommendation.priority}
-												</Badge>
-											</div>
-										</CardHeader>
-										<CardContent>
-											<div className='space-y-2'>
-												<p className='text-sm'>{recommendation.message}</p>
-												<div className='flex flex-wrap gap-4 text-xs text-muted-foreground'>
-													<span>
-														<strong>{t(AdminKey.RECOMMENDATION_ACTION)}:</strong> {recommendation.action}
-													</span>
-													<span>
-														<strong>{t(AdminKey.RECOMMENDATION_IMPACT)}:</strong> {recommendation.estimatedImpact}
-													</span>
-													<span>
-														<strong>{t(AdminKey.RECOMMENDATION_EFFORT)}:</strong> {recommendation.implementationEffort}
-													</span>
+											</CardHeader>
+											<CardContent>
+												<div className='space-y-2'>
+													<p className='text-sm'>{copy.message}</p>
+													<div className='flex flex-wrap gap-4 text-xs text-muted-foreground'>
+														<span>
+															<strong>{t(AdminKey.RECOMMENDATION_ACTION)}:</strong> {copy.action}
+														</span>
+														<span>
+															<strong>{t(AdminKey.RECOMMENDATION_IMPACT)}:</strong> {copy.estimatedImpact}
+														</span>
+														<span>
+															<strong>{t(AdminKey.RECOMMENDATION_EFFORT)}:</strong> {copy.implementationEffort}
+														</span>
+													</div>
 												</div>
-											</div>
-										</CardContent>
-									</Card>
-								))}
+											</CardContent>
+										</Card>
+									);
+								})}
 							</div>
 						</AccordionContent>
 					</AccordionItem>

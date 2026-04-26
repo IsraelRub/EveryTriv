@@ -371,6 +371,40 @@
 		will-change: opacity;
 	}
 
+	@keyframes route-shell-enter {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
+		}
+
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.animate-route-shell-enter {
+		animation: route-shell-enter 0.22s var(--ease-emphasized) both;
+		transform: translateZ(0);
+	}
+
+	@keyframes dashboard-tab-panel-enter {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.dashboard-tab-panel-enter[data-state='active'] {
+		animation: dashboard-tab-panel-enter 0.22s var(--ease-emphasized) both;
+		transform: translateZ(0);
+	}
+
 	@keyframes fade-in-up-simple {
 		from {
 			opacity: 0;

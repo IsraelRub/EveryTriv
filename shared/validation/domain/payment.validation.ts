@@ -1,5 +1,10 @@
+import { PURCHASE_CURRENCIES, type PurchaseCurrency } from '../../constants';
 import type { ValidationResult } from '../../types';
 import { isNonEmptyString, sanitizeCardNumber } from '../../utils';
+
+export function isPurchaseCurrency(value: string): value is PurchaseCurrency {
+	return PURCHASE_CURRENCIES.has(value);
+}
 
 export function isValidCardNumber(rawNumber: string): boolean {
 	const digits = sanitizeCardNumber(rawNumber);

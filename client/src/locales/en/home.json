@@ -41,7 +41,10 @@
 	"publicLobbySearchPlaceholder": "Type part of a topic…",
 	"publicLobbyJoin": "Join room",
 	"publicLobbyLoginToJoin": "Sign in to join",
-	"publicLobbyEmpty": "No public rooms are waiting right now.",
+	"publicLobbyEmpty": "Public waiting rooms show up here automatically. Open the lobby to create one or join with a room code.",
+	"publicLobbyEmptyTitle": "Nobody is waiting in a public lobby",
+	"publicLobbyEmptyFiltered": "No rooms match this topic. Try a different search or head to the lobby to host or join.",
 	"publicLobbyLoadError": "Could not load the room list",
-	"publicLobbyRefreshing": "Updating…"
+	"publicLobbyRefreshing": "Updating…",
+	"publicLobbyPlayerSlots": "{{current}}/{{max}}"
 }

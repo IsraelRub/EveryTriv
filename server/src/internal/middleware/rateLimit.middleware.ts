@@ -53,19 +53,14 @@ export class RateLimitMiddleware implements NestMiddleware {
 			req.ip ?? req.socket?.remoteAddress ?? req.connection?.remoteAddress ?? forwardedIp ?? realIp ?? undefined;
 		const ipDisplay = ip ?? 'unknown';
 
-		// Bypass rate limiting for localhost (development/testing)
+		// Bypass rate limiting for localhost (dev / testing)
 		// This allows local API tests to run without hitting rate limits
 		// Production IPs will still be rate limited
 		const shouldBypass =
 			AppConfig.features.bypassRateLimitForLocalhost !== false &&
-			(this.isLocalhost(ip) || AppConfig.nodeEnv === 'development' || process.env.NODE_ENV === 'development');
+			(this.isLocalhost(ip) || AppConfig.isDevelopmentRuntime);
 
 		if (shouldBypass) {
-			logger.security('access', 'Rate limit bypassed for localhost/development', {
-				ip: ipDisplay,
-				path: req.path,
-				nodeEnv: AppConfig.nodeEnv,
-			});
 			const duration = calculateDuration(startTime);
 			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);
 			return next();
@@ -159,13 +154,6 @@ export class RateLimitMiddleware implements NestMiddleware {
 			res.header('X-RateLimit-Limit', maxRequests.toString());
 			res.header('X-RateLimit-Remaining', Math.max(0, maxRequests - requests).toString());
 			res.header('X-RateLimit-Reset', (getCurrentTimestampInSeconds() + this.WINDOW_SIZE_IN_SECONDS).toString());
-
-			logger.security('access', 'Rate limit check passed', {
-				ip: ipDisplay,
-				path: req.path,
-				requestCounts: { current: requests },
-				remaining: maxRequests - requests,
-			});
 
 			const duration = calculateDuration(startTime);
 			metricsService.trackMiddlewareExecution('RateLimitMiddleware', duration, true);

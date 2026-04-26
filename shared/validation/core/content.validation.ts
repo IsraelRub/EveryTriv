@@ -9,6 +9,10 @@ import {
 } from '@shared/constants';
 import type { BaseValidationResult } from '@shared/types';
 
+function escapeRegExpChars(s: string): string {
+	return s.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+}
+
 export function validateStringLength(value: string | null | undefined, lengthKey: LengthKey): BaseValidationResult {
 	const { MIN, MAX } = VALIDATION_LENGTH[lengthKey];
 	const { fieldName, required } = LENGTH_RULES[lengthKey];
@@ -41,9 +45,13 @@ export function validateStringLength(value: string | null | undefined, lengthKey
 }
 
 export function validateNoForbiddenWords(text: string, fieldName: string): BaseValidationResult {
-	const lower = text.trim().toLowerCase();
+	const trimmed = text.trim();
+	if (trimmed.length === 0) {
+		return { isValid: true, errors: [] };
+	}
 	for (const word of FORBIDDEN_CONTENT_WORDS) {
-		if (lower.includes(word)) {
+		const boundary = new RegExp(`(?:^|\\s|[\\p{P}\\p{S}])${escapeRegExpChars(word)}(?:$|\\s|[\\p{P}\\p{S}])`, 'iu');
+		if (boundary.test(trimmed)) {
 			return {
 				isValid: false,
 				errors: [ERROR_MESSAGES.validation.VALID_FIELD(fieldName)],
@@ -86,15 +94,10 @@ export function matchesLocaleText(text: string, locale: Locale): boolean {
 	return !isPredominantlyHebrewText(trimmedText) && latinCharacters / nonWhitespace.length > 0.4;
 }
 
-/** Hebrew matres lectionis (letters often carrying vowel role) */
 const HEBREW_MATRES = /[\u05D0\u05D5\u05D9\u05D4\u05E2]/;
 
 const ENGLISH_VOWELS = /[aeiouAEIOU]/;
 
-/**
- * Detects gibberish / keyboard-mash input that is unlikely to be caught by LanguageTool alone.
- * Applies to Hebrew and Latin-heavy text.
- */
 export function isLikelyGibberish(text: string): boolean {
 	const cleaned = text.replace(/[\s\p{P}\p{S}\d]/gu, '');
 	if (cleaned.length < LANGUAGE_VALIDATION_THRESHOLDS.GIBBERISH_MIN_CLEANED_LENGTH) {

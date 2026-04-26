@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar, CheckCircle, FileQuestion, GamepadIcon, Gauge, Tag } from 'lucide-react';
+import { Calendar, CheckCircle2, FileQuestion, GamepadIcon, Gauge, Tag } from 'lucide-react';
 
 import { EMPTY_VALUE } from '@shared/constants';
 import type { AdminTriviaQuestion } from '@shared/types';
@@ -13,6 +13,7 @@ import {
 	CommonKey,
 	DataTableColumnType,
 	DEFAULT_ITEMS_PER_PAGE,
+	EMPTY_STATE_LUCIDE_ICON,
 	FILTER_ALL_VALUE,
 	SortDirection,
 	TRIVIA_SORT_FIELDS_SET,
@@ -120,7 +121,7 @@ export const TriviaManagementTable = memo(function TriviaManagementTable() {
 				id: 'correctAnswer',
 				type: DataTableColumnType.TEXT,
 				getValue: row => row.answers[getCorrectAnswerIndex(row)]?.text ?? EMPTY_VALUE,
-				headerIcon: <CheckCircle />,
+				headerIcon: <CheckCircle2 />,
 			},
 			{
 				id: 'created',
@@ -134,6 +135,13 @@ export const TriviaManagementTable = memo(function TriviaManagementTable() {
 
 	const hasActiveFilters =
 		topicFilter !== FILTER_ALL_VALUE || difficultyFilter !== FILTER_ALL_VALUE || searchTerm.length > 0;
+
+	const triviaEmptyIcon =
+		tableState.sortedData.length === 0 && hasActiveFilters
+			? EMPTY_STATE_LUCIDE_ICON.searchNoResults
+			: questions.length === 0
+				? EMPTY_STATE_LUCIDE_ICON.triviaNoQuestionsInDb
+				: undefined;
 
 	return (
 		<DataTableCard<AdminTriviaQuestion>
@@ -171,13 +179,13 @@ export const TriviaManagementTable = memo(function TriviaManagementTable() {
 							placeholder={t(AdminKey.TRIVIA_SEARCH_PLACEHOLDER)}
 							value={searchTerm}
 							onChange={e => setSearchTerm(e.target.value)}
-							className='w-full min-w-0 max-w-[220px]'
+							className='w-full min-w-0 max-w-[14rem]'
 						/>
 					</div>
 					<div className='flex items-center gap-2'>
 						<Label className='text-sm font-medium'>{t(AdminKey.TRIVIA_TOPIC_FILTER)}</Label>
 						<Select value={topicFilter} onValueChange={setTopicFilter}>
-							<SelectTrigger className='w-full min-w-0 max-w-[160px]'>
+							<SelectTrigger className='w-full min-w-0 max-w-[10rem]'>
 								<SelectValue placeholder={t(AdminKey.ALL_TOPICS)} />
 							</SelectTrigger>
 							<SelectContent>
@@ -193,7 +201,7 @@ export const TriviaManagementTable = memo(function TriviaManagementTable() {
 					<div className='flex items-center gap-2'>
 						<Label className='text-sm font-medium'>{t(AdminKey.TRIVIA_DIFFICULTY_FILTER)}</Label>
 						<Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-							<SelectTrigger className='w-full min-w-0 max-w-[160px]'>
+							<SelectTrigger className='w-full min-w-0 max-w-[10rem]'>
 								<SelectValue placeholder={t(AdminKey.ALL_DIFFICULTIES)} />
 							</SelectTrigger>
 							<SelectContent>
@@ -228,6 +236,7 @@ export const TriviaManagementTable = memo(function TriviaManagementTable() {
 			emptyState={{
 				title: t(AdminKey.NO_TRIVIA_FOUND_TITLE),
 				description: t(AdminKey.NO_TRIVIA_FOUND_DESCRIPTION),
+				icon: triviaEmptyIcon,
 			}}
 			emptyValue={EMPTY_VALUE}
 			sortBy={tableState.sortBy}

@@ -1,11 +1,8 @@
-import { QUERY_KEYS, STORAGE_KEYS } from '@/constants';
+import { QUERY_KEYS, StorageKeys } from '@/constants';
+import { safeSessionStorageGet } from '../infrastructure/safeSessionStorage.utils';
 
 export function readAuthTokenSnapshotForQueryKey(): string | null {
-	try {
-		return sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-	} catch {
-		return null;
-	}
+	return safeSessionStorageGet(StorageKeys.AUTH_TOKEN);
 }
 
 export function getAuthCurrentUserQueryKey(tokenSnapshot?: string | null): readonly string[] {

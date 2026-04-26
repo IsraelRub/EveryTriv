@@ -7,7 +7,7 @@ import { LeaderboardPeriod } from '@shared/constants';
 import { formatNumericValue } from '@shared/utils';
 import { isLeaderboardPeriod } from '@shared/validation';
 
-import { LEADERBOARD_PERIOD_PARAM, SEMANTIC_ICON_TEXT, StatisticsLeaderboardKey } from '@/constants';
+import { SEMANTIC_ICON_TEXT, STATISTICS_LEADERBOARD_PERIOD_SEARCH_PARAM, StatisticsLeaderboardKey } from '@/constants';
 import { Card, LeaderboardTable, SectionCard, StatCard, Tabs } from '@/components';
 import { SecondaryTabsBar } from '@/components/layout';
 import {
@@ -33,13 +33,13 @@ export function LeaderboardTabContent() {
 	const weeklyEntries = Array.isArray(weeklyData) ? weeklyData : [];
 
 	useEffect(() => {
-		const param = searchParams.get(LEADERBOARD_PERIOD_PARAM);
+		const param = searchParams.get(STATISTICS_LEADERBOARD_PERIOD_SEARCH_PARAM);
 		if (param != null && isLeaderboardPeriod(param)) {
 			dispatch(setLeaderboardPeriod(param));
 			return;
 		}
 		const next = new URLSearchParams(searchParams);
-		next.set(LEADERBOARD_PERIOD_PARAM, leaderboardTab);
+		next.set(STATISTICS_LEADERBOARD_PERIOD_SEARCH_PARAM, leaderboardTab);
 		setSearchParams(next, { replace: true });
 	}, [dispatch, leaderboardTab, searchParams, setSearchParams]);
 
@@ -47,7 +47,7 @@ export function LeaderboardTabContent() {
 		if (!isLeaderboardPeriod(value)) return;
 		dispatch(setLeaderboardPeriod(value));
 		const next = new URLSearchParams(searchParams);
-		next.set(LEADERBOARD_PERIOD_PARAM, value);
+		next.set(STATISTICS_LEADERBOARD_PERIOD_SEARCH_PARAM, value);
 		setSearchParams(next);
 	};
 

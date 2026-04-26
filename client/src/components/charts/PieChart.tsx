@@ -5,7 +5,15 @@ import { Cell, Legend, Pie, PieChart as RechartsPieChart, ResponsiveContainer, T
 import { calculatePercentage, formatNumericValue, isRecord, sumBy } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { CHART_COLORS, CHART_HEIGHTS, CommonKey, CssColor, OTHERS_LABEL, SkeletonVariant } from '@/constants';
+import {
+	CHART_COLORS,
+	CHART_HEIGHTS,
+	CommonKey,
+	CssColor,
+	OTHERS_LABEL,
+	SkeletonVariant,
+	UiDensity,
+} from '@/constants';
 import type { ChartDataPoint, PieChartLabelLineProps, PieChartProps } from '@/types';
 import { EmptyState, Skeleton } from '@/components';
 
@@ -109,7 +117,7 @@ export const PieChart = memo(function PieChart({
 		return <Skeleton variant={SkeletonVariant.Chart} style={{ height: `${height}px` }} />;
 	}
 	if (emptyStateData && !data?.length) {
-		return <EmptyState data={emptyStateData} />;
+		return <EmptyState data={emptyStateData} density={UiDensity.COMPACT} />;
 	}
 	return (
 		<ResponsiveContainer width='100%' height={height}>

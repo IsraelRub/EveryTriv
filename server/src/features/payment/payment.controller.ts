@@ -2,9 +2,17 @@ import { Body, Controller, Get, HttpException, HttpStatus, Post } from '@nestjs/
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
 
-import { API_ENDPOINTS, ErrorCode, PaymentMethod, PaymentStatus, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import {
+	API_ENDPOINTS,
+	ErrorCode,
+	PaymentMethod,
+	PaymentStatus,
+	PurchaseCurrency,
+	TIME_DURATIONS_SECONDS,
+} from '@shared/constants';
 import type { ManualPaymentDetails, PaymentData } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
+import { isPurchaseCurrency } from '@shared/validation';
 
 import { Cache, CurrentUserId } from '@common/decorators';
 import { PaymentDataPipe } from '@common/pipes';
@@ -76,9 +84,19 @@ export class PaymentController {
 				const manualPayment =
 					body.paymentMethod === PaymentMethod.MANUAL_CREDIT ? this.buildManualPaymentDetails(body) : undefined;
 
+				const currencyRaw = body.currency ?? PurchaseCurrency.USD;
+				const currency = isPurchaseCurrency(currencyRaw) ? currencyRaw : PurchaseCurrency.USD;
+				if (
+					currency === PurchaseCurrency.ILS &&
+					(!Number.isFinite(packageInfo.priceIls) || packageInfo.priceIls <= 0)
+				) {
+					throw new HttpException(ErrorCode.CREDITS_PACKAGE_PRICE_ILS_MISSING, HttpStatus.BAD_REQUEST);
+				}
+				const amount = currency === PurchaseCurrency.ILS ? packageInfo.priceIls : packageInfo.price;
+
 				const paymentData: PaymentData = {
-					amount: packageInfo.price,
-					currency: 'USD',
+					amount,
+					currency,
 					description: `Credits purchase: ${packageInfo.credits} credits`,
 					metadata: {
 						packageId: body.packageId,

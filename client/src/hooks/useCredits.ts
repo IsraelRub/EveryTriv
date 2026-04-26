@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { GameMode, TIME_PERIODS_MS } from '@shared/constants';
@@ -7,6 +8,7 @@ import { calculateNewBalance, calculateRequiredCredits, getErrorMessage, isRecor
 import { QUERY_KEYS } from '@/constants';
 import type { DeductCreditsParams } from '@/types';
 import { creditsService, clientLogger as logger, paymentService, queryInvalidationService } from '@/services';
+import { getDefaultPurchaseCurrencyFromLanguageTag } from '@/utils/domain/purchaseCurrency.utils';
 import { useIsAuthenticated, useUserRole } from './useAuth';
 
 export const useCanPlay = (questionsPerRequest: number = 1, gameMode: GameMode = GameMode.QUESTION_LIMITED) => {
@@ -150,9 +152,15 @@ export const useCreditPackages = () => {
 
 export const usePurchaseCredits = () => {
 	const queryClient = useQueryClient();
+	const { i18n } = useTranslation();
 
 	return useMutation({
-		mutationFn: (request: CreditsPurchaseRequest) => paymentService.purchaseCredits(request),
+		mutationFn: (request: CreditsPurchaseRequest) =>
+			paymentService.purchaseCredits({
+				...request,
+				currency: request.currency ?? getDefaultPurchaseCurrencyFromLanguageTag(i18n.language),
+			}),
+		retry: false,
 		onSuccess: async () => {
 			try {
 				await queryClient.cancelQueries({ queryKey: QUERY_KEYS.credits.balance() });

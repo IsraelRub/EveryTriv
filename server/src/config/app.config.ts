@@ -17,12 +17,22 @@ export class AppConfig {
 	}
 
 	static get nodeEnv() {
-		return process.env.NODE_ENV ?? 'production';
+		return process.env.NODE_ENV ?? 'prod';
+	}
+
+	static get isDevelopmentRuntime(): boolean {
+		return (process.env.NODE_ENV ?? '').trim().toLowerCase() === 'dev';
 	}
 
 	static get isProductionRuntime(): boolean {
-		const normalized = (process.env.NODE_ENV ?? 'production').trim().toLowerCase();
-		return normalized === 'production' || normalized === 'prod';
+		return (process.env.NODE_ENV ?? 'prod').trim().toLowerCase() === 'prod';
+	}
+
+	static get enableAdminDataMaintenance(): boolean {
+		if (!AppConfig.isProductionRuntime) {
+			return true;
+		}
+		return (process.env.ENABLE_ADMIN_DATA_MAINTENANCE ?? '').trim().toLowerCase() === 'true';
 	}
 
 	static get domain() {
@@ -74,10 +84,11 @@ export class AppConfig {
 	}
 
 	static get redis() {
+		const redisPassword = process.env.REDIS_PASSWORD;
 		return {
 			host: process.env.REDIS_HOST ?? LOCALHOST_CONFIG.hosts.REDIS,
 			port: parseInt(process.env.REDIS_PORT ?? LOCALHOST_CONFIG.ports.REDIS.toString(), 10),
-			password: process.env.REDIS_PASSWORD ?? undefined,
+			password: redisPassword != null && redisPassword !== '' ? redisPassword : undefined,
 			db: parseInt(process.env.REDIS_DB ?? REDIS_DEFAULTS.db.toString(), 10),
 			keyPrefix: process.env.REDIS_KEY_PREFIX ?? REDIS_DEFAULTS.keyPrefix,
 			retryStrategy: (times: number) => {

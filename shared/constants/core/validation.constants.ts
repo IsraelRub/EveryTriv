@@ -9,6 +9,8 @@ export enum ClientValidationType {
 	LAST_NAME = 'lastName',
 }
 
+const PERSON_NAME_FIELD_LENGTH = { MIN: 1, MAX: 50 } as const;
+
 export const VALIDATION_LENGTH = {
 	PASSWORD: {
 		MIN: 6,
@@ -26,18 +28,9 @@ export const VALIDATION_LENGTH = {
 		MIN: 3,
 		MAX: 150,
 	},
-	NAME: {
-		MIN: 1,
-		MAX: 50,
-	},
-	FIRST_NAME: {
-		MIN: 1,
-		MAX: 50,
-	},
-	LAST_NAME: {
-		MIN: 1,
-		MAX: 50,
-	},
+	NAME: PERSON_NAME_FIELD_LENGTH,
+	FIRST_NAME: PERSON_NAME_FIELD_LENGTH,
+	LAST_NAME: PERSON_NAME_FIELD_LENGTH,
 	CARDHOLDER_NAME: {
 		MIN: 2,
 		MAX: 80,
@@ -88,6 +81,12 @@ export const VALIDATION_LENGTH = {
 		ERROR_PREVIEW: 13,
 		ID_PREVIEW: 11,
 		CONTENT_PREVIEW: 103,
+
+		MEDIUM_PREVIEW: 100,
+
+		FIELD_ERROR_SNIPPET: 20,
+
+		LONG_PREVIEW: 200,
 	},
 	SEARCH_QUERY: {
 		MIN: 1,
@@ -98,8 +97,7 @@ export const VALIDATION_LENGTH = {
 	},
 } as const;
 
-/** Debounce before calling text language / spelling validation from the game settings form. */
-export const LANGUAGE_VALIDATION_DEBOUNCE_MS = 500;
+export const LANGUAGE_VALIDATION_DEBOUNCE_MS = TIME_PERIODS_MS.FIVE_HUNDRED_MILLISECONDS;
 
 export enum LengthKey {
 	TOPIC = 'TOPIC',
@@ -155,12 +153,25 @@ export const VALIDATION_COUNT = {
 	},
 	CREDITS: {
 		MIN: 1,
-		MAX: 10000,
+		MAX: 100_000,
+	},
+	ADMIN_CREDIT_PACKAGE: {
+		PACKAGES_COUNT: {
+			MIN: 1,
+			MAX: 30,
+		},
+		PRICE: {
+			MIN: 1,
+			MAX: 99_999,
+			STEP: 10,
+		},
 	},
 	LEADERBOARD: {
 		MIN: 1,
 		MAX: 100,
 		DEFAULT: 50,
+		QUERY_FETCH_BUFFER: 500,
+		QUERY_FETCH_CAP: 1500,
 	},
 	ACTIVITY_ENTRIES: {
 		MIN: 1,
@@ -168,6 +179,7 @@ export const VALIDATION_COUNT = {
 		DEFAULT: 30,
 	},
 	AVATAR_ID: {
+		CLEAR: 0,
 		MIN: 1,
 		MAX: 15,
 	},
@@ -175,23 +187,19 @@ export const VALIDATION_COUNT = {
 		LIMIT_MIN: 1,
 		LIMIT_MAX: 1000,
 		OFFSET_MIN: 0,
-		/** Default page size for client admin tables and other paginated UI lists */
 		DEFAULT_PAGE_SIZE: 10,
 	},
 	MULTIPLAYER_PUBLIC_LOBBY_LIST: {
-		/** Default page size for `GET /multiplayer/rooms/public-waiting` */
 		LIMIT: 30,
 		LIMIT_MIN: 1,
 		LIMIT_MAX: 50,
 	},
-	/** Admin `GET /user/admin/all` pagination (aligned with `UserCoreService.getAllUsers` clamp) */
 	ADMIN_USERS_LIST: {
 		LIMIT_MIN: 1,
 		LIMIT_MAX: 200,
 		DEFAULT_LIMIT: 50,
 		DEFAULT_OFFSET: 0,
 	},
-	/** Admin `GET /admin/trivia` pagination (aligned with `AdminService.getAllTriviaQuestions` clamp) */
 	ADMIN_TRIVIA_LIST: {
 		LIMIT_MIN: 1,
 		LIMIT_MAX: 1000,
@@ -203,17 +211,18 @@ export const VALIDATION_COUNT = {
 export const LANGUAGE_VALIDATION_THRESHOLDS = {
 	EXCESSIVE_PUNCTUATION: 0.3, // 30% of words
 	EXCESSIVE_CAPITALIZATION: 0.2, // 20% of words
-	/** Minimum non-space/non-punct length before gibberish heuristics apply */
+
 	GIBBERISH_MIN_CLEANED_LENGTH: 4,
-	/** Flag when (unique characters / cleaned length) is at or below this (e.g. "ababab" → 2/6 ≈ 0.33) */
+
 	GIBBERISH_MAX_UNIQUE_TO_LENGTH_RATIO: 0.35,
-	/** Same character repeated this many times in a row (e.g. 3 → "aaa") */
-	GIBBERISH_MAX_SAME_CHAR_STREAK: 3,
-	GIBBERISH_MAX_CONSONANT_STREAK_EN: 5,
+
+	GIBBERISH_MAX_SAME_CHAR_STREAK: 5,
+
+	GIBBERISH_MAX_CONSONANT_STREAK_EN: 7,
 	GIBBERISH_LATIN_MIN_LETTERS_FOR_CONSONANT_CHECK: 4,
 	GIBBERISH_HEBREW_MIN_LETTERS_FOR_MATRES_CHECK: 5,
 	GIBBERISH_HEBREW_MAX_STREAK_WITHOUT_MATRES: 6,
-	/** Word-level: minimum number of whitespace-separated tokens for the "all single-letter" check */
+
 	GIBBERISH_MIN_SINGLE_CHAR_WORD_COUNT: 3,
 } as const;
 

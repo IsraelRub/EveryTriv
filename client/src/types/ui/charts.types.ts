@@ -2,7 +2,6 @@ import type { DifficultyStats, UserTrendPoint } from '@shared/types';
 
 import type { TopicData } from './stats.types';
 
-/** Planar coordinates (charts, animation paths, Recharts geometry). */
 export interface Point2d {
 	x: number;
 	y: number;
@@ -20,7 +19,6 @@ export interface DifficultyTooltipPoint {
 	successRate: number;
 }
 
-/** Custom Recharts pie `labelLine` renderer props. */
 export interface PieChartLabelLineProps {
 	points: Point2d[];
 	stroke?: string;

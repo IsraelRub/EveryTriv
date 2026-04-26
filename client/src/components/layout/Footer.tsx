@@ -45,7 +45,9 @@ export default function Footer() {
 					{FOOTER_SECTIONS.map(section => (
 						<div key={section.titleKey} className='flex flex-col gap-2'>
 							<h5 className='text-sm font-semibold text-muted-foreground mb-2'>{t(section.titleKey)}</h5>
-							{section.type === FooterSectionType.SOCIAL && <div className='grid grid-cols-4 gap-3'>{socialCells}</div>}
+							{section.type === FooterSectionType.SOCIAL && (
+								<div className='grid grid-cols-2 sm:grid-cols-4 gap-3'>{socialCells}</div>
+							)}
 							{section.type === FooterSectionType.LINKS && (
 								<div className='flex flex-col gap-2'>
 									{section.links.map(link => (

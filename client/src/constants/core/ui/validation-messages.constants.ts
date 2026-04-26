@@ -30,6 +30,8 @@ export const VALIDATION_MESSAGES = {
 
 	// Custom difficulty validation
 	CUSTOM_DIFFICULTY_INVALID: 'Invalid custom difficulty',
+	CUSTOM_DIFFICULTY_REQUIRES_DESCRIPTION:
+		'Custom difficulty requires a description. Choose easy, medium, hard, or enter how you want the questions to feel.',
 	CUSTOM_DIFFICULTY_LANGUAGE_VALIDATION_FAILED: 'Language validation failed. Please try again.',
 
 	// Topic / text language validation (validate-text API failure)

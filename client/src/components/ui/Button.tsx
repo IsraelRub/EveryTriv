@@ -10,8 +10,8 @@ import {
 	ButtonSize,
 	CommonKey,
 	HomeKey,
-	ROUTES,
-	STATISTICS_TAB_PARAM,
+	Routes,
+	STATISTICS_TAB_SEARCH_PARAM,
 	VariantBase,
 	ViewAllDestination,
 } from '@/constants';
@@ -96,7 +96,7 @@ export const RefreshButton = memo(function RefreshButton({ onClick, isLoading }:
 	);
 });
 
-export function CloseButton({ to = ROUTES.HOME, className, onClose }: CloseButtonProps) {
+export function CloseButton({ to = Routes.HOME, className, onClose }: CloseButtonProps) {
 	const { isModal, closeModal } = useModalRoute();
 
 	const buttonProps = {
@@ -154,8 +154,8 @@ export function ViewAllButton({ destination, visible = true }: ViewAllButtonProp
 	const { t } = useTranslation();
 	const navigate = useNavigate();
 	const path =
-		ROUTES.STATISTICS +
-		(destination === ViewAllDestination.STATISTICS ? '' : `?${STATISTICS_TAB_PARAM}=${destination}`);
+		Routes.STATISTICS +
+		(destination === ViewAllDestination.STATISTICS ? '' : `?${STATISTICS_TAB_SEARCH_PARAM}=${destination}`);
 
 	if (!visible) {
 		return null;

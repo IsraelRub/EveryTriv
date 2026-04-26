@@ -1,8 +1,9 @@
 import { io, Socket } from 'socket.io-client';
 
-import { MultiplayerEvent, TIME_PERIODS_MS } from '@shared/constants';
+import { MultiplayerEvent } from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 
+import { MULTIPLAYER_WEBSOCKET_RECONNECT } from '@/constants';
 import type {
 	MultiplayerErrorMessage,
 	MultiplayerEventCallback,
@@ -14,8 +15,6 @@ import { ApiConfig, clientLogger as logger } from '@/services';
 class MultiplayerService {
 	private socket: Socket | null = null;
 	private reconnectAttempts = 0;
-	private readonly maxReconnectAttempts = 5;
-	private readonly reconnectDelay = TIME_PERIODS_MS.SECOND;
 	private isConnecting = false;
 	private pendingListeners: Array<{ event: string; callback: MultiplayerEventCallback }> = [];
 	private listeners: Map<string, Set<MultiplayerEventCallback>> = new Map();
@@ -80,8 +79,10 @@ class MultiplayerService {
 			},
 			transports: ['websocket'],
 			reconnection: true,
-			reconnectionAttempts: this.maxReconnectAttempts,
-			reconnectionDelay: this.reconnectDelay,
+			reconnectionAttempts: MULTIPLAYER_WEBSOCKET_RECONNECT.MAX_ATTEMPTS,
+			reconnectionDelay: MULTIPLAYER_WEBSOCKET_RECONNECT.BASE_DELAY_MS,
+			reconnectionDelayMax: MULTIPLAYER_WEBSOCKET_RECONNECT.MAX_DELAY_MS,
+			randomizationFactor: 0.5,
 		});
 
 		this.setupEventHandlers();

@@ -7,11 +7,6 @@
 	"tab_business": "Business",
 	"tab_system": "System",
 	"tab_ai_providers": "AI Providers",
-	"systemSub_health": "Health",
-	"systemSub_consistency": "Consistency",
-	"systemSub_maintenance": "Maintenance",
-	"records": "Records",
-	"clearAll": "Clear All",
 	"fix": "Fix",
 	"check": "Check",
 	"fixing": "Fixing...",
@@ -31,22 +26,6 @@
 	"actual": "Actual:",
 	"runFullCheck": "Run full check",
 	"checkingConsistency": "Checking consistency...",
-	"clearGameHistory": "Game history",
-	"clearTrivia": "Trivia cache",
-	"clearUserStats": "User statistics",
-	"clearLeaderboard": "Leaderboard",
-	"clearGameHistoryDesc": "Remove all game session records and history from the platform.",
-	"clearTriviaDesc": "Delete all generated trivia questions from the database.",
-	"clearUserStatsDesc": "Reset all user analytics and statistics (scores, streaks, topics).",
-	"clearLeaderboardDesc": "Clear weekly, monthly and yearly leaderboard scores for all users.",
-	"itemName_gameHistory": "game history",
-	"itemName_triviaQuestions": "trivia questions",
-	"itemName_userStatistics": "user statistics",
-	"itemName_leaderboardData": "leaderboard data",
-	"actionCannotBeUndone": "This action cannot be undone.",
-	"dataMaintenanceTitle": "Data & maintenance",
-	"dataMaintenanceDesc": "Clear platform data. Use with caution; these actions cannot be undone.",
-	"clearAllItem": "Clear All {{itemName}}",
 	"usersSearchPlaceholder": "Email or name...",
 	"usersSearchLabel": "Search:",
 	"usersTableName": "Name",
@@ -173,6 +152,7 @@
 	"pricingConfigDesc": "Edit credit package prices and amounts. Changes apply to the payment page.",
 	"packageId": "Package ID",
 	"priceUsd": "Price (USD)",
+	"priceIls": "Price (ILS)",
 	"platformOverview": "Platform Overview",
 	"platformOverviewDesc": "Real-time platform metrics",
 	"platformTrends": "Platform Trends",
@@ -207,8 +187,9 @@
 	"overallStatusHealthy": "All clear",
 	"overallStatusAttention": "Needs attention",
 	"overallStatusCritical": "Critical issues detected",
-	"pricingValidationCredits": "Credits must be a whole number between 1 and 100,000.",
-	"pricingValidationPrice": "Price must be between $0.01 and $99,999.99.",
+	"pricingValidationCredits": "Credits must be a whole number between {{minCredits}} and {{maxCredits}}.",
+	"pricingValidationPrice": "USD price must be between {{minPrice}} and {{maxPrice}}.",
+	"pricingValidationPriceIls": "ILS price must be between {{minPrice}} and {{maxPrice}}.",
 	"pricingValidationDuplicateIds": "Each package must have a unique internal ID (SKU).",
 	"pricingValidationPackageCount": "You must have between {{min}} and {{max}} credit packages.",
 	"pricingAddPackage": "Add package",
@@ -216,5 +197,79 @@
 	"pricingActions": "Actions",
 	"restoreDefaultsConfirmTitle": "Restore default packages?",
 	"restoreDefaultsConfirmDesc": "This replaces the table with the built-in default packages. You still need to click Save to persist.",
-	"viewPaymentPage": "Open payment page (new tab)"
+	"viewPaymentPage": "Open payment page (new tab)",
+	"recommendationPriority": {
+		"high": "High",
+		"medium": "Medium",
+		"low": "Low"
+	},
+	"userInsightCopy": {
+		"strengthTopic": "{{topic}}: {{rate}}% success ({{games}} games)",
+		"improvementTopic": "{{topic}}: {{rate}}% success — consider more practice ({{games}} games played)",
+		"bestStreak": "Best streak of {{days}} consecutive days playing",
+		"improveWeakestTopic": "Topic to improve: {{topic}}",
+		"recentActivityLine": "{{date}} – {{action}}{{bodySuffix}}",
+		"activityScoreDetail": "Score {{score}} / {{total}} ({{correct}} correct)",
+		"activityTopicOnly": "Topic: {{topic}}",
+		"fallbackHighlight": "Last game completed successfully — keep it up!",
+		"activityActions": {
+			"game_completed": "Game completed"
+		}
+	},
+	"userRecCopy": {
+		"effort": {
+			"low": "Low",
+			"medium": "Medium",
+			"high": "High"
+		},
+		"user-rec-success-rate": {
+			"title": "Low answer accuracy",
+			"description": "Your current success rate is {{rate}}%.",
+			"message": "Try puzzles at an easier difficulty to build confidence.",
+			"action": "Play a short series in favorite topics at easy level.",
+			"estimatedImpact": "Gradual improvement in answer accuracy"
+		},
+		"user-rec-time-management": {
+			"title": "Response time longer than usual",
+			"description": "Average response time is especially high in: {{topics}}.",
+			"message": "Practice with time limits to improve speed.",
+			"action": "Try time-limited play in these topics twice a day.",
+			"estimatedImpact": "Faster puzzle solving"
+		},
+		"user-rec-engagement": {
+			"title": "Keep your play streak going",
+			"description": "Your active-day streak is still short.",
+			"message": "Play at least one short session daily to grow the streak.",
+			"action": "Set a daily reminder for a five-question game.",
+			"estimatedImpact": "Higher daily engagement"
+		},
+		"perf-001": {
+			"title": "High response time",
+			"description": "Server response time is {{responseTimeMs}} ms, above the comfort zone.",
+			"message": "Optimize slow queries or add caching where it helps.",
+			"action": "Review slow-query logs and hot endpoints.",
+			"estimatedImpact": "Better UX and lower server load"
+		},
+		"sec-001": {
+			"title": "Many failed logins",
+			"description": "There have been {{failedLogins}} failed login attempts.",
+			"message": "Consider rate limiting or CAPTCHA on sign-in.",
+			"action": "Review auth logs and harden protections.",
+			"estimatedImpact": "Lower brute-force risk"
+		},
+		"perf-002": {
+			"title": "High memory usage",
+			"description": "Server memory usage is {{memoryUsage}}%, close to capacity.",
+			"message": "Reduce memory pressure or scale resources.",
+			"action": "Profile heavy operations and trim data structures.",
+			"estimatedImpact": "Fewer memory issues and steadier performance"
+		},
+		"perf-003": {
+			"title": "High error rate",
+			"description": "Error rate is {{errorRate}}%, above the acceptable threshold.",
+			"message": "Triage logs and fix recurring failures.",
+			"action": "Fix top errors and improve handling paths.",
+			"estimatedImpact": "More reliable service and smoother UX"
+		}
+	}
 }

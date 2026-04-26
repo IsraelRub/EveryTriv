@@ -7,11 +7,6 @@
 	"tab_business": "עסקי",
 	"tab_system": "מערכת",
 	"tab_ai_providers": "ספקי AI",
-	"systemSub_health": "זמינות",
-	"systemSub_consistency": "עקביות",
-	"systemSub_maintenance": "תחזוקה",
-	"records": "רשומות",
-	"clearAll": "נקה הכל",
 	"fix": "תקן",
 	"check": "בדוק",
 	"fixing": "מתקן...",
@@ -31,22 +26,6 @@
 	"actual": "בפועל:",
 	"runFullCheck": "הרץ בדיקה מלאה",
 	"checkingConsistency": "בודק עקביות...",
-	"clearGameHistory": "היסטוריית משחקים",
-	"clearTrivia": "מטמון טריוויה",
-	"clearUserStats": "סטטיסטיקות משתמש",
-	"clearLeaderboard": "לוח מובילים",
-	"clearGameHistoryDesc": "הסר את כל רשומות המשחק וההיסטוריה מהפלטפורמה.",
-	"clearTriviaDesc": "מחק את כל שאלות הטריוויה שנוצרו ממסד הנתונים.",
-	"clearUserStatsDesc": "אפס את כל האנליטיקה והסטטיסטיקות של המשתמש (ציונים, רצפים, נושאים).",
-	"clearLeaderboardDesc": "נקה ציוני לוח מובילים שבועיים, חודשיים ושנתיים לכל המשתמשים.",
-	"itemName_gameHistory": "היסטוריית משחקים",
-	"itemName_triviaQuestions": "שאלות טריוויה",
-	"itemName_userStatistics": "סטטיסטיקות משתמש",
-	"itemName_leaderboardData": "נתוני לוח מובילים",
-	"actionCannotBeUndone": "לא ניתן לבטל פעולה זו.",
-	"dataMaintenanceTitle": "נתונים ותחזוקה",
-	"dataMaintenanceDesc": "ניקוי נתוני פלטפורמה. השתמש בזהירות; לא ניתן לבטל פעולות אלה.",
-	"clearAllItem": "נקה הכל {{itemName}}",
 	"usersSearchPlaceholder": "אימייל או שם...",
 	"usersSearchLabel": "חיפוש:",
 	"usersTableName": "שם",
@@ -173,6 +152,7 @@
 	"pricingConfigDesc": "ערוך מחירים וכמויות חבילות קרדיטים. השינויים יחולו בדף התשלום.",
 	"packageId": "מזהה חבילה",
 	"priceUsd": "מחיר (USD)",
+	"priceIls": "מחיר (ILS)",
 	"platformOverview": "סקירת פלטפורמה",
 	"platformOverviewDesc": "מדדי פלטפורמה בזמן אמת",
 	"platformTrends": "מגמות פלטפורמה",
@@ -207,8 +187,9 @@
 	"overallStatusHealthy": "הכול תקין",
 	"overallStatusAttention": "דורש תשומת לב",
 	"overallStatusCritical": "זוהו בעיות קריטיות",
-	"pricingValidationCredits": "קרדיטים חייבים להיות מספר שלם בין 1 ל-100,000.",
-	"pricingValidationPrice": "המחיר חייב להיות בין ‎$0.01‎ ל-‎$99,999.99‎.",
+	"pricingValidationCredits": "קרדיטים חייבים להיות מספר שלם בין {{minCredits}} ל-{{maxCredits}}.",
+	"pricingValidationPrice": "מחיר הדולר חייב להיות בין {{minPrice}} ל-{{maxPrice}}.",
+	"pricingValidationPriceIls": "מחיר השקל חייב להיות בין {{minPrice}} ל-{{maxPrice}}.",
 	"pricingValidationDuplicateIds": "לכל חבילה חייב להיות מזהה פנימי (SKU) ייחודי.",
 	"pricingValidationPackageCount": "חייבות להיות בין {{min}} ל-{{max}} חבילות קרדיט.",
 	"pricingAddPackage": "הוסף חבילה",
@@ -216,5 +197,79 @@
 	"pricingActions": "פעולות",
 	"restoreDefaultsConfirmTitle": "לשחזר חבילות ברירת מחדל?",
 	"restoreDefaultsConfirmDesc": "פעולה זו מחליפה את הטבלה בחבילות המובנות. עדיין צריך ללחוץ שמירה כדי לשמור בשרת.",
-	"viewPaymentPage": "פתח את דף התשלום (לשונית חדשה)"
+	"viewPaymentPage": "פתח את דף התשלום (לשונית חדשה)",
+	"recommendationPriority": {
+		"high": "גבוהה",
+		"medium": "בינונית",
+		"low": "נמוכה"
+	},
+	"userInsightCopy": {
+		"strengthTopic": "{{topic}}: {{rate}}% הצלחה ({{games}} משחקים)",
+		"improvementTopic": "{{topic}}: {{rate}}% הצלחה — כדאי להתאמן עוד ({{games}} משחקים)",
+		"bestStreak": "רצף שיא של {{days}} ימי משחק רצופים",
+		"improveWeakestTopic": "נושא לחיזוק: {{topic}}",
+		"recentActivityLine": "{{date}} – {{action}}{{bodySuffix}}",
+		"activityScoreDetail": "ניקוד {{score}} מתוך {{total}} ({{correct}} נכונות)",
+		"activityTopicOnly": "נושא: {{topic}}",
+		"fallbackHighlight": "המשחק האחרון הושלם בהצלחה — כך להמשיך!",
+		"activityActions": {
+			"game_completed": "משחק הושלם"
+		}
+	},
+	"userRecCopy": {
+		"effort": {
+			"low": "נמוך",
+			"medium": "בינוני",
+			"high": "גבוה"
+		},
+		"user-rec-success-rate": {
+			"title": "דיוק תשובות נמוך",
+			"description": "שיעור ההצלחה הנוכחי שלך הוא {{rate}}%.",
+			"message": "נסה רמת קושי קלה יותר כדי לבנות ביטחון.",
+			"action": "שחק סדרה קצרה בנושאים אהובים ברמה קלה.",
+			"estimatedImpact": "שיפור הדרגתי בדיוק התשובות"
+		},
+		"user-rec-time-management": {
+			"title": "זמן תגובה ארוך מהרגיל",
+			"description": "זמן התגובה הממוצע גבוה במיוחד בנושאים: {{topics}}.",
+			"message": "תרגל עם מגבלת זמן כדי לחדד מהירות.",
+			"action": "שחק פעמיים ביום במצב עם לחץ זמן בנושאים אלה.",
+			"estimatedImpact": "פתרון חידות מהיר יותר"
+		},
+		"user-rec-engagement": {
+			"title": "שמור על רצף המשחק",
+			"description": "רצף הימים הפעילים עדיין קצר.",
+			"message": "מומלץ משחק קצר לפחות פעם ביום כדי להאריך את הרצף.",
+			"action": "הגדר תזכורת יומית למשחק של חמש שאלות.",
+			"estimatedImpact": "מעורבות יומית גבוהה יותר"
+		},
+		"perf-001": {
+			"title": "זמן תגובה גבוה מהשרת",
+			"description": "זמן תגובת השרת הוא {{responseTimeMs}} ms, מעל רמת הנוחות.",
+			"message": "ייעול שאילתות איטיות או הוספת מטמון במקומות מתאימים.",
+			"action": "סקור לוגים של שאילתות איטיות ונקודות קצה חמות.",
+			"estimatedImpact": "חוויית משתמש טובה יותר ועומס שרת נמוך יותר"
+		},
+		"sec-001": {
+			"title": "הרבה ניסיונות התחברות כושלים",
+			"description": "נרשמו {{failedLogins}} ניסיונות התחברות כושלים.",
+			"message": "שקול הגבלת קצב או CAPTCHA בהתחברות.",
+			"action": "סקור לוגי אימות וחזק את ההגנות.",
+			"estimatedImpact": "הפחתת סיכון התקפות כוח גס"
+		},
+		"perf-002": {
+			"title": "שימוש זיכרון גבוה",
+			"description": "שימוש הזיכרון בשרת הוא {{memoryUsage}}%, קרוב לקיבולת.",
+			"message": "הפחת עומס זיכרון או הרחב משאבים.",
+			"action": "בצע פרופיילינג לפעולות כבדות וצמצם מבני נתונים.",
+			"estimatedImpact": "פחות תקלות זיכרון וביצועים יציבים יותר"
+		},
+		"perf-003": {
+			"title": "שיעור שגיאות גבוה",
+			"description": "שיעור השגיאות הוא {{errorRate}}%, מעל הסף המקובל.",
+			"message": "מיון לוגים ותיקון כשלים חוזרים.",
+			"action": "תקן את השגיאות המובילות ושפר טיפול בשגיאות.",
+			"estimatedImpact": "שירות אמין יותר וחוויית משתמש חלקה יותר"
+		}
+	}
 }

@@ -1,14 +1,26 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor, StreamableFile } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { calculateDuration, isRecord } from '@shared/utils';
 
+import { SKIP_RESPONSE_FORMATTER_KEY } from '@common/decorators/skipResponseFormatter.decorator';
 import type { NestRequest } from '@internal/types';
 
 @Injectable()
 export class ResponseFormatter implements NestInterceptor {
+	constructor(private readonly reflector: Reflector) {}
+
 	intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+		const skipFormatting = this.reflector.getAllAndOverride<boolean>(SKIP_RESPONSE_FORMATTER_KEY, [
+			context.getHandler(),
+			context.getClass(),
+		]);
+		if (skipFormatting) {
+			return next.handle();
+		}
+
 		const request = context.switchToHttp().getRequest();
 		const startTime = Date.now();
 
@@ -37,13 +49,17 @@ export class ResponseFormatter implements NestInterceptor {
 	}
 
 	private shouldSkipFormatting(data: unknown, request: NestRequest): boolean {
+		if (data instanceof StreamableFile) {
+			return true;
+		}
+
 		if (isRecord(data)) {
 			// Skip formatting if response already has a success field (like AuthenticationResult)
 			if ('success' in data) {
 				return true;
 			}
 
-			const skipFields = ['isValid', 'timestamp', 'data', 'pipe', 'url'];
+			const skipFields = ['isValid', 'timestamp', 'pipe', 'url'];
 			return skipFields.some(field => field in data);
 		}
 

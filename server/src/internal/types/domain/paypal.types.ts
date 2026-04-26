@@ -18,21 +18,27 @@ export interface PayPalAmount {
 	value: string;
 }
 
+export interface PayPalPurchaseUnitCapture {
+	id: string;
+	status?: PayPalCaptureStatus;
+	amount?: PayPalAmount;
+}
+
+export interface PayPalPurchaseUnitPayee {
+	email_address?: string;
+	merchant_id?: string;
+}
+
+export interface PayPalPurchaseUnitPayments {
+	captures?: PayPalPurchaseUnitCapture[];
+}
+
 export interface PayPalPurchaseUnit {
 	reference_id: string;
 	amount: PayPalAmount;
-	payee?: {
-		email_address?: string;
-		merchant_id?: string;
-	};
+	payee?: PayPalPurchaseUnitPayee;
 	description?: string;
-	payments?: {
-		captures?: Array<{
-			id: string;
-			status?: string;
-			amount?: PayPalAmount;
-		}>;
-	};
+	payments?: PayPalPurchaseUnitPayments;
 }
 
 export interface PayPalOrderResponse {
@@ -54,18 +60,28 @@ export interface PayPalCapture {
 	update_time: string;
 }
 
+export interface PayPalCaptureResponsePurchaseUnit {
+	reference_id: string;
+	payments: {
+		captures: PayPalCapture[];
+	};
+}
+
 export interface PayPalCaptureResponse {
 	id: string;
 	status: PayPalOrderStatus;
-	purchase_units: Array<{
-		reference_id: string;
-		payments: {
-			captures: PayPalCapture[];
-		};
-	}>;
+	purchase_units: PayPalCaptureResponsePurchaseUnit[];
 	create_time: string;
 	update_time: string;
 	links?: PayPalLinks[];
+}
+
+export interface PayPalWebhookEventResource {
+	id?: string;
+	status?: string;
+	amount?: PayPalAmount;
+	custom_id?: string;
+	[s: string]: unknown;
 }
 
 export interface PayPalWebhookEvent {
@@ -76,13 +92,7 @@ export interface PayPalWebhookEvent {
 	resource_version?: string;
 	event_type: string;
 	summary: string;
-	resource: {
-		id?: string;
-		status?: string;
-		amount?: PayPalAmount;
-		custom_id?: string;
-		[s: string]: unknown;
-	};
+	resource: PayPalWebhookEventResource;
 	links?: PayPalLinks[];
 }
 
@@ -100,15 +110,17 @@ export interface PayPalWebhookVerificationResponse {
 	verification_status: 'SUCCESS' | 'FAILURE';
 }
 
+export interface PayPalErrorDetail {
+	field?: string;
+	value?: string;
+	issue: string;
+	description?: string;
+}
+
 export interface PayPalErrorResponse {
 	name: string;
 	message: string;
 	debug_id: string;
-	details?: Array<{
-		field?: string;
-		value?: string;
-		issue: string;
-		description?: string;
-	}>;
+	details?: PayPalErrorDetail[];
 	links?: PayPalLinks[];
 }

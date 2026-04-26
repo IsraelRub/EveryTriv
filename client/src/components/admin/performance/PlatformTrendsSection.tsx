@@ -18,7 +18,7 @@ export function PlatformTrendsSection(props: { statsLoading: boolean; embedded?:
 		</div>
 	);
 
-	if (props.embedded === true) {
+	if (props.embedded) {
 		return chart;
 	}
 

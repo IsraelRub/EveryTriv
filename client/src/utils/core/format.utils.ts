@@ -1,5 +1,5 @@
 import { EMPTY_VALUE, TIME_DURATIONS_SECONDS } from '@shared/constants';
-import { formatDate, pad2 } from '@shared/utils';
+import { pad2 } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
 import { PlayTimeUnit } from '@/constants';
@@ -10,16 +10,6 @@ export function formatDateShort(date: Date | string | null | undefined, defaultV
 	}
 	const d = VALIDATORS.string(date) ? new Date(date) : date;
 	return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
-}
-
-export function formatDateTime(date: Date | string | null | undefined, defaultValue: string = EMPTY_VALUE): string {
-	if (!date || !VALIDATORS.date(date)) {
-		return defaultValue;
-	}
-	const d = VALIDATORS.string(date) ? new Date(date) : date;
-	const datePart = formatDate(d, defaultValue);
-	if (datePart === defaultValue) return defaultValue;
-	return `${datePart} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 export function formatTime(totalSeconds: number): string {

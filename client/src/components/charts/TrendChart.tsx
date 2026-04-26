@@ -11,6 +11,7 @@ import {
 	SkeletonVariant,
 	StatisticsPerformanceKey,
 	TREND_CHART_DATA_KEYS,
+	UiDensity,
 } from '@/constants';
 import type { TrendChartProps } from '@/types';
 import { formatDateShort } from '@/utils';
@@ -65,7 +66,7 @@ export const TrendChart = memo(function TrendChart({
 	}
 	if (!data?.length) {
 		if (emptyStateData) {
-			return <EmptyState data={emptyStateData} />;
+			return <EmptyState data={emptyStateData} density={UiDensity.COMPACT} />;
 		}
 		return (
 			<div className='flex flex-col items-center justify-center py-12 text-muted-foreground'>

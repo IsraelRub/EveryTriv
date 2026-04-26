@@ -68,7 +68,6 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 					"last_granted_credits_refill_at" TIMESTAMP NULL,
 					"last_login" TIMESTAMP,
 					"is_active" boolean NOT NULL DEFAULT true,
-					"email_verified" boolean NOT NULL DEFAULT false,
 					"role" character varying NOT NULL DEFAULT '${UserRole.USER}',
 					"preferences" jsonb NOT NULL DEFAULT '{}',
 					"custom_avatar" bytea NULL,
@@ -93,6 +92,26 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 			console.log('Dropping users.achievements column if present (legacy)');
 			await queryRunner.query(`
 				ALTER TABLE "users" DROP COLUMN IF EXISTS "achievements"
+			`);
+
+			// Email verification removed from the product (was never part of CREATE TABLE here; upgrades only).
+			console.log('Dropping legacy users.email_verified if present');
+			await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "email_verified"`);
+
+			// Invalid prefs: defaultDifficulty "custom" with no non-empty defaultCustomDifficultyDescription → medium + strip key.
+			console.log('Normalizing orphan custom game difficulty in user preferences (if any)');
+			await queryRunner.query(`
+				UPDATE "users"
+				SET "preferences" = jsonb_set(
+					"preferences" #- '{game,defaultCustomDifficultyDescription}',
+					'{game,defaultDifficulty}',
+					'"medium"'::jsonb,
+					true
+				)
+				WHERE "preferences" IS NOT NULL
+					AND jsonb_typeof("preferences"->'game') = 'object'
+					AND "preferences"->'game'->>'defaultDifficulty' = 'custom'
+					AND trim(coalesce("preferences"->'game'->>'defaultCustomDifficultyDescription', '')) = ''
 			`);
 
 			// If table already exists with NOT NULL constraint, make credits nullable
@@ -127,15 +146,9 @@ export class CreateCompleteSchema1780000000000 implements MigrationInterface {
 			await queryRunner.query(`
 				ALTER TABLE "users"
 					ADD COLUMN IF NOT EXISTS "last_granted_credits_refill_at" TIMESTAMP NULL,
-					ADD COLUMN IF NOT EXISTS "email_verified" boolean NOT NULL DEFAULT false,
 					ADD COLUMN IF NOT EXISTS "custom_avatar" bytea NULL,
 					ADD COLUMN IF NOT EXISTS "custom_avatar_mime" character varying(30) NULL,
 					ALTER COLUMN "credits" SET DEFAULT 150
-			`);
-			await queryRunner.query(`
-				UPDATE "users"
-				SET "email_verified" = true
-				WHERE "google_id" IS NOT NULL
 			`);
 
 			// Create indexes for users table (email already indexed via UNIQUE constraint)

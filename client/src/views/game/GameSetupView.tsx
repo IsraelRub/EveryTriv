@@ -6,9 +6,9 @@ import { ArrowLeft, User, Users } from 'lucide-react';
 
 import { DEFAULT_GAME_CONFIG } from '@shared/constants';
 import type { GameConfig } from '@shared/types';
-import { toDifficultyLevel } from '@shared/validation';
+import { extractCustomDifficultyText, isCustomDifficulty, toDifficultyLevel } from '@shared/validation';
 
-import { ANIMATION_DELAYS, ButtonSize, GameKey, ROUTES, VariantBase } from '@/constants';
+import { AnimationDelays, ButtonSize, GameKey, Routes, VariantBase } from '@/constants';
 import { Button, Card, GameMode, HomeButton } from '@/components';
 import { useAppDispatch, useIsAuthenticated, useUpdateUserPreferences } from '@/hooks';
 import { resetGameSession, setGameMode } from '@/redux/slices';
@@ -20,7 +20,7 @@ export function GameSetupView() {
 	const dispatch = useAppDispatch();
 	const isAuthenticated = useIsAuthenticated();
 	const updatePreferences = useUpdateUserPreferences();
-	const isSingleOptions = location.pathname === ROUTES.GAME_SINGLE;
+	const isSingleOptions = location.pathname === Routes.GAME_SINGLE;
 
 	// Reset game session when entering setup so Start Game and navigation work after returning from play/summary
 	useEffect(() => {
@@ -49,11 +49,11 @@ export function GameSetupView() {
 									<motion.div
 										initial={{ opacity: 0, y: 20 }}
 										animate={{ opacity: 1, y: 0 }}
-										transition={{ delay: ANIMATION_DELAYS.STAGGER_NORMAL }}
+										transition={{ delay: AnimationDelays.STAGGER_NORMAL }}
 									>
 										<Card
 											className='p-8 hover:shadow-lg transition-all cursor-pointer group hover:border-primary/50 h-full'
-											onClick={() => navigate(ROUTES.GAME_SINGLE)}
+											onClick={() => navigate(Routes.GAME_SINGLE)}
 										>
 											<div className='flex flex-col items-center text-center space-y-4'>
 												<div className='p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors'>
@@ -70,11 +70,11 @@ export function GameSetupView() {
 									<motion.div
 										initial={{ opacity: 0, y: 20 }}
 										animate={{ opacity: 1, y: 0 }}
-										transition={{ delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM }}
+										transition={{ delay: AnimationDelays.SEQUENCE_MEDIUM }}
 									>
 										<Card
 											className='p-8 hover:shadow-lg transition-all cursor-pointer group hover:border-primary/50 h-full'
-											onClick={() => navigate(ROUTES.MULTIPLAYER)}
+											onClick={() => navigate(Routes.MULTIPLAYER)}
 										>
 											<div className='flex flex-col items-center text-center space-y-4'>
 												<div className='p-4 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors'>
@@ -95,7 +95,7 @@ export function GameSetupView() {
 						<section className='view-spacing view-centered-4xl'>
 							<div className='text-center'>
 								<div className='mb-2 md:mb-4'>
-									<Button variant={VariantBase.OUTLINE} size={ButtonSize.LG} onClick={() => navigate(ROUTES.GAME)}>
+									<Button variant={VariantBase.OUTLINE} size={ButtonSize.LG} onClick={() => navigate(Routes.GAME)}>
 										<ArrowLeft className='h-4 w-4 me-2 rtl:scale-x-[-1]' />
 										{t(GameKey.BACK_TO_GAME_TYPE)}
 									</Button>
@@ -103,23 +103,26 @@ export function GameSetupView() {
 								<h2 className='text-2xl md:text-3xl font-bold'>{t(GameKey.CHOOSE_YOUR_GAME_MODE)}</h2>
 							</div>
 							<GameMode
-								onModeSelect={(settings: GameConfig) => {
+								onModeSelect={(settings: GameConfig, gameId: string, meta) => {
 									dispatch(setGameMode(settings));
 									if (isAuthenticated) {
+										const difficultyForPrefs = settings.difficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty;
 										updatePreferences.mutate({
 											game: {
 												defaultGameMode: settings.mode,
 												defaultTopic: settings.topic,
-												defaultDifficulty: toDifficultyLevel(
-													settings.difficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty
-												),
+												defaultDifficulty: toDifficultyLevel(difficultyForPrefs),
+												defaultCustomDifficultyDescription: isCustomDifficulty(difficultyForPrefs)
+													? extractCustomDifficultyText(difficultyForPrefs).trim() || undefined
+													: undefined,
 												timeLimit: settings.timeLimit,
 												maxQuestionsPerGame: settings.maxQuestionsPerGame,
 											},
 										});
 									}
-									const gameId = crypto.randomUUID();
-									navigate(ROUTES.GAME_SINGLE_PLAY.replace(':gameId', gameId));
+									navigate(Routes.GAME_SINGLE_PLAY.replace(':gameId', gameId), {
+										state: meta.serverSessionPreflightOk ? { singleSessionServerStarted: gameId } : undefined,
+									});
 								}}
 							/>
 						</section>

@@ -10,16 +10,17 @@ import {
 	VALIDATION_COUNT,
 } from '@shared/constants';
 import type { GameConfig } from '@shared/types';
-import { isNonEmptyString, isRecord } from '@shared/utils';
+import { buildGameDifficultyFromUserGamePreferences, isNonEmptyString, isRecord } from '@shared/utils';
 import { isGameMode, isLocale, isRegisteredDifficulty, toDifficultyLevel, VALIDATORS } from '@shared/validation';
 
-import { ComponentSize, ROUTES } from '@/constants';
+import { ComponentSize, Routes as RoutePaths } from '@/constants';
 import { authService, prefetchAuthenticatedQueries, queryClient } from '@/services';
 import { isProtectedAppPath } from '@/utils';
 import {
 	BackgroundAnimation,
 	CompleteProfile,
 	Footer,
+	LegalConsentRedirect,
 	ModalRouteWrapper,
 	Navigation,
 	NotFound,
@@ -38,6 +39,7 @@ import {
 	ContactView,
 	GameSetupView,
 	HomeView,
+	LegalAcceptanceView,
 	LoginView,
 	MultiplayerGameView,
 	MultiplayerLobbyView,
@@ -76,27 +78,43 @@ export default function AppRoutes() {
 
 		const game = preferences.game;
 		if (isRecord(game) && Object.keys(game).length > 0) {
-			const mode = isGameMode(game.defaultGameMode) ? game.defaultGameMode : GameMode.QUESTION_LIMITED;
-			const defaults = GAME_MODES_CONFIG[mode]?.defaults ?? GAME_MODES_CONFIG[GameMode.QUESTION_LIMITED].defaults;
-			const config: GameConfig = {
-				mode,
-				topic: isNonEmptyString(game.defaultTopic) ? game.defaultTopic : DEFAULT_GAME_CONFIG.defaultTopic,
-				difficulty:
-					VALIDATORS.string(game.defaultDifficulty) && isRegisteredDifficulty(game.defaultDifficulty)
-						? toDifficultyLevel(game.defaultDifficulty)
-						: DEFAULT_GAME_CONFIG.defaultDifficulty,
-				timeLimit: VALIDATORS.number(game.timeLimit) ? game.timeLimit : defaults.timeLimit,
-				maxQuestionsPerGame: VALIDATORS.number(game.maxQuestionsPerGame)
-					? game.maxQuestionsPerGame
-					: (defaults.maxQuestionsPerGame ?? DEFAULT_GAME_CONFIG.maxQuestionsPerGame),
-				answerCount: VALIDATION_COUNT.ANSWER_COUNT.DEFAULT,
-			};
-			dispatch(setGameMode(config));
+			const onActiveGameplayRoute =
+				location.pathname.startsWith(`${RoutePaths.GAME_SINGLE}/play/`) ||
+				location.pathname.startsWith(`${RoutePaths.GAME_SINGLE}/summary/`) ||
+				location.pathname.startsWith(`${RoutePaths.MULTIPLAYER}/play/`) ||
+				location.pathname.startsWith(`${RoutePaths.MULTIPLAYER}/summary/`);
+
+			if (!onActiveGameplayRoute) {
+				const mode = isGameMode(game.defaultGameMode) ? game.defaultGameMode : GameMode.QUESTION_LIMITED;
+				const defaults = GAME_MODES_CONFIG[mode]?.defaults ?? GAME_MODES_CONFIG[GameMode.QUESTION_LIMITED].defaults;
+				const config: GameConfig = {
+					mode,
+					topic: isNonEmptyString(game.defaultTopic) ? game.defaultTopic : DEFAULT_GAME_CONFIG.defaultTopic,
+					difficulty:
+						VALIDATORS.string(game.defaultDifficulty) && isRegisteredDifficulty(game.defaultDifficulty)
+							? buildGameDifficultyFromUserGamePreferences({
+									defaultDifficulty: toDifficultyLevel(game.defaultDifficulty),
+									defaultCustomDifficultyDescription: VALIDATORS.string(game.defaultCustomDifficultyDescription)
+										? game.defaultCustomDifficultyDescription
+										: undefined,
+								})
+							: DEFAULT_GAME_CONFIG.defaultDifficulty,
+					timeLimit: VALIDATORS.number(game.timeLimit) ? game.timeLimit : defaults.timeLimit,
+					maxQuestionsPerGame: VALIDATORS.number(game.maxQuestionsPerGame)
+						? game.maxQuestionsPerGame
+						: (defaults.maxQuestionsPerGame ?? DEFAULT_GAME_CONFIG.maxQuestionsPerGame),
+					answerCount: VALIDATION_COUNT.ANSWER_COUNT.DEFAULT,
+				};
+				dispatch(setGameMode(config));
+			}
 		}
-	}, [profileData?.preferences, dispatch]);
+	}, [profileData?.preferences, dispatch, location.pathname]);
 
 	// Check if current route is an authentication page
-	const isAuthPage = location.pathname === ROUTES.LOGIN || location.pathname === ROUTES.REGISTER;
+	const isAuthPage =
+		location.pathname === RoutePaths.LOGIN ||
+		location.pathname === RoutePaths.REGISTER ||
+		location.pathname === RoutePaths.LEGAL_ACCEPTANCE;
 	// Redirect to login on auth failure only when on a protected route (so closing login modal doesn't send user back to login)
 	const isProtectedPath = isProtectedAppPath(location.pathname);
 
@@ -112,7 +130,7 @@ export default function AppRoutes() {
 				await authService.logout();
 				queryClient.clear();
 				if (!isAuthPage && isProtectedPath) {
-					window.location.href = ROUTES.HOME;
+					window.location.href = RoutePaths.HOME;
 				}
 			};
 			void handleAuthFailure();
@@ -124,133 +142,144 @@ export default function AppRoutes() {
 			<BackgroundAnimation />
 			<Navigation />
 			<main id='main-content' className='app-main' dir={locale === Locale.HE ? 'rtl' : 'ltr'}>
-				<Routes>
-					{/* Public routes */}
-					<Route path={ROUTES.HOME} element={<HomeView />} />
-					<Route path={ROUTES.STATISTICS} element={<StatisticsView />} />
+				<div key={location.pathname} className='flex min-h-0 w-full flex-1 flex-col animate-route-shell-enter'>
+					<LegalConsentRedirect />
+					<Routes>
+						{/* Public routes */}
+						<Route path={RoutePaths.HOME} element={<HomeView />} />
+						<Route path={RoutePaths.STATISTICS} element={<StatisticsView />} />
 
-					{/* Legal and Info routes */}
-					<Route path={ROUTES.PRIVACY} element={<PrivacyPolicyView />} />
-					<Route path={ROUTES.TERMS} element={<TermsOfServiceView />} />
-					<Route path={ROUTES.CONTACT} element={<ContactView />} />
+						{/* Legal and Info routes */}
+						<Route path={RoutePaths.PRIVACY} element={<PrivacyPolicyView />} />
+						<Route path={RoutePaths.TERMS} element={<TermsOfServiceView />} />
+						<Route path={RoutePaths.CONTACT} element={<ContactView />} />
 
-					{/* Game routes - single player and multiplayer both require auth (credits, stats) */}
-					<Route
-						path={ROUTES.GAME}
-						element={
-							<ProtectedRoute>
-								<GameSetupView />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path={ROUTES.GAME_SINGLE}
-						element={
-							<ProtectedRoute>
-								<GameSetupView />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path={ROUTES.GAME_SINGLE_PLAY}
-						element={
-							<ProtectedRoute>
-								<SingleSessionView />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path={ROUTES.GAME_SINGLE_SUMMARY}
-						element={
-							<ProtectedRoute>
-								<SingleSummaryView />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path={ROUTES.MULTIPLAYER}
-						element={
-							<ProtectedRoute>
-								<MultiplayerLobbyView />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path={ROUTES.MULTIPLAYER_PLAY}
-						element={
-							<ProtectedRoute>
-								<MultiplayerGameView />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path={ROUTES.MULTIPLAYER_SUMMARY}
-						element={
-							<ProtectedRoute>
-								<MultiplayerResultsView />
-							</ProtectedRoute>
-						}
-					/>
+						{/* Game routes - single player and multiplayer both require auth (credits, stats) */}
+						<Route
+							path={RoutePaths.GAME}
+							element={
+								<ProtectedRoute>
+									<GameSetupView />
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.GAME_SINGLE}
+							element={
+								<ProtectedRoute>
+									<GameSetupView />
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.GAME_SINGLE_PLAY}
+							element={
+								<ProtectedRoute>
+									<SingleSessionView />
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.GAME_SINGLE_SUMMARY}
+							element={
+								<ProtectedRoute>
+									<SingleSummaryView />
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.MULTIPLAYER}
+							element={
+								<ProtectedRoute>
+									<MultiplayerLobbyView />
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.MULTIPLAYER_PLAY}
+							element={
+								<ProtectedRoute>
+									<MultiplayerGameView />
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.MULTIPLAYER_SUMMARY}
+							element={
+								<ProtectedRoute>
+									<MultiplayerResultsView />
+								</ProtectedRoute>
+							}
+						/>
 
-					{/* Protected routes - require authentication */}
-					<Route
-						path={ROUTES.PAYMENT}
-						element={
-							<ProtectedRoute>
-								<ModalRouteWrapper modalSize={ComponentSize.XL}>
-									<PaymentView />
-								</ModalRouteWrapper>
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path={ROUTES.COMPLETE_PROFILE}
-						element={
-							<ProtectedRoute>
-								<CompleteProfile />
-							</ProtectedRoute>
-						}
-					/>
-					<Route
-						path={ROUTES.ADMIN}
-						element={
-							<ProtectedRoute requiredRole={UserRole.ADMIN}>
-								<AdminDashboard />
-							</ProtectedRoute>
-						}
-					/>
+						{/* Protected routes - require authentication */}
+						<Route
+							path={RoutePaths.PAYMENT}
+							element={
+								<ProtectedRoute>
+									<ModalRouteWrapper modalSize={ComponentSize.XL}>
+										<PaymentView />
+									</ModalRouteWrapper>
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.COMPLETE_PROFILE}
+							element={
+								<ProtectedRoute>
+									<CompleteProfile />
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.LEGAL_ACCEPTANCE}
+							element={
+								<ProtectedRoute>
+									<LegalAcceptanceView />
+								</ProtectedRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.ADMIN}
+							element={
+								<ProtectedRoute requiredRole={UserRole.ADMIN}>
+									<AdminDashboard />
+								</ProtectedRoute>
+							}
+						/>
 
-					{/* Public routes - redirect if authenticated */}
-					<Route
-						path={ROUTES.LOGIN}
-						element={
-							<PublicRoute>
-								<ModalRouteWrapper>
-									<LoginView />
-								</ModalRouteWrapper>
-							</PublicRoute>
-						}
-					/>
-					<Route
-						path={ROUTES.REGISTER}
-						element={
-							<PublicRoute>
-								<ModalRouteWrapper>
-									<RegistrationView />
-								</ModalRouteWrapper>
-							</PublicRoute>
-						}
-					/>
+						{/* Public routes - redirect if authenticated */}
+						<Route
+							path={RoutePaths.LOGIN}
+							element={
+								<PublicRoute>
+									<ModalRouteWrapper>
+										<LoginView />
+									</ModalRouteWrapper>
+								</PublicRoute>
+							}
+						/>
+						<Route
+							path={RoutePaths.REGISTER}
+							element={
+								<PublicRoute>
+									<ModalRouteWrapper>
+										<RegistrationView />
+									</ModalRouteWrapper>
+								</PublicRoute>
+							}
+						/>
 
-					{/* OAuth callback - no protection needed */}
-					<Route path={ROUTES.AUTH_CALLBACK} element={<OAuthCallback />} />
+						{/* OAuth callback - no protection needed */}
+						<Route path={RoutePaths.AUTH_CALLBACK} element={<OAuthCallback />} />
 
-					{/* Unauthorized page */}
-					<Route path={ROUTES.UNAUTHORIZED} element={<UnauthorizedView />} />
+						{/* Unauthorized page */}
+						<Route path={RoutePaths.UNAUTHORIZED} element={<UnauthorizedView />} />
 
-					{/* 404 */}
-					<Route path='*' element={<NotFound />} />
-				</Routes>
+						{/* 404 */}
+						<Route path='*' element={<NotFound />} />
+					</Routes>
+				</div>
 			</main>
 			<Footer />
 			<Toaster />

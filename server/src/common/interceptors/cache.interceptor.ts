@@ -140,32 +140,36 @@ export class CacheInterceptor implements NestInterceptor {
 	}
 
 	private generateCacheKey(request: NestRequest, customKey?: string): string {
-		// Get user ID from request if available (for user-specific caching)
 		const userId = request.user?.sub ?? 'anonymous';
 
 		if (customKey) {
-			// Include userId in custom keys to make them user-specific
 			return `cache:${customKey}:${userId}`;
 		}
 
-		// Generate key from request details
 		const method = (request.method ?? HttpMethod.GET).toLowerCase();
-		const url = request.originalUrl ?? request.url ?? '/';
-		const query = request.query ? JSON.stringify(request.query) : '';
-		const params = request.params ? JSON.stringify(request.params) : '';
+		const rawPath = (request.originalUrl ?? request.url ?? '/').split('?')[0] ?? '/';
+		const urlPath = rawPath.replace(/\/+$/, '') || '/';
 
-		// Create a hash-like key from request components INCLUDING userId
-		const keyComponents = [method, url, query, params, userId].filter(Boolean);
-		const baseKey = keyComponents.join('|');
+		const queryParams = request.query
+			? Object.keys(request.query)
+					.sort()
+					.map(k => {
+						const value = request.query[k];
+						const serialized = Array.isArray(value)
+							? value.map(v => String(v ?? '')).join(',')
+							: typeof value === 'object' && value !== null
+								? JSON.stringify(value)
+								: String(value ?? '');
+						return `${k}=${serialized}`;
+					})
+					.join('&')
+			: '';
 
-		// Simple hash function for key generation
-		let hash = 0;
-		for (let i = 0; i < baseKey.length; i++) {
-			const char = baseKey.charCodeAt(i);
-			hash = (hash << 5) - hash + char;
-			hash = hash & hash; // Convert to 32-bit integer
+		const parts = ['cache:auto', method, urlPath, userId];
+		if (queryParams) {
+			parts.push(queryParams);
 		}
 
-		return `cache:${Math.abs(hash)}`;
+		return parts.join(':');
 	}
 }

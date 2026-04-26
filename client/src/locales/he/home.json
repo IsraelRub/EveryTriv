@@ -41,7 +41,10 @@
 	"publicLobbySearchPlaceholder": "הקלד חלק מהנושא…",
 	"publicLobbyJoin": "הצטרף לחדר",
 	"publicLobbyLoginToJoin": "התחבר כדי להצטרף",
-	"publicLobbyEmpty": "אין כרגע חדרים ציבוריים במצב המתנה.",
+	"publicLobbyEmpty": "חדרים ציבוריים במתנה יופיעו כאן אוטומטית. בלובי אפשר ליצור חדר או להצטרף עם קוד.",
+	"publicLobbyEmptyTitle": "אין כרגע חדר ציבורי במתנה",
+	"publicLobbyEmptyFiltered": "אין חדרים שמתאימים לנושא הזה. נסו חיפוש אחר או עברו ללובי כדי ליצור חדר או להצטרף.",
 	"publicLobbyLoadError": "לא ניתן לטעון את רשימת החדרים",
-	"publicLobbyRefreshing": "מעדכן…"
+	"publicLobbyRefreshing": "מעדכן…",
+	"publicLobbyPlayerSlots": "{{current}}/{{max}}"
 }

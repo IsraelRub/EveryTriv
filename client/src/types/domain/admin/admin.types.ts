@@ -17,22 +17,12 @@ export interface CreditPackageEditItem {
 	id: string;
 	credits: number;
 	price: number;
+	priceIls: number;
 	tier?: string;
 }
 
 export interface AdminPricingUpdatePayload {
 	packages: CreditPackageEditItem[];
-}
-
-export interface ClearOperation {
-	id: string;
-	title: string;
-	description: string;
-	itemName: string;
-	currentCount?: number;
-	onClear: () => void | Promise<void>;
-	isLoading?: boolean;
-	icon: LucideIcon;
 }
 
 export type { TriviaQuestionsResponse } from '@shared/types';

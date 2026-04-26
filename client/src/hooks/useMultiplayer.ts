@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { ErrorCode, MultiplayerEvent, RoomStatus, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
 import type { CreateRoomConfig, MultiplayerRoom } from '@shared/types';
@@ -21,14 +22,10 @@ import {
 } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import {
-	getMultiplayerSummaryStorageKey,
-	LoadingMessages,
-	MultiplayerSummaryPayloadKey,
-	STORAGE_KEYS,
-} from '@/constants';
-import type { MultiplayerUnsubscribe } from '@/types';
-import { clientLogger as logger, multiplayerService, storageService } from '@/services';
+import { LoadingMessages, MultiplayerSummaryPayloadKey, StorageKeys } from '@/constants';
+import type { MultiplayerUnsubscribe, PendingMultiplayerAnswerMerge } from '@/types';
+import { clientLogger as logger, multiplayerService, queryInvalidationService, storageService } from '@/services';
+import { getMultiplayerSummaryStorageKey } from '@/utils';
 import {
 	selectIsConnected,
 	selectMultiplayerError,
@@ -53,6 +50,7 @@ import { useAppDispatch, useAppSelector } from './useRedux';
 
 export const useMultiplayer = (roomId?: string) => {
 	const dispatch = useAppDispatch();
+	const queryClient = useQueryClient();
 	const isConnected = useAppSelector(selectIsConnected);
 	const room = useAppSelector(selectMultiplayerRoom);
 	const gameState = useAppSelector(selectMultiplayerGameState);
@@ -64,6 +62,9 @@ export const useMultiplayer = (roomId?: string) => {
 	const listenerCleanupRef = useRef<(() => void) | null>(null);
 	const currentUserIdRef = useRef<string | undefined>(undefined);
 	const lastSubmittedAnswerRef = useRef<{ questionId: string; answerIndex: number } | null>(null);
+	const pendingAnswerMergesRef = useRef(new Map<string, PendingMultiplayerAnswerMerge>());
+	const roomIdParamRef = useRef<string | undefined>(roomId);
+	roomIdParamRef.current = roomId;
 
 	const currentUser = useCurrentUserData();
 	currentUserIdRef.current = currentUser?.id;
@@ -79,6 +80,29 @@ export const useMultiplayer = (roomId?: string) => {
 			subscriptions.push(unsubscribe);
 		};
 
+		const flushPendingForQuestion = (newQuestionId: string): void => {
+			queueMicrotask(() => {
+				const pending = pendingAnswerMergesRef.current.get(newQuestionId);
+				if (pending == null) {
+					return;
+				}
+				pendingAnswerMergesRef.current.delete(newQuestionId);
+				const gs = selectMultiplayerGameState(store.getState());
+				if (!gs || gs.currentQuestion?.id !== newQuestionId) {
+					return;
+				}
+				dispatch(
+					updateGameState({
+						...gs,
+						playersAnswers: { ...gs.playersAnswers, ...pending.playersAnswers },
+						playersScores: { ...gs.playersScores, ...pending.playersScores },
+						leaderboard: pending.leaderboard ?? gs.leaderboard,
+						answerCounts: pending.answerCounts,
+					})
+				);
+			});
+		};
+
 		// Room events
 		registerListener(MultiplayerEvent.ROOM_CREATED, (data: unknown) => {
 			if (isCreateRoomResponse(data)) {
@@ -89,6 +113,7 @@ export const useMultiplayer = (roomId?: string) => {
 
 		registerListener(MultiplayerEvent.ROOM_JOINED, (data: unknown) => {
 			if (isRoomStateResponse(data)) {
+				pendingAnswerMergesRef.current.clear();
 				dispatch(setRoom(data.room));
 				dispatch(updateGameState(data.gameState));
 			}
@@ -96,6 +121,7 @@ export const useMultiplayer = (roomId?: string) => {
 
 		registerListener(MultiplayerEvent.ROOM_LEFT, (data: unknown) => {
 			if (isRecord(data) && 'roomId' in data && VALIDATORS.string(data.roomId)) {
+				pendingAnswerMergesRef.current.clear();
 				dispatch(setRoom(null));
 				dispatch(updateGameState(null));
 			}
@@ -111,6 +137,9 @@ export const useMultiplayer = (roomId?: string) => {
 					players: event.data.players,
 				};
 				dispatch(setRoom(updatedRoom));
+				if (updatedRoom.hostId === currentUserIdRef.current) {
+					void queryInvalidationService.invalidateCreditsQueries(queryClient);
+				}
 			}
 		});
 
@@ -131,6 +160,7 @@ export const useMultiplayer = (roomId?: string) => {
 			if (isGameStartedEvent(event)) {
 				const currentRoom = selectMultiplayerRoom(store.getState());
 				if (!currentRoom || currentRoom.roomId !== event.roomId) return;
+				pendingAnswerMergesRef.current.clear();
 				dispatch(clearPersonalAnswerHistory());
 				const updatedRoom: MultiplayerRoom = {
 					...currentRoom,
@@ -144,6 +174,12 @@ export const useMultiplayer = (roomId?: string) => {
 
 		registerListener(MultiplayerEvent.QUESTION_STARTED, (event: unknown) => {
 			if (isQuestionStartedEvent(event)) {
+				const newQuestionId = event.data.question.id;
+				for (const key of [...pendingAnswerMergesRef.current.keys()]) {
+					if (key !== newQuestionId) {
+						pendingAnswerMergesRef.current.delete(key);
+					}
+				}
 				const state = store.getState();
 				const currentGameState = selectMultiplayerGameState(state);
 				const currentRoom = selectMultiplayerRoom(state);
@@ -207,19 +243,24 @@ export const useMultiplayer = (roomId?: string) => {
 								}
 					)
 				);
+				flushPendingForQuestion(newQuestionId);
 			}
 		});
 
 		registerListener(MultiplayerEvent.ANSWER_RECEIVED, (event: unknown) => {
-			if (isAnswerReceivedEvent(event)) {
-				const currentGameState = selectMultiplayerGameState(store.getState());
-				if (!currentGameState || currentGameState.roomId !== event.roomId) return;
-				// Only apply when the answer belongs to the current question; otherwise we'd merge
-				// previous question's data and show stale bars.
-				const currentQuestionId = currentGameState.currentQuestion?.id;
-				if (currentQuestionId != null && event.data.questionId !== currentQuestionId) return;
-				// Use server counts only; avoid carrying over stale counts from previous question.
-				const nextAnswerCounts = event.data.answerCounts ?? {};
+			if (!isAnswerReceivedEvent(event)) {
+				return;
+			}
+			const currentGameState = selectMultiplayerGameState(store.getState());
+			if (!currentGameState || currentGameState.roomId !== event.roomId) {
+				return;
+			}
+			const currentQuestionId = currentGameState.currentQuestion?.id;
+			const eventQuestionId = event.data.questionId;
+			const nextAnswerCounts = event.data.answerCounts ?? {};
+
+			if (currentQuestionId != null && eventQuestionId === currentQuestionId) {
+				pendingAnswerMergesRef.current.delete(eventQuestionId);
 				dispatch(
 					updateGameState({
 						...currentGameState,
@@ -235,7 +276,39 @@ export const useMultiplayer = (roomId?: string) => {
 						answerCounts: nextAnswerCounts,
 					})
 				);
+				return;
 			}
+
+			if (currentQuestionId != null && eventQuestionId !== currentQuestionId) {
+				const prev = pendingAnswerMergesRef.current.get(eventQuestionId);
+				const prevCounts = prev?.answerCounts ?? {};
+				const incomingCounts = event.data.answerCounts ?? {};
+				const mergedCounts: Record<string, number> = { ...prevCounts, ...incomingCounts };
+				const nextPending: PendingMultiplayerAnswerMerge = {
+					playersAnswers: { ...(prev?.playersAnswers ?? {}), [event.data.userId]: event.data.answerIndex },
+					playersScores: { ...(prev?.playersScores ?? {}), [event.data.userId]: event.data.scoreEarned },
+					leaderboard: event.data.leaderboard ?? prev?.leaderboard,
+					answerCounts: mergedCounts,
+				};
+				pendingAnswerMergesRef.current.set(eventQuestionId, nextPending);
+				return;
+			}
+
+			dispatch(
+				updateGameState({
+					...currentGameState,
+					playersAnswers: {
+						...currentGameState.playersAnswers,
+						[event.data.userId]: event.data.answerIndex,
+					},
+					playersScores: {
+						...currentGameState.playersScores,
+						[event.data.userId]: event.data.scoreEarned,
+					},
+					leaderboard: event.data.leaderboard ?? currentGameState.leaderboard,
+					answerCounts: nextAnswerCounts,
+				})
+			);
 		});
 
 		registerListener(MultiplayerEvent.QUESTION_ENDED, (event: unknown) => {
@@ -360,7 +433,7 @@ export const useMultiplayer = (roomId?: string) => {
 			});
 			listenerCleanupRef.current = null;
 		};
-	}, [dispatch]);
+	}, [dispatch, queryClient]);
 
 	const connect = useCallback(async () => {
 		// Prevent multiple simultaneous connection attempts
@@ -379,7 +452,7 @@ export const useMultiplayer = (roomId?: string) => {
 		try {
 			isConnectingRef.current = true;
 
-			const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+			const tokenResult = await storageService.getString(StorageKeys.AUTH_TOKEN);
 			const token = tokenResult.success ? (tokenResult.data ?? null) : null;
 			if (!token) {
 				dispatch(setError(getErrorMessage(ErrorCode.AUTHENTICATION_TOKEN_REQUIRED)));
@@ -396,6 +469,16 @@ export const useMultiplayer = (roomId?: string) => {
 				dispatch(setConnectionStatus(true));
 				dispatch(setError(null));
 				isConnectingRef.current = false;
+				const routeRoomId = roomIdParamRef.current;
+				if (routeRoomId) {
+					const snapRoom = selectMultiplayerRoom(store.getState());
+					const snapGame = selectMultiplayerGameState(store.getState());
+					const roomMismatch = snapRoom != null && snapRoom.roomId !== routeRoomId;
+					const playingWithoutState = snapRoom != null && snapRoom.status === RoomStatus.PLAYING && snapGame == null;
+					if (roomMismatch || playingWithoutState) {
+						multiplayerService.emit(MultiplayerEvent.JOIN_ROOM, { roomId: routeRoomId });
+					}
+				}
 			});
 
 			socket.on('disconnect', () => {
@@ -415,6 +498,7 @@ export const useMultiplayer = (roomId?: string) => {
 	}, [setupEventListeners, dispatch]);
 
 	const disconnect = useCallback(() => {
+		pendingAnswerMergesRef.current.clear();
 		multiplayerService.disconnect();
 		dispatch(setConnectionStatus(false));
 		dispatch(setRoom(null));
@@ -546,9 +630,14 @@ export const useMultiplayer = (roomId?: string) => {
 
 	useEffect(() => {
 		const step = !isConnected
-			? isLoading
-				? LoadingMessages.AUTHENTICATING
-				: LoadingMessages.CONNECTING_TO_SOCKET
+			? room != null &&
+				(room.status === RoomStatus.PLAYING ||
+					room.status === RoomStatus.STARTING ||
+					room.status === RoomStatus.WAITING)
+				? LoadingMessages.MULTIPLAYER_RECONNECTING
+				: isLoading
+					? LoadingMessages.AUTHENTICATING
+					: LoadingMessages.CONNECTING_TO_SOCKET
 			: !room
 				? isLoading
 					? LoadingMessages.JOINING_ROOM

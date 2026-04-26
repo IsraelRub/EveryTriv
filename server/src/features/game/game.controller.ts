@@ -25,6 +25,7 @@ import {
 	TriviaRequestDto,
 	ValidateCustomDifficultyDto,
 	ValidateTextDto,
+	ValidateTriviaTopicDto,
 } from './dtos';
 import { GameService } from './game.service';
 
@@ -215,7 +216,6 @@ export class GameController {
 	}
 
 	@Get('history')
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getGameHistory(@CurrentUserId() userId: string, @Query() query: GameHistoryQueryDto) {
 		const startTime = Date.now();
 
@@ -358,6 +358,34 @@ export class GameController {
 		}
 	}
 
+	@Post('validate-trivia-topic')
+	@NoCache()
+	async validateTriviaTopic(@CurrentUserId() userId: string, @Body() body: ValidateTriviaTopicDto) {
+		try {
+			const result = await this.gameService.validateTriviaTopicForClient({
+				topic: body.topic,
+				difficulty: body.difficulty,
+				outputLanguage: body.outputLanguage,
+			});
+
+			logger.apiCreate('game_validate_trivia_topic', {
+				userId,
+				topic: body.topic,
+				difficulty: body.difficulty,
+			});
+
+			return result;
+		} catch (error) {
+			logger.gameError('Error validating trivia topic', {
+				errorInfo: { message: getErrorMessage(error) },
+				userId,
+				topic: body.topic,
+				difficulty: body.difficulty,
+			});
+			throw error;
+		}
+	}
+
 	@Post('validate-text')
 	@NoCache()
 	async validateText(@Body() body: ValidateTextDto) {
@@ -394,6 +422,7 @@ export class GameController {
 				'admin',
 				'validate-custom',
 				'validate-text',
+				'validate-trivia-topic',
 				'session',
 				'surprise-pick',
 			]);

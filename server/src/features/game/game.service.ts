@@ -74,9 +74,9 @@ import type {
 import { createNotFoundError, createServerError, isGameSessionState } from '@internal/utils';
 
 import { UserStatsUpdateService } from '../analytics/services';
-import { TriviaGenerationService } from './triviaGeneration';
+import { TopicDifficultyGateService, TriviaGenerationService } from './triviaGeneration';
 
-const MAX_SESSION_EXCLUDE_QUESTION_TEXTS = 200;
+const MAX_SESSION_EXCLUDE_QUESTION_TEXTS = VALIDATION_LENGTH.STRING_TRUNCATION.LONG_PREVIEW;
 
 @Injectable()
 export class GameService {
@@ -90,6 +90,7 @@ export class GameService {
 		private readonly cacheService: CacheService,
 		private readonly storageService: StorageService,
 		private readonly triviaGenerationService: TriviaGenerationService,
+		private readonly topicDifficultyGateService: TopicDifficultyGateService,
 		private readonly userStatsUpdateService: UserStatsUpdateService
 	) {}
 
@@ -313,7 +314,7 @@ export class GameService {
 					const correctIdx =
 						questionEntity.correctAnswerIndex >= 0 && questionEntity.correctAnswerIndex < currentAnswerCount
 							? questionEntity.correctAnswerIndex
-							: questionEntity.answers.findIndex((a: TriviaAnswer) => a.isCorrect === true);
+							: questionEntity.answers.findIndex((a: TriviaAnswer) => a.isCorrect);
 					const correctAnswer = correctIdx >= 0 ? adjustedAnswers[correctIdx] : undefined;
 					if (!correctAnswer) {
 						continue;
@@ -329,7 +330,7 @@ export class GameService {
 
 				// Shuffle all answers so the correct one is not always in the same position (e.g. first)
 				adjustedAnswers = shuffle(adjustedAnswers);
-				const correctAnswerIndex = adjustedAnswers.findIndex((a: TriviaAnswer) => a.isCorrect === true) ?? 0;
+				const correctAnswerIndex = adjustedAnswers.findIndex((a: TriviaAnswer) => a.isCorrect) ?? 0;
 
 				const {
 					userId: _userId,
@@ -351,6 +352,11 @@ export class GameService {
 			// Generate new questions if we don't have enough
 			const remainingCount = normalizedQuestionsPerRequest - questions.length;
 			if (remainingCount > 0) {
+				await this.topicDifficultyGateService.enforceTopicDifficultyGate({
+					topic,
+					difficulty,
+					outputLanguage: locale,
+				});
 				// Get recent questions from same topic across all difficulty levels to help LLM avoid duplicates (once per batch)
 				// Limit to 50 questions to avoid overwhelming the prompt (each question ~50-100 chars = ~10-20 tokens)
 				const baseRecentQuestions = userId ? await this.getUserRecentQuestionsForTopic(userId, topic, 50) : [];
@@ -369,7 +375,7 @@ export class GameService {
 								...batchGeneratedQuestions,
 								...Array.from(excludeQuestionsSet),
 							]
-								.slice(0, 50)
+								.slice(0, VALIDATION_COUNT.QUESTIONS.MAX)
 								.filter((q, idx, arr) => arr.indexOf(q) === idx); // Remove duplicates
 
 							const promptParams: PromptParams = {
@@ -537,6 +543,14 @@ export class GameService {
 
 			throw createServerError('generate trivia questions', error);
 		}
+	}
+
+	async validateTriviaTopicForClient(params: {
+		topic: string;
+		difficulty: GameDifficulty;
+		outputLanguage: Locale;
+	}): Promise<{ ok: true }> {
+		return this.topicDifficultyGateService.validateTopicDifficultyForClient(params);
 	}
 
 	async getQuestionById(questionId: string): Promise<TriviaQuestion> {

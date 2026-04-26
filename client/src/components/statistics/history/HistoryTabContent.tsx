@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Brain, Calendar, CircleUser, ClipboardClock, Gauge, ListOrdered, Tag, Timer, Trash2 } from 'lucide-react';
+import {
+	Calendar,
+	CirclePercent,
+	CircleUser,
+	ClipboardClock,
+	Gauge,
+	ListOrdered,
+	Tag,
+	Timer,
+	Trash2,
+} from 'lucide-react';
 
-import { DIFFICULTY_CONFIG, EMPTY_VALUE, GameMode } from '@shared/constants';
+import { DIFFICULTY_CONFIG, EMPTY_VALUE, GameMode, VALIDATION_COUNT } from '@shared/constants';
 import type { GameHistoryEntry } from '@shared/types';
 import { formatTitle, getErrorMessage, namesMatch } from '@shared/utils';
 import { isGameDifficulty, isGameMode, VALIDATORS } from '@shared/validation';
@@ -15,6 +25,7 @@ import {
 	ComponentSize,
 	DataTableColumnType,
 	DEFAULT_ITEMS_PER_PAGE,
+	EMPTY_STATE_LUCIDE_ICON,
 	FILTER_ALL_VALUE,
 	GameKey,
 	LoadingMessages,
@@ -23,6 +34,7 @@ import {
 	SortDirection,
 	SortField,
 	StatisticsHistoryKey,
+	UiDensity,
 	VariantBase,
 } from '@/constants';
 import type { DataTableColumn } from '@/types';
@@ -69,7 +81,11 @@ export function HistoryTabContent() {
 	const [deleteId, setDeleteId] = useState<string | null>(null);
 	const queryClient = useQueryClient();
 
-	const { data: historyData, isLoading: historyLoading, error: historyError } = useGameHistory(1000, 0);
+	const {
+		data: historyData,
+		isLoading: historyLoading,
+		error: historyError,
+	} = useGameHistory(VALIDATION_COUNT.LIST_QUERY.LIMIT_MAX, VALIDATION_COUNT.LIST_QUERY.OFFSET_MIN);
 
 	const deleteHistory = useMutation({
 		mutationFn: (gameId: string) => gameHistoryService.deleteGameHistory(gameId),
@@ -183,7 +199,7 @@ export function HistoryTabContent() {
 				getValue: row => row.score ?? 0,
 				format: v => String(v ?? ''),
 				sortField: SortField.SCORE,
-				headerIcon: <Brain />,
+				headerIcon: <CirclePercent />,
 			},
 			{
 				id: 'questions',
@@ -279,6 +295,7 @@ export function HistoryTabContent() {
 					<EmptyState
 						data={t(StatisticsHistoryKey.EMPTY_DATA)}
 						description={t(StatisticsHistoryKey.EMPTY_DESCRIPTION)}
+						density={UiDensity.COMPACT}
 					/>
 				</CardContent>
 			</Card>
@@ -331,7 +348,7 @@ export function HistoryTabContent() {
 								value={filterDifficulty ?? FILTER_ALL_VALUE}
 								onValueChange={v => setFilterDifficulty(v === FILTER_ALL_VALUE ? null : v)}
 							>
-								<SelectTrigger className='w-full min-w-0 max-w-[140px]'>
+								<SelectTrigger className='w-full min-w-0 max-w-[9rem]'>
 									<SelectValue placeholder={t(CommonKey.ALL)} />
 								</SelectTrigger>
 								<SelectContent>
@@ -350,7 +367,7 @@ export function HistoryTabContent() {
 								value={filterTopic ?? FILTER_ALL_VALUE}
 								onValueChange={v => setFilterTopic(v === FILTER_ALL_VALUE ? null : v)}
 							>
-								<SelectTrigger className='w-full min-w-0 max-w-[160px]'>
+								<SelectTrigger className='w-full min-w-0 max-w-[10rem]'>
 									<SelectValue placeholder={t(CommonKey.ALL)} />
 								</SelectTrigger>
 								<SelectContent>
@@ -383,6 +400,7 @@ export function HistoryTabContent() {
 				emptyState={{
 					title: t(StatisticsHistoryKey.NO_GAMES_ON_THIS_PAGE),
 					description: t(StatisticsHistoryKey.ADJUST_FILTERS_OR_SORT),
+					icon: tableState.totalFiltered === 0 ? EMPTY_STATE_LUCIDE_ICON.searchNoResults : undefined,
 				}}
 				emptyValue={EMPTY_VALUE}
 				sortBy={tableState.sortBy}

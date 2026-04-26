@@ -1,3 +1,5 @@
+import { TIME_PERIODS_MS } from '@shared/constants';
+
 export const DATABASE_DEFAULTS = {
 	username: 'everytriv_user',
 	name: 'everytriv',
@@ -8,8 +10,8 @@ export const DATABASE_DEFAULTS = {
 export const DATABASE_POOL_CONFIG = {
 	max: 20,
 	min: 5,
-	acquire: 30000,
-	idle: 10000,
+	acquire: TIME_PERIODS_MS.THIRTY_SECONDS,
+	idle: TIME_PERIODS_MS.TEN_SECONDS,
 } as const;
 
 export const REDIS_DEFAULTS = {
@@ -18,13 +20,13 @@ export const REDIS_DEFAULTS = {
 	enableReadyCheck: true,
 	maxRetriesPerRequest: 3,
 	enableOfflineQueue: true,
-	connectTimeout: 10000,
-	commandTimeout: 5000,
+	connectTimeout: TIME_PERIODS_MS.TEN_SECONDS,
+	commandTimeout: TIME_PERIODS_MS.FIVE_SECONDS,
 } as const;
 
 export const REDIS_RETRY_STRATEGY_CONFIG = {
 	delayMultiplier: 50,
-	maxDelay: 2000,
+	maxDelay: TIME_PERIODS_MS.TWO_SECONDS,
 	targetError: 'READONLY',
 } as const;
 

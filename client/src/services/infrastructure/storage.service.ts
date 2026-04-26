@@ -1,7 +1,9 @@
 import type { StorageOperationResult } from '@shared/types';
 import { VALIDATORS } from '@shared/validation';
 
-import { AUTH_STORAGE_KEYS, AUTH_TOKEN_CHANGED_EVENT, STORAGE_KEYS, type StorageKey } from '@/constants';
+import { AUTH_TOKEN_CHANGED_EVENT, StorageKeys } from '@/constants';
+import type { StorageKey } from '@/types';
+import { AUTH_STORAGE_KEYS } from '@/utils';
 
 function getStorage(key: StorageKey): Storage {
 	return AUTH_STORAGE_KEYS.has(key) ? sessionStorage : localStorage;
@@ -40,7 +42,7 @@ class StorageService {
 			getStorage(key).setItem(key, JSON.stringify(value));
 
 			// Dispatch custom event for auth token changes (same window)
-			if (key === STORAGE_KEYS.AUTH_TOKEN && typeof window !== 'undefined') {
+			if (key === StorageKeys.AUTH_TOKEN && typeof window !== 'undefined') {
 				window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
 			}
 
@@ -57,7 +59,7 @@ class StorageService {
 			getStorage(key).removeItem(key);
 
 			// Dispatch custom event for auth token changes (same window)
-			if (key === STORAGE_KEYS.AUTH_TOKEN && typeof window !== 'undefined') {
+			if (key === StorageKeys.AUTH_TOKEN && typeof window !== 'undefined') {
 				window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
 			}
 

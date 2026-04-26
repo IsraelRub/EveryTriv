@@ -1,7 +1,7 @@
 import { isErrorWithProperties, isNonEmptyString, isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { ROUTES } from '@/constants';
+import { Routes } from '@/constants';
 import type { DifficultyTooltipPoint } from '@/types';
 
 export function isDifficultyTooltipPoint(obj: unknown): obj is DifficultyTooltipPoint {
@@ -37,14 +37,14 @@ export function isAuthPage(): boolean {
 		return false;
 	}
 	const currentPath = window.location.pathname;
-	return currentPath === ROUTES.LOGIN || currentPath === ROUTES.REGISTER;
+	return currentPath === Routes.LOGIN || currentPath === Routes.REGISTER || currentPath === Routes.LEGAL_ACCEPTANCE;
 }
 
 export function isProtectedAppPath(pathname: string): boolean {
 	return (
 		pathname.startsWith('/game') ||
-		pathname === ROUTES.PAYMENT ||
-		pathname === ROUTES.COMPLETE_PROFILE ||
-		pathname === ROUTES.ADMIN
+		pathname === Routes.PAYMENT ||
+		pathname === Routes.COMPLETE_PROFILE ||
+		pathname === Routes.ADMIN
 	);
 }

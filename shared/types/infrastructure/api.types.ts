@@ -86,15 +86,12 @@ export interface AdminUserData extends BasicUser {
 	lastLogin?: string;
 }
 
-/** Service-layer paginated admin user list (`UserCoreService.getAllUsers`). */
 export interface AdminUsersListResponse extends OffsetPagination {
 	users: AdminUserData[];
 }
 
-/** Offset fields from {@link AdminUsersListResponse} without the `users` array (controller `pagination` payload). */
 export type AdminUsersListPagination = Omit<AdminUsersListResponse, 'users'>;
 
-/** HTTP JSON body for `GET .../user/admin/all` (controller wraps {@link AdminUsersListResponse}). */
 export interface UsersListResponse {
 	message: string;
 	adminUser: AdminUserData;

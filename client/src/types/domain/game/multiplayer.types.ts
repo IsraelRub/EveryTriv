@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 
 import type { PlayerStatus, RoomStatus } from '@shared/constants';
-import type { PublicWaitingRoomDto } from '@shared/types';
+import type { Player, PublicWaitingRoomDto } from '@shared/types';
 
+import type { UiDensity } from '@/constants';
 import type { UserAvatarSource } from '../user/components.types';
 
 export interface LobbyGameDetailsCardProps {
@@ -27,6 +28,8 @@ export interface LobbyPlayersCardProps {
 export interface PublicLobbyRoomCardProps {
 	room: PublicWaitingRoomDto;
 	isAuthenticated: boolean;
+
+	density?: UiDensity;
 }
 
 export interface LobbyPlayerCardRow {
@@ -47,4 +50,11 @@ export type MultiplayerUnsubscribe = () => void;
 
 export interface MultiplayerEventStream {
 	subscribe(callback: MultiplayerEventCallback): MultiplayerUnsubscribe;
+}
+
+export interface PendingMultiplayerAnswerMerge {
+	playersAnswers: Record<string, number>;
+	playersScores: Record<string, number>;
+	leaderboard: Player[] | undefined;
+	answerCounts: Record<string, number>;
 }

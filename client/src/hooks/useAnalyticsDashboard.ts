@@ -33,12 +33,11 @@ export const useUserAnalytics = (options?: { staleTime?: number; refetchOnMount?
 
 export const usePopularTopics = (query?: UserAnalyticsQuery, options?: { enabled?: boolean; allowGuest?: boolean }) => {
 	const isAuthenticated = useIsAuthenticated();
-	const enabled =
-		options?.allowGuest === true
-			? options?.enabled !== false
-			: options?.enabled !== undefined
-				? options.enabled && isAuthenticated
-				: isAuthenticated;
+	const enabled = options?.allowGuest
+		? options?.enabled !== false
+		: options?.enabled !== undefined
+			? options.enabled && isAuthenticated
+			: isAuthenticated;
 
 	return useQuery({
 		queryKey: [...QUERY_KEYS.analytics.popularTopics(), ...(query ? [query] : [])],

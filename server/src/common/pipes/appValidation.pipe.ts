@@ -1,9 +1,5 @@
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 
-/**
- * Single source of truth for HTTP and WebSocket request validation.
- * Keep options in sync with any custom `ValidationPipe` usage tests expect.
- */
 export function createAppValidationPipe(): ValidationPipe {
 	return new ValidationPipe({
 		transform: true,

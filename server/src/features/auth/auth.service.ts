@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,11 +10,10 @@ import {
 	UserRole,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
-import type { ChangePasswordData } from '@shared/types';
-import { getErrorMessage, isNonEmptyString, sanitizeEmail, truncateWithEllipsis } from '@shared/utils';
+import type { BasicUser, ChangePasswordData } from '@shared/types';
+import { getErrorMessage, isNonEmptyString, sanitizeEmail, sanitizeInput, truncateWithEllipsis } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { AppConfig } from '@config';
 import { AuthenticationManager, JwtTokenService, PasswordService } from '@common/auth';
 import { UserEntity } from '@internal/entities';
 import { CacheInvalidationService, CacheService, StorageService } from '@internal/modules';
@@ -61,13 +59,19 @@ export class AuthService {
 		const user = this.userRepository.create({
 			email,
 			passwordHash: hashedPassword,
-			firstName: registerDto.firstName,
-			lastName: registerDto.lastName,
+			firstName:
+				registerDto.firstName !== undefined
+					? sanitizeInput(registerDto.firstName, VALIDATION_LENGTH.NAME.MAX) || undefined
+					: undefined,
+			lastName:
+				registerDto.lastName !== undefined
+					? sanitizeInput(registerDto.lastName ?? '', VALIDATION_LENGTH.NAME.MAX) || undefined
+					: undefined,
 			role: roleForNewUser,
 			isActive: true,
-			emailVerified: false,
 			credits: isAdmin ? null : undefined, // NULL for admin (not applicable), default (150) for regular users
 			purchasedCredits: 0,
+			legalAcceptanceAt: null,
 		});
 
 		const savedUser = await this.userRepository.save(user);
@@ -80,20 +84,10 @@ export class AuthService {
 
 		const tokenPair = await this.jwtTokenService.generateTokenPair(savedUser.id, savedUser.email, savedUser.role);
 
-		const avatarUrl = getAvatarUrlForUser(savedUser);
 		return {
 			accessToken: tokenPair.accessToken,
 			refreshToken: tokenPair.refreshToken,
-			user: {
-				id: savedUser.id,
-				email: savedUser.email,
-				firstName: savedUser.firstName ?? undefined,
-				lastName: savedUser.lastName ?? undefined,
-				avatar: savedUser.preferences?.avatar,
-				avatarUrl,
-				role: savedUser.role,
-				emailVerified: savedUser.emailVerified,
-			},
+			user: this.mapUserToAuthResponseUser(savedUser),
 		};
 	}
 
@@ -161,20 +155,10 @@ export class AuthService {
 			});
 		}
 
-		const avatarUrl = getAvatarUrlForUser(user);
 		return {
 			accessToken: authResult.accessToken,
 			refreshToken: authResult.refreshToken,
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName ?? undefined,
-				lastName: user.lastName ?? undefined,
-				avatar: user.preferences?.avatar,
-				avatarUrl,
-				role: user.role,
-				emailVerified: user.emailVerified,
-			},
+			user: this.mapUserToAuthResponseUser(user),
 		};
 	}
 
@@ -207,8 +191,8 @@ export class AuthService {
 			| 'preferences'
 			| 'customAvatarMime'
 			| 'createdAt'
-			| 'emailVerified'
 			| 'updatedAt'
+			| 'legalAcceptanceAt'
 		>
 	> {
 		logger.authDebug('getCurrentUser called', {
@@ -228,8 +212,8 @@ export class AuthService {
 				'preferences',
 				'customAvatarMime',
 				'createdAt',
-				'emailVerified',
 				'updatedAt',
+				'legalAcceptanceAt',
 			],
 		});
 
@@ -252,6 +236,39 @@ export class AuthService {
 		});
 
 		return user;
+	}
+
+	async getCurrentUserPublic(userId: string): Promise<BasicUser> {
+		const fullUser = await this.getCurrentUser(userId);
+		return this.mapUserRecordToBasicUser(fullUser);
+	}
+
+	async acceptLegalConsent(userId: string): Promise<BasicUser> {
+		const user = await this.userRepository.findOne({
+			where: { id: userId, isActive: true },
+		});
+
+		if (!user) {
+			throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
+		}
+
+		if (user.legalAcceptanceAt != null) {
+			return this.mapUserRecordToBasicUser(user);
+		}
+
+		user.legalAcceptanceAt = new Date();
+		await this.userRepository.save(user);
+
+		try {
+			await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
+		} catch (e) {
+			logger.cacheError('acceptLegalConsent profile cache', 'auth.acceptLegalConsent', {
+				errorInfo: { message: getErrorMessage(e) },
+				userId,
+			});
+		}
+
+		return this.mapUserRecordToBasicUser(await this.getCurrentUser(userId));
 	}
 
 	async logout(userId: string): Promise<string> {
@@ -341,8 +358,8 @@ export class AuthService {
 				lastName: lastName ?? undefined,
 				role: UserRole.USER,
 				isActive: true,
-				emailVerified: true,
 				lastLogin: new Date(),
+				legalAcceptanceAt: null,
 			});
 
 			const savedUser = await this.userRepository.save(user);
@@ -394,10 +411,6 @@ export class AuthService {
 
 			if (!user.googleId) {
 				user.googleId = profile.googleId;
-				shouldPersist = true;
-			}
-			if (!user.emailVerified) {
-				user.emailVerified = true;
 				shouldPersist = true;
 			}
 			if (profile.firstName && !isNonEmptyString(user.firstName)) {
@@ -453,22 +466,10 @@ export class AuthService {
 
 		const tokenPair = await this.jwtTokenService.generateTokenPair(user.id, user.email, user.role);
 
-		const avatarUrl = getAvatarUrlForUser(user);
 		const response = {
 			accessToken: tokenPair.accessToken,
 			refreshToken: tokenPair.refreshToken,
-			user: {
-				id: user.id,
-				email: user.email,
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				firstName: user.firstName || undefined,
-				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-				lastName: user.lastName || undefined,
-				avatar: user.preferences?.avatar,
-				avatarUrl,
-				role: user.role,
-				emailVerified: user.emailVerified,
-			},
+			user: this.mapUserToAuthResponseUser(user, { googleStyleNames: true }),
 		};
 
 		logger.systemInfo('Google OAuth login response', {
@@ -524,50 +525,6 @@ export class AuthService {
 		}
 	}
 
-	async requestVerificationEmail(userId: string): Promise<{ verificationLink: string }> {
-		const user = await this.userRepository.findOne({
-			where: { id: userId },
-			select: ['id', 'emailVerified'],
-		});
-		if (!user) {
-			throw new UnauthorizedException(ErrorCode.USER_NOT_FOUND_OR_AUTH_FAILED);
-		}
-		if (user.emailVerified) {
-			throw new BadRequestException(ErrorCode.EMAIL_ALREADY_VERIFIED);
-		}
-		const token = randomUUID();
-		const cacheKey = CACHE_KEYS.AUTH.EMAIL_VERIFY(token);
-		await this.cacheService.set(cacheKey, userId, TIME_DURATIONS_SECONDS.DAY);
-		const baseUrl =
-			process.env.SERVER_PUBLIC_URL ?? process.env.SERVER_URL ?? `http://${AppConfig.domain}:${AppConfig.port}`;
-		const verificationLink = `${baseUrl}/auth/verify-email?token=${token}`;
-		logger.authInfo('Verification link requested', { userId });
-		return { verificationLink };
-	}
-
-	async verifyEmail(token: string): Promise<{ verified: boolean }> {
-		const cacheKey = CACHE_KEYS.AUTH.EMAIL_VERIFY(token);
-		const result = await this.cacheService.get(cacheKey);
-		if (!result.success || result.data == null) {
-			throw new BadRequestException(ErrorCode.VERIFICATION_TOKEN_INVALID_OR_EXPIRED);
-		}
-		const userId = VALIDATORS.string(result.data) ? result.data : String(result.data);
-		const user = await this.userRepository.findOne({ where: { id: userId } });
-		if (!user) {
-			throw new BadRequestException(ErrorCode.VERIFICATION_TOKEN_INVALID_OR_EXPIRED);
-		}
-		if (user.emailVerified) {
-			await this.cacheService.delete(cacheKey);
-			throw new BadRequestException(ErrorCode.EMAIL_ALREADY_VERIFIED);
-		}
-		user.emailVerified = true;
-		await this.userRepository.save(user);
-		await this.cacheService.delete(cacheKey);
-		await this.cacheService.delete(CACHE_KEYS.USER.PROFILE(userId));
-		logger.authInfo('Email verified', { userId });
-		return { verified: true };
-	}
-
 	async createUser(userData: {
 		email: string;
 		passwordHash: string;
@@ -582,6 +539,7 @@ export class AuthService {
 				firstName: userData.firstName,
 				lastName: userData.lastName,
 				role: userData.role ?? UserRole.USER,
+				legalAcceptanceAt: new Date(),
 			});
 
 			const savedUser = await this.userRepository.save(user);
@@ -608,7 +566,7 @@ export class AuthService {
 				firstName: userData.firstName,
 				lastName: userData.lastName,
 				role: UserRole.USER,
-				emailVerified: true,
+				legalAcceptanceAt: null,
 			});
 
 			const savedUser = await this.userRepository.save(user);
@@ -648,5 +606,62 @@ export class AuthService {
 			});
 			throw error;
 		}
+	}
+
+	private mapUserRecordToBasicUser(
+		fullUser: Pick<
+			UserEntity,
+			| 'id'
+			| 'email'
+			| 'firstName'
+			| 'lastName'
+			| 'role'
+			| 'preferences'
+			| 'customAvatarMime'
+			| 'createdAt'
+			| 'updatedAt'
+			| 'legalAcceptanceAt'
+		>
+	): BasicUser {
+		const avatarUrl = getAvatarUrlForUser(fullUser);
+		const userData: BasicUser = {
+			id: fullUser.id,
+			email: fullUser.email,
+			role: fullUser.role,
+			needsLegalAcceptance: fullUser.legalAcceptanceAt == null,
+			...('firstName' in fullUser && isNonEmptyString(fullUser.firstName) ? { firstName: fullUser.firstName } : {}),
+			...('lastName' in fullUser && isNonEmptyString(fullUser.lastName) ? { lastName: fullUser.lastName } : {}),
+			...(fullUser.preferences?.avatar && VALIDATORS.number(fullUser.preferences.avatar)
+				? { avatar: fullUser.preferences.avatar }
+				: {}),
+			...(avatarUrl != null ? { avatarUrl } : {}),
+		};
+		return userData;
+	}
+
+	private mapUserToAuthResponseUser(
+		user: UserEntity,
+		options?: { googleStyleNames?: boolean }
+	): AuthResponseDto['user'] {
+		const avatarUrl = getAvatarUrlForUser(user);
+		const firstName = options?.googleStyleNames
+			? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				user.firstName || undefined
+			: (user.firstName ?? undefined);
+		const lastName = options?.googleStyleNames
+			? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				user.lastName || undefined
+			: (user.lastName ?? undefined);
+
+		return {
+			id: user.id,
+			email: user.email,
+			firstName,
+			lastName,
+			avatar: user.preferences?.avatar,
+			avatarUrl,
+			role: user.role,
+			needsLegalAcceptance: user.legalAcceptanceAt == null,
+		};
 	}
 }

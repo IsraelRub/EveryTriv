@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AtSign, BookUser, Calendar, Clock, ShieldUser } from 'lucide-react';
 
 import { EMPTY_VALUE, TIME_PERIODS_MS } from '@shared/constants';
+import type { AdminUserData, UserSearchCacheResult } from '@shared/types';
 import { getDisplayNameFromUserFields } from '@shared/utils';
 
 import {
@@ -12,6 +13,7 @@ import {
 	CommonKey,
 	DataTableColumnType,
 	DEFAULT_ITEMS_PER_PAGE,
+	EMPTY_STATE_LUCIDE_ICON,
 	QUERY_KEYS,
 	ROLE_BADGE_CLASSES,
 	SortDirection,
@@ -22,7 +24,17 @@ import {
 import type { DataTableColumn, UserTableRow } from '@/types';
 import { adminService, apiService } from '@/services';
 import { calculateTotalPages } from '@/utils';
-import { Button, Card, CardContent, CardDescription, CardTitle, DataTableCard, Input, Label } from '@/components';
+import {
+	Button,
+	Card,
+	CardContent,
+	CardDescription,
+	CardTitle,
+	DataTableCard,
+	DisclosureChevron,
+	Input,
+	Label,
+} from '@/components';
 import { useDebouncedValue } from '@/hooks';
 import { useAdminUserPanelQueries } from './useAdminUserPanelQueries';
 import { UserAnalysisExpandedPanel } from './UserAnalysisExpandedPanel';
@@ -120,21 +132,21 @@ export function UsersTable() {
 		recommendationsLoading,
 	} = useAdminUserPanelQueries(selectedUserId);
 
-	const users = useMemo(() => data?.users ?? [], [data?.users]);
-	const searchResults = useMemo(() => searchData?.results ?? [], [searchData?.results]);
+	const users = useMemo<AdminUserData[]>(() => data?.users ?? [], [data?.users]);
+	const searchResults = useMemo<UserSearchCacheResult[]>(() => searchData?.results ?? [], [searchData?.results]);
 	const totalUsers = data?.pagination?.total ?? users.length;
 	const totalPages = calculateTotalPages(totalUsers, limit);
 
 	const displayList = useMemo((): UserTableRow[] => {
-		const list = isSearchMode ? searchResults : users;
+		const list: Array<AdminUserData | UserSearchCacheResult> = isSearchMode ? searchResults : users;
 		return list.map(entry => ({
 			id: entry.id,
 			email: entry.email ?? '',
 			role: entry.role ?? EMPTY_VALUE,
 			createdAt: entry.createdAt ?? EMPTY_VALUE,
 			lastLogin: entry.lastLogin ?? EMPTY_VALUE,
-			firstName: (entry as { firstName?: string | null }).firstName ?? undefined,
-			lastName: (entry as { lastName?: string | null }).lastName ?? undefined,
+			firstName: entry.firstName ?? undefined,
+			lastName: entry.lastName ?? undefined,
 		}));
 	}, [isSearchMode, searchResults, users]);
 
@@ -166,7 +178,7 @@ export function UsersTable() {
 				id: 'actions',
 				emptyHeader: true,
 				type: DataTableColumnType.CUSTOM,
-				headerClassName: 'w-24',
+				headerClassName: 'min-w-[9.5rem] w-[9.5rem]',
 				render: row => {
 					const isOpen = selectedUserId === row.id;
 					return (
@@ -174,7 +186,9 @@ export function UsersTable() {
 							variant={isOpen ? VariantBase.DEFAULT : VariantBase.OUTLINE}
 							size={ButtonSize.SM}
 							onClick={() => setSelectedUserId(isOpen ? null : row.id)}
+							className='gap-1.5'
 						>
+							<DisclosureChevron expanded={isOpen} className='h-4 w-4' />
 							{t(AdminKey.USER_ANALYSIS)}
 						</Button>
 					);
@@ -290,7 +304,7 @@ export function UsersTable() {
 							placeholder={t(AdminKey.USERS_SEARCH_PLACEHOLDER)}
 							value={searchQuery}
 							onChange={e => setSearchQuery(e.target.value)}
-							className='w-full min-w-0 max-w-[220px]'
+							className='w-full min-w-0 max-w-[14rem]'
 						/>
 					</div>
 					{searchQuery.length > 0 && (
@@ -313,6 +327,7 @@ export function UsersTable() {
 			emptyState={{
 				title: isSearchMode ? t(AdminKey.NO_MATCHING_USERS) : t(AdminKey.NO_USERS_FOUND),
 				description: isSearchMode ? t(AdminKey.NO_MATCHING_USERS_DESC) : t(AdminKey.NO_USERS_FOUND_DESC),
+				icon: isSearchMode ? EMPTY_STATE_LUCIDE_ICON.searchNoResults : undefined,
 			}}
 			emptyValue={EMPTY_VALUE}
 			sortBy={sortBy}

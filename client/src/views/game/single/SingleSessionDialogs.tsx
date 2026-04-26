@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-import { GameKey } from '@/constants';
+import { GameKey, VariantBase } from '@/constants';
 import type { SingleSessionDialogsProps } from '@/types';
 import { getTranslatedErrorMessage } from '@/utils';
 import {
@@ -11,6 +11,7 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
+	Button,
 } from '@/components';
 
 export function SingleSessionDialogs({
@@ -20,6 +21,8 @@ export function SingleSessionDialogs({
 	showCreditsWarning,
 	setShowCreditsWarning,
 	onSafeExitFromLoading,
+	showBackToGameSettings = false,
+	onBackToGameSettings,
 }: SingleSessionDialogsProps) {
 	const { t } = useTranslation();
 	return (
@@ -32,8 +35,20 @@ export function SingleSessionDialogs({
 							{sessionError != null ? getTranslatedErrorMessage(t, sessionError) : ''}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogAction onClick={onSafeExitFromLoading}>{t(GameKey.OK)}</AlertDialogAction>
+					<AlertDialogFooter className='flex-col gap-2 sm:flex-row sm:justify-end'>
+						{showBackToGameSettings && onBackToGameSettings != null && (
+							<Button
+								type='button'
+								variant={VariantBase.OUTLINE}
+								className='w-full sm:w-auto'
+								onClick={onBackToGameSettings}
+							>
+								{t(GameKey.BACK_TO_GAME_SETTINGS)}
+							</Button>
+						)}
+						<AlertDialogAction className='w-full sm:w-auto' onClick={onSafeExitFromLoading}>
+							{t(GameKey.OK)}
+						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

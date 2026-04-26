@@ -9,7 +9,7 @@ import { ensureErrorObject } from '@shared/utils';
 import { SKELETON_PLACEHOLDER_COUNTS, SkeletonVariant, TabsListVariant, TRANSITION_DURATIONS } from '@/constants';
 import type { DashboardWithTabsProps } from '@/types';
 import { clientLogger as logger } from '@/services';
-import { buildDashboardTabsConfig } from '@/utils';
+import { buildDashboardTabsConfig, cn } from '@/utils';
 import { RefreshButton, Skeleton, Tabs, TabsBar, TabsContent } from '@/components';
 import { useAppSelector } from '@/hooks';
 import { selectLocale } from '@/redux/selectors';
@@ -129,13 +129,15 @@ export function DashboardWithTabs({
 								<TabsContent
 									key={value}
 									value={value}
-									className='w-full min-w-0 mt-2 md:mt-4 min-h-0 flex-1 overflow-y-auto view-spacing-lg'
+									className={cn(
+										'dashboard-tab-panel-enter w-full min-w-0 mt-2 md:mt-4 min-h-0 flex-1 overflow-y-auto view-spacing-lg'
+									)}
 								>
 									<Suspense
 										fallback={
 											suspenseFallback ?? (
 												<div className='space-y-8'>
-													<div className='grid grid-cols-4 gap-4'>
+													<div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
 														<Skeleton variant={SkeletonVariant.Card} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 													</div>
 												</div>

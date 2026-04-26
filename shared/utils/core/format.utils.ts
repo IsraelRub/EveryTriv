@@ -40,6 +40,22 @@ export function formatDate(date: Date | string | null | undefined, defaultValue:
 	return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+export function formatDateTime(
+	date: Date | string | null | undefined,
+	defaultValue: string = EMPTY_VALUE,
+	includeSeconds: boolean = false
+): string {
+	if (!date || !VALIDATORS.date(date)) {
+		return defaultValue;
+	}
+	const d = VALIDATORS.string(date) ? new Date(date) : date;
+	const datePart = formatDate(d, defaultValue);
+	if (datePart === defaultValue) return defaultValue;
+	const timeCore = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+	const timePart = includeSeconds ? `${timeCore}:${pad2(d.getSeconds())}` : timeCore;
+	return `${datePart} ${timePart}`;
+}
+
 export function capitalize(word: string | null | undefined): string {
 	if (!isNonEmptyString(word)) return '';
 	return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();

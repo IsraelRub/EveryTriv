@@ -14,7 +14,7 @@ import {
 import type { BasicUser, CompleteUserAnalytics, GameHistoryEntry } from '@shared/types';
 import { getErrorMessage } from '@shared/utils';
 
-import { AudioKey, QUERY_KEYS, ROUTES } from '@/constants';
+import { AudioKey, QUERY_KEYS, Routes } from '@/constants';
 import type { FinalizeGameOptions } from '@/types';
 import { audioService, gameHistoryService, clientLogger as logger, queryInvalidationService } from '@/services';
 import { getAuthCurrentUserQueryKey, readAuthTokenSnapshotForQueryKey } from '@/utils';
@@ -213,7 +213,7 @@ export const useGameFinalization = () => {
 
 						// Navigate to summary if requested (URL includes gameId for consistency with multiplayer)
 						if (navigateToSummary) {
-							navigate(ROUTES.GAME_SINGLE_SUMMARY.replace(':gameId', sessionGameId));
+							navigate(Routes.GAME_SINGLE_SUMMARY.replace(':gameId', sessionGameId));
 						}
 
 						// Execute custom success callback with saved history

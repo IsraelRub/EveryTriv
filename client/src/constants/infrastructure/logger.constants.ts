@@ -7,25 +7,24 @@ export const LOGGER_CSS_COLORS = {
 	gray: '#888888',
 } as const;
 
-export const TOAST_ENABLED_METHODS = new Set<string>([
-	// User-facing errors
-	'userError',
-	'authError',
-	'systemError',
-	'apiError',
-	'apiUpdateError',
-	'gameError',
-	'paymentFailed',
-	'securityError',
-	'navigationComponentError',
-	'providerError',
-	// User-facing warnings
-	'userWarn',
-	'securityWarn',
-	'securityDenied',
-	'providerFallback',
-	// User-facing success (optional, use sparingly for important actions)
-	'userSuccess',
-	'authSuccess',
-	'paymentSuccess',
-]);
+export enum ToastEnabledLogMethod {
+	USER_ERROR = 'userError',
+	AUTH_ERROR = 'authError',
+	SYSTEM_ERROR = 'systemError',
+	API_ERROR = 'apiError',
+	API_UPDATE_ERROR = 'apiUpdateError',
+	GAME_ERROR = 'gameError',
+	PAYMENT_FAILED = 'paymentFailed',
+	SECURITY_ERROR = 'securityError',
+	NAVIGATION_COMPONENT_ERROR = 'navigationComponentError',
+	PROVIDER_ERROR = 'providerError',
+	USER_WARN = 'userWarn',
+	SECURITY_WARN = 'securityWarn',
+	SECURITY_DENIED = 'securityDenied',
+	PROVIDER_FALLBACK = 'providerFallback',
+	USER_SUCCESS = 'userSuccess',
+	AUTH_SUCCESS = 'authSuccess',
+	PAYMENT_SUCCESS = 'paymentSuccess',
+}
+
+export const TOAST_ENABLED_METHODS = new Set<string>(Object.values(ToastEnabledLogMethod));

@@ -7,7 +7,7 @@ import { APP_NAME } from '@shared/constants';
 import { calculatePercentage, formatTitle, getErrorMessage } from '@shared/utils';
 
 import {
-	ANIMATION_DELAYS,
+	AnimationDelays,
 	ButtonSize,
 	GameKey,
 	SEMANTIC_ICON_TEXT,
@@ -152,7 +152,7 @@ export function SocialShare({ score, total, topic, difficulty, mode, shareText: 
 										key={platform.name}
 										initial={{ opacity: 0, y: 10 }}
 										animate={{ opacity: 1, y: 0 }}
-										transition={{ delay: index * ANIMATION_DELAYS.STAGGER_SMALL }}
+										transition={{ delay: index * AnimationDelays.STAGGER_SMALL }}
 									>
 										<Button
 											variant={VariantBase.OUTLINE}

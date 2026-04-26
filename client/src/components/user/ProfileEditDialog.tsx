@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Edit, Key, Pencil } from 'lucide-react';
+import { Key, Pencil } from 'lucide-react';
 
 import { LengthKey } from '@shared/constants';
 import { getDisplayNameFromUserFields } from '@shared/utils';
@@ -12,10 +12,12 @@ import {
 	ButtonSize,
 	CommonKey,
 	DISPLAY_NAME_FALLBACKS,
+	ErrorsKey,
 	LoadingKey,
 	VariantBase,
 } from '@/constants';
 import type { ProfileEditDialogProps } from '@/types';
+import { getTranslatedErrorMessage, translateValidationMessage } from '@/utils';
 import {
 	AvatarSelector,
 	Button,
@@ -29,12 +31,13 @@ import {
 	Label,
 	UserAvatar,
 } from '@/components';
-import { useCurrentUserData, useUpdateUserProfile, useUserProfile } from '@/hooks';
+import { toast, useCurrentUserData, useUpdateUserProfile, useUserProfile } from '@/hooks';
 
 export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps) {
-	const { t } = useTranslation(['auth', 'loading', 'common']);
+	const { t } = useTranslation(['auth', 'loading', 'common', 'errors']);
 	const [isEditing, setIsEditing] = useState(false);
 	const [editData, setEditData] = useState({ firstName: '', lastName: '' });
+	const [fieldErrors, setFieldErrors] = useState<{ firstName?: string; lastName?: string }>({});
 	const [showAvatarSelector, setShowAvatarSelector] = useState(false);
 	const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
 
@@ -43,6 +46,11 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 	const updateProfile = useUpdateUserProfile();
 
 	const profile = userProfile?.profile;
+	const avatarUrlForDisplay = profile?.avatarUrl ?? currentUser?.avatarUrl;
+	const hasCustomAvatarUrl = avatarUrlForDisplay != null && avatarUrlForDisplay !== '';
+	const avatarForDisplay = hasCustomAvatarUrl
+		? (profile?.avatar ?? undefined)
+		: (profile?.avatar ?? currentUser?.avatar);
 	const currentAvatarId = profile?.avatar ?? undefined;
 
 	const handleEditStart = () => {
@@ -50,6 +58,7 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 			firstName: profile?.firstName ?? '',
 			lastName: profile?.lastName ?? '',
 		});
+		setFieldErrors({});
 		setIsEditing(true);
 	};
 
@@ -58,10 +67,19 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 		const lastNameValidation = validateStringLength(editData.lastName, LengthKey.LAST_NAME);
 
 		if (!firstNameValidation.isValid || !lastNameValidation.isValid) {
-			// Validation errors are handled by server, but we can prevent submission
-			// The server will return proper error messages
+			setFieldErrors({
+				firstName:
+					!firstNameValidation.isValid && firstNameValidation.errors[0]
+						? translateValidationMessage(firstNameValidation.errors[0], t)
+						: undefined,
+				lastName:
+					!lastNameValidation.isValid && lastNameValidation.errors[0]
+						? translateValidationMessage(lastNameValidation.errors[0], t)
+						: undefined,
+			});
 			return;
 		}
+		setFieldErrors({});
 
 		try {
 			// Always send lastName, even if empty (server will convert empty string to null)
@@ -70,8 +88,12 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 				lastName: editData.lastName.trim(),
 			});
 			setIsEditing(false);
-		} catch {
-			// Error handled by mutation
+			onOpenChange(false);
+		} catch (error) {
+			toast.error({
+				title: t(ErrorsKey.SOMETHING_WENT_WRONG),
+				description: getTranslatedErrorMessage(t, error),
+			});
 		}
 	};
 
@@ -86,6 +108,7 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 			// Reset all state when closing
 			setIsEditing(false);
 			setEditData({ firstName: '', lastName: '' });
+			setFieldErrors({});
 		}
 		onOpenChange(shouldClose);
 	};
@@ -108,14 +131,14 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 									<div className='relative'>
 										{(profile ?? currentUser) && (
 											<UserAvatar
-												key={profile?.avatarUrl ?? currentUser?.avatarUrl ?? 'no-avatar-url'}
+												key={avatarUrlForDisplay ?? 'no-avatar-url'}
 												size={AvatarSize.XL}
 												source={{
 													firstName: profile?.firstName ?? currentUser?.firstName,
 													lastName: profile?.lastName ?? currentUser?.lastName,
 													email: currentUser?.email,
-													avatar: currentAvatarId ?? profile?.avatar ?? currentUser?.avatar,
-													avatarUrl: profile?.avatarUrl ?? currentUser?.avatarUrl,
+													avatar: avatarForDisplay,
+													avatarUrl: avatarUrlForDisplay,
 												}}
 												fallbackLetter={DISPLAY_NAME_FALLBACKS.USER_SHORT}
 											/>
@@ -139,7 +162,7 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 								{!isEditing && (
 									<div className='flex flex-col gap-3 justify-center items-center md:items-start'>
 										<Button variant={VariantBase.DEFAULT} onClick={handleEditStart} className='w-full md:w-auto'>
-											<Edit className='h-4 w-4 me-2' />
+											<Pencil className='h-4 w-4 me-2' />
 											{t(AuthKey.EDIT_PROFILE_BUTTON)}
 										</Button>
 										<Button
@@ -163,18 +186,48 @@ export function ProfileEditDialog({ open, onOpenChange }: ProfileEditDialogProps
 											<Input
 												id='firstName'
 												value={editData.firstName}
-												onChange={e => setEditData(prev => ({ ...prev, firstName: e.target.value }))}
+												onChange={e => {
+													const value = e.target.value;
+													setEditData(prev => ({ ...prev, firstName: value }));
+													if (fieldErrors.firstName) {
+														const res = validateStringLength(value, LengthKey.FIRST_NAME);
+														setFieldErrors(prev => ({
+															...prev,
+															firstName:
+																res.isValid || !res.errors[0]
+																	? undefined
+																	: translateValidationMessage(res.errors[0], t),
+														}));
+													}
+												}}
 												placeholder={t(AuthKey.FIRST_NAME)}
+												error={!!fieldErrors.firstName}
 											/>
+											{fieldErrors.firstName && <p className='text-sm text-destructive'>{fieldErrors.firstName}</p>}
 										</div>
 										<div className='space-y-2'>
 											<Label>{t(AuthKey.LAST_NAME)}</Label>
 											<Input
 												id='lastName'
 												value={editData.lastName}
-												onChange={e => setEditData(prev => ({ ...prev, lastName: e.target.value }))}
+												onChange={e => {
+													const value = e.target.value;
+													setEditData(prev => ({ ...prev, lastName: value }));
+													if (fieldErrors.lastName) {
+														const res = validateStringLength(value, LengthKey.LAST_NAME);
+														setFieldErrors(prev => ({
+															...prev,
+															lastName:
+																res.isValid || !res.errors[0]
+																	? undefined
+																	: translateValidationMessage(res.errors[0], t),
+														}));
+													}
+												}}
 												placeholder={t(AuthKey.LAST_NAME)}
+												error={!!fieldErrors.lastName}
 											/>
+											{fieldErrors.lastName && <p className='text-sm text-destructive'>{fieldErrors.lastName}</p>}
 										</div>
 									</div>
 									<div className='flex gap-2 pt-2 flex-shrink-0'>

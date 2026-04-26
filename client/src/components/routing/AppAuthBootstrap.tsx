@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { ensureErrorObject } from '@shared/utils';
 
-import { FullPageSpinnerLayout, LoadingMessages, ROUTES } from '@/constants';
+import { FullPageSpinnerLayout, LoadingMessages, Routes } from '@/constants';
 import type { AppAuthBootstrapProps } from '@/types';
 import { authService, clientLogger as logger } from '@/services';
 import { getAuthCurrentUserQueryKey, isProtectedAppPath, readAuthTokenSnapshotForQueryKey } from '@/utils';
@@ -51,10 +51,10 @@ export function AppAuthBootstrap({ children }: AppAuthBootstrapProps): JSX.Eleme
 					await authService.logout();
 					queryClient.clear();
 					const path = window.location.pathname;
-					const isAuthPage = path === ROUTES.LOGIN || path === ROUTES.REGISTER;
+					const isAuthPage = path === Routes.LOGIN || path === Routes.REGISTER || path === Routes.LEGAL_ACCEPTANCE;
 					const isProtectedPath = isProtectedAppPath(path);
 					if (!isAuthPage && isProtectedPath) {
-						window.location.href = ROUTES.HOME;
+						window.location.href = Routes.HOME;
 						return;
 					}
 				}

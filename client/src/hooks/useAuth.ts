@@ -4,27 +4,24 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { TIME_PERIODS_MS, UserRole } from '@shared/constants';
 import type { AuthCredentials, BasicUser, ChangePasswordData } from '@shared/types';
 
-import { AUTH_TOKEN_CHANGED_EVENT, QUERY_KEYS, STORAGE_KEYS } from '@/constants';
+import { AUTH_TOKEN_CHANGED_EVENT, QUERY_KEYS, StorageKeys } from '@/constants';
 import type { UseUserRoleReturn } from '@/types';
-import { authService, clientLogger as logger, queryInvalidationService } from '@/services';
-import { getAuthCurrentUserQueryKey, readAuthTokenSnapshotForQueryKey } from '@/utils';
+import { apiService, authService, clientLogger as logger, queryInvalidationService } from '@/services';
+import {
+	getAuthCurrentUserQueryKey,
+	readAuthTokenSnapshotForQueryKey,
+	safeSessionStorageGet,
+	safeSessionStorageRemove,
+} from '@/utils';
 
 function useAuthTokenSnapshot(): string | null {
-	const [tokenSnapshot, setTokenSnapshot] = useState<string | null>(() => {
-		try {
-			return sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-		} catch {
-			return null;
-		}
-	});
+	const [tokenSnapshot, setTokenSnapshot] = useState<string | null>(() =>
+		safeSessionStorageGet(StorageKeys.AUTH_TOKEN)
+	);
 
 	useEffect(() => {
 		const checkToken = () => {
-			try {
-				setTokenSnapshot(sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN));
-			} catch {
-				setTokenSnapshot(null);
-			}
+			setTokenSnapshot(safeSessionStorageGet(StorageKeys.AUTH_TOKEN));
 		};
 
 		window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, checkToken);
@@ -74,6 +71,9 @@ export const useLogin = () => {
 					});
 
 					await queryInvalidationService.invalidateAuthQueries(queryClient);
+					if (data.user.needsLegalAcceptance !== true) {
+						safeSessionStorageRemove(StorageKeys.REGISTRATION_EMAIL_PENDING_OPTIONAL_AVATAR);
+					}
 				} else {
 					logger.authError('Token mismatch', {
 						userId: data.user.id,
@@ -83,6 +83,35 @@ export const useLogin = () => {
 				logger.authError('Login failed - token not stored or user data missing', {
 					success: tokenStored,
 				});
+			}
+		},
+	});
+};
+
+export const useAcceptLegalConsent = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: () => apiService.acceptLegalConsent(),
+		onSuccess: async data => {
+			const tokenStored = await authService.waitForTokenStorage();
+
+			if (tokenStored && data) {
+				const tokenMatches = await authService.verifyStoredTokenForUser(data.id);
+
+				if (tokenMatches) {
+					try {
+						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.auth.all, exact: false });
+						await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
+					} catch {
+						// ignore cancel failures
+					}
+					queryClient.setQueryData(getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()), data, {
+						updatedAt: Date.now(),
+					});
+
+					await queryInvalidationService.invalidateAuthQueries(queryClient);
+				}
 			}
 		},
 	});

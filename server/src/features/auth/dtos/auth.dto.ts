@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+	Equals,
+	IsBoolean,
+	IsEmail,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	Matches,
+	MaxLength,
+	MinLength,
+} from 'class-validator';
 
 import { VALIDATION_LENGTH } from '@shared/constants';
 
@@ -87,6 +97,16 @@ export class RegisterDto {
 	lastName?: string;
 }
 
+export class AcceptLegalConsentDto {
+	@ApiProperty({
+		description: 'Must be true to record acceptance of Terms and Privacy Policy',
+		example: true,
+	})
+	@IsBoolean()
+	@Equals(true, { message: 'You must accept the Terms of Service and Privacy Policy' })
+	accepted!: boolean;
+}
+
 export class AuthResponseDto {
 	@ApiProperty({
 		description: 'Access token',
@@ -111,7 +131,7 @@ export class AuthResponseDto {
 		avatar?: number;
 		avatarUrl?: string;
 		role: string;
-		emailVerified?: boolean;
+		needsLegalAcceptance: boolean;
 	};
 }
 
@@ -131,14 +151,4 @@ export class RefreshTokenResponseDto {
 		example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
 	})
 	accessToken: string;
-}
-
-export class VerifyEmailQueryDto {
-	@ApiProperty({
-		description: 'Email verification token from the verification link',
-	})
-	@IsString({ message: 'Verification token must be a string' })
-	@IsNotEmpty({ message: 'Verification token is required' })
-	@MaxLength(4096, { message: 'Verification token is too long' })
-	token!: string;
 }

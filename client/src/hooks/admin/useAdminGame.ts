@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { ERROR_MESSAGES } from '@shared/constants';
+import { ERROR_MESSAGES, VALIDATION_COUNT } from '@shared/constants';
 
 import { QUERY_CACHE_PRESETS, QUERY_KEYS } from '@/constants';
 import { gameService } from '@/services';
@@ -25,7 +25,7 @@ export const useGameStatistics = (enabled?: boolean) => {
 export const useAllTriviaQuestions = (enabled?: boolean) => {
 	const { isAdmin } = useUserRole();
 
-	const triviaPageLimit = 500;
+	const triviaPageLimit = VALIDATION_COUNT.ADMIN_TRIVIA_LIST.DEFAULT_LIMIT;
 	const triviaPageOffset = 0;
 
 	return useQuery({

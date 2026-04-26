@@ -5,6 +5,7 @@ import {
 	HTTP_STATUS_CODES,
 	HTTP_TIMEOUTS,
 	HttpMethod,
+	TIME_PERIODS_MS,
 	VALIDATION_LENGTH,
 } from '@shared/constants';
 import { executeRetry, getErrorMessage, isProviderAuthError, isRecord, truncateWithEllipsis } from '@shared/utils';
@@ -20,7 +21,7 @@ import {
 	GROQ_PROVIDER_NAME_LOWERCASE,
 } from '@internal/constants';
 import { serverLogger as logger } from '@internal/services';
-import type { GroqMessageForLog, LLMResponse, ProviderConfig } from '@internal/types';
+import type { GroqApiCallOptions, GroqMessageForLog, LLMResponse, ProviderConfig } from '@internal/types';
 import { createAuthError } from '@internal/utils';
 
 import { TRIVIA_GENERATION_SYSTEM_PROMPT } from '../prompts';
@@ -48,7 +49,7 @@ export class GroqApiClient {
 		return selectedModel;
 	}
 
-	getProviderConfig(prompt: string, systemPrompt?: string): ProviderConfig {
+	getProviderConfig(prompt: string, systemPrompt?: string, options?: GroqApiCallOptions): ProviderConfig {
 		const selectedModel = this.selectModel();
 		const modelConfig = GROQ_MODELS[selectedModel];
 		const systemContent = systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
@@ -57,7 +58,7 @@ export class GroqApiClient {
 			name: GROQ_PROVIDER_NAME_LOWERCASE,
 			apiKey: this.apiKey,
 			baseUrl: GROQ_API_BASE_URL,
-			timeout: HTTP_TIMEOUTS.AI_PROVIDER,
+			timeout: options?.timeoutMs ?? HTTP_TIMEOUTS.AI_PROVIDER,
 			maxRetries: HTTP_CLIENT_CONFIG.RETRY_ATTEMPTS,
 			enabled: true,
 			priority: modelConfig?.priority ?? 1,
@@ -75,17 +76,17 @@ export class GroqApiClient {
 					{ role: 'user', content: prompt },
 				],
 				temperature: GROQ_DEFAULT_TEMPERATURE,
-				max_tokens: GROQ_DEFAULT_MAX_TOKENS,
+				max_tokens: options?.maxTokens ?? GROQ_DEFAULT_MAX_TOKENS,
 			},
 		};
 	}
 
-	async makeApiCall(prompt: string, systemPrompt?: string): Promise<LLMResponse> {
+	async makeApiCall(prompt: string, systemPrompt?: string, options?: GroqApiCallOptions): Promise<LLMResponse> {
 		if (!this.apiKey) {
 			throw createAuthError(ErrorCode.API_KEY_NOT_CONFIGURED);
 		}
 
-		const config = this.getProviderConfig(prompt, systemPrompt);
+		const config = this.getProviderConfig(prompt, systemPrompt, options);
 
 		// Log initial request with detailed info (redact sensitive data)
 		const sanitizedBody = config.body ? { ...config.body } : {};
@@ -217,19 +218,12 @@ export class GroqApiClient {
 				maxRetries: config.maxRetries,
 				baseDelay: HTTP_CLIENT_CONFIG.RETRY_DELAY,
 				timeout: config.timeout,
-				maxTotalTimeMs: 60_000,
+				maxTotalTimeMs: TIME_PERIODS_MS.MINUTE,
 				retryOnAuthError: false,
 				retryOnRateLimit: true,
 				retryOnServerError: true,
 				retryOnNetworkError: true,
-				shouldRetry: error => {
-					// Don't retry on auth errors
-					if (isProviderAuthError(error)) {
-						return false;
-					}
-					// Retry on rate limit, server errors, and network errors
-					return true;
-				},
+				shouldRetry: error => !isProviderAuthError(error),
 				onRetry: (attempt, error, delay) => {
 					logger.providerStats(this.providerName, {
 						eventType: attempt === 1 ? 'retry_attempt' : 'rate_limit_retry',

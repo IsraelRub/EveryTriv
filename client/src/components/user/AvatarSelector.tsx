@@ -8,13 +8,14 @@ import { getErrorMessage } from '@shared/utils';
 
 import {
 	ACCEPT_IMAGE,
-	ANIMATION_DELAYS,
+	AnimationDelays,
 	AuthKey,
 	AVATAR_ID_CLEAR,
 	AvatarSize,
 	AvatarVariant,
 	ButtonSize,
 	CommonKey,
+	DialogContentSize,
 	LoadingKey,
 	SPRING_CONFIGS,
 	VariantBase,
@@ -35,7 +36,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components';
-import { useSetAvatar, useUploadAvatar } from '@/hooks';
+import { toast, useSetAvatar, useUploadAvatar } from '@/hooks';
 
 function revokePreview(url: string | null): void {
 	if (url?.startsWith('blob:')) {
@@ -117,16 +118,18 @@ export function AvatarSelector({
 				await uploadAvatar.mutateAsync(pendingFile);
 				logger.userSuccess('Avatar uploaded successfully');
 				onAvatarSaved?.();
-				onOpenChange(false);
+				queueMicrotask(() => onOpenChange(false));
 			} catch (error) {
 				const errorMessage = getErrorMessage(error) || t(AuthKey.AVATAR_UPLOAD_FAILED);
 				logger.userError(errorMessage, { errorInfo: { message: errorMessage } });
+				toast.error({ title: errorMessage });
 			}
 			return;
 		}
 
 		if (!isAvatarIdOrClear(selectedAvatarId)) {
 			logger.userError('Please select an avatar', { avatar: selectedAvatarId });
+			toast.error({ title: t(AuthKey.AVATAR_SELECTION_REQUIRED) });
 			return;
 		}
 
@@ -134,37 +137,45 @@ export function AvatarSelector({
 			await setAvatar.mutateAsync(selectedAvatarId);
 			logger.userSuccess('Avatar updated successfully', { avatar: selectedAvatarId });
 			onAvatarSaved?.();
-			onOpenChange(false);
+			queueMicrotask(() => onOpenChange(false));
 		} catch (error) {
 			const errorMessage = getErrorMessage(error) || t(AuthKey.AVATAR_UPDATE_FAILED);
 			logger.userError(errorMessage, { errorInfo: { message: errorMessage }, avatar: selectedAvatarId });
+			toast.error({ title: errorMessage });
 		}
 	};
 
-	const handleFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-		const file = e.target.files?.[0];
-		if (!file) return;
-		if (file.size > AVATAR_UPLOAD_MAX_BYTES) {
-			logger.userError('Image is too large. Maximum size is 2MB.', {
-				errorInfo: { message: 'File size exceeds 2MB limit' },
+	const handleFileChange = useCallback(
+		(e: ChangeEvent<HTMLInputElement>) => {
+			const file = e.target.files?.[0];
+			if (!file) return;
+			if (file.size > AVATAR_UPLOAD_MAX_BYTES) {
+				const message = t(AuthKey.AVATAR_FILE_TOO_LARGE);
+				logger.userError(message, {
+					errorInfo: { message: 'File size exceeds 2MB limit' },
+				});
+				toast.error({ title: message });
+				return;
+			}
+			const mime = (file.type ?? '').toLowerCase();
+			if (!AVATAR_ALLOWED_MIME_TYPES_SET.has(mime)) {
+				const message = t(AuthKey.AVATAR_INVALID_IMAGE_TYPE);
+				logger.userError(message, {
+					errorInfo: { message: 'Invalid MIME type' },
+				});
+				toast.error({ title: message });
+				return;
+			}
+			setSelectedAvatarId(AVATAR_ID_CLEAR);
+			setPendingFile(file);
+			setPreviewObjectUrl(prev => {
+				revokePreview(prev);
+				return URL.createObjectURL(file);
 			});
-			return;
-		}
-		const mime = (file.type ?? '').toLowerCase();
-		if (!AVATAR_ALLOWED_MIME_TYPES_SET.has(mime)) {
-			logger.userError('Invalid image type. Use JPEG, PNG, or WebP.', {
-				errorInfo: { message: 'Invalid MIME type' },
-			});
-			return;
-		}
-		setSelectedAvatarId(AVATAR_ID_CLEAR);
-		setPendingFile(file);
-		setPreviewObjectUrl(prev => {
-			revokePreview(prev);
-			return URL.createObjectURL(file);
-		});
-		e.target.value = '';
-	}, []);
+			e.target.value = '';
+		},
+		[t]
+	);
 
 	const handleRemoveCustom = useCallback(async () => {
 		if (pendingFile != null) {
@@ -178,6 +189,7 @@ export function AvatarSelector({
 		} catch (error) {
 			const errorMessage = getErrorMessage(error) || t(AuthKey.AVATAR_REMOVE_FAILED);
 			logger.userError(errorMessage, { errorInfo: { message: errorMessage } });
+			toast.error({ title: errorMessage });
 		}
 	}, [pendingFile, clearPendingUpload, setAvatar, t]);
 
@@ -195,7 +207,7 @@ export function AvatarSelector({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='max-w-2xl max-h-[90vh] flex flex-col'>
+			<DialogContent size={DialogContentSize.LG} className='max-h-[90vh] flex flex-col'>
 				<DialogHeader className='flex-shrink-0'>
 					<DialogTitle>{t(AuthKey.AVATAR)}</DialogTitle>
 					<DialogDescription>{t(AuthKey.AVATAR_DESCRIPTION)}</DialogDescription>
@@ -246,7 +258,7 @@ export function AvatarSelector({
 					</Card>
 					<section className='space-y-2'>
 						<h3 className='text-sm font-semibold text-foreground'>{t(AuthKey.PRESET_AVATARS)}</h3>
-						<div className='grid grid-cols-4 gap-2'>
+						<div className='grid grid-cols-3 sm:grid-cols-4 gap-2'>
 							<motion.button
 								key={AVATAR_ID_CLEAR}
 								type='button'
@@ -287,7 +299,7 @@ export function AvatarSelector({
 										initial={{ opacity: 0, scale: 0.8 }}
 										animate={{ opacity: 1, scale: 1 }}
 										transition={{
-											delay: (index + 1) * ANIMATION_DELAYS.STAGGER_EXTRA_SMALL,
+											delay: (index + 1) * AnimationDelays.STAGGER_EXTRA_SMALL,
 											...SPRING_CONFIGS.ICON_SPRING,
 										}}
 										whileHover={{ scale: 1.05 }}

@@ -145,3 +145,11 @@ export interface SaveGameConfigParams {
 	userId: string;
 	config: GameConfigParams;
 }
+
+export type TopicDifficultyGateCacheStatus = 'accepted' | 'rejected';
+
+export interface TopicDifficultyGateCacheEntry {
+	readonly status: TopicDifficultyGateCacheStatus;
+	readonly reason?: string;
+	readonly expiresAt: number;
+}

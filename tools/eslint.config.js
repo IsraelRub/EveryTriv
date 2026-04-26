@@ -1,11 +1,3 @@
-/**
- * EveryTriv ESLint Configuration
- * Unified configuration for client, server and shared
- *
- * @description Unified ESLint configuration file replacing separate files
- * @used_by All TypeScript/JavaScript files in the project
- */
-
 const js = require('@eslint/js');
 const tseslint = require('@typescript-eslint/eslint-plugin');
 const tsparser = require('@typescript-eslint/parser');
@@ -14,7 +6,6 @@ const reactPlugin = require('eslint-plugin-react');
 const reactHooksPlugin = require('eslint-plugin-react-hooks');
 const prettier = require('eslint-config-prettier');
 
-/** Shared Node-style globals for base, server, and client (client extends with browser globals below). */
 const eslintNodeGlobals = {
 	process: 'readonly',
 	Buffer: 'readonly',
@@ -85,19 +76,19 @@ const baseConfig = {
 	},
 	plugins: {
 		'@typescript-eslint': tseslint,
-		'import': importPlugin,
+		import: importPlugin,
 	},
 	rules: {
 		// TypeScript rules
 		'no-unused-vars': 'off',
 		'@typescript-eslint/no-unused-vars': [
 			'error',
-			{ 
-				argsIgnorePattern: '^_', 
+			{
+				argsIgnorePattern: '^_',
 				varsIgnorePattern: '^_',
 				ignoreRestSiblings: true,
 				caughtErrors: 'all',
-				destructuredArrayIgnorePattern: '^_'
+				destructuredArrayIgnorePattern: '^_',
 			},
 		],
 		'@typescript-eslint/no-explicit-any': 'error',
@@ -113,15 +104,18 @@ const baseConfig = {
 		'no-console': 'error',
 		'prefer-const': 'error',
 		'no-var': 'error',
-		'eqeqeq': ['error', 'always', { null: 'ignore' }],
-		'curly': ['error', 'multi-line'],
+		eqeqeq: ['error', 'always', { null: 'ignore' }],
+		curly: ['error', 'multi-line'],
 		'no-duplicate-imports': 'error',
 
 		// Null/Undefined handling (modern approach)
-		'@typescript-eslint/prefer-nullish-coalescing': ['error', {
-			ignoreConditionalTests: false,
-			ignoreMixedLogicalExpressions: false,
-		}],
+		'@typescript-eslint/prefer-nullish-coalescing': [
+			'error',
+			{
+				ignoreConditionalTests: false,
+				ignoreMixedLogicalExpressions: false,
+			},
+		],
 		'@typescript-eslint/prefer-optional-chain': 'error',
 		'@typescript-eslint/no-unnecessary-type-assertion': 'error',
 
@@ -133,16 +127,16 @@ const baseConfig = {
 		'import/default': 'error',
 		'import/no-named-as-default-member': 'error',
 	},
-    settings: {
-        'import/resolver': {
-            typescript: {
-                alwaysTryTypes: true,
-                project: '../../tsconfig.json',
-            },
-            node: {
-                extensions: ['.js', '.jsx', '.ts', '.tsx'],
-            },
-        },
+	settings: {
+		'import/resolver': {
+			typescript: {
+				alwaysTryTypes: true,
+				project: '../../tsconfig.json',
+			},
+			node: {
+				extensions: ['.js', '.jsx', '.ts', '.tsx'],
+			},
+		},
 	},
 };
 
@@ -205,8 +199,8 @@ module.exports = [
 		},
 		plugins: {
 			'@typescript-eslint': tseslint,
-			'import': importPlugin,
-			'react': reactPlugin,
+			import: importPlugin,
+			react: reactPlugin,
 			'react-hooks': reactHooksPlugin,
 		},
 		settings: {
@@ -228,12 +222,12 @@ module.exports = [
 			'no-unused-vars': 'off',
 			'@typescript-eslint/no-unused-vars': [
 				'error',
-				{ 
-					argsIgnorePattern: '^_', 
+				{
+					argsIgnorePattern: '^_',
 					varsIgnorePattern: '^_',
 					ignoreRestSiblings: true,
 					caughtErrors: 'all',
-					destructuredArrayIgnorePattern: '^_'
+					destructuredArrayIgnorePattern: '^_',
 				},
 			],
 			'@typescript-eslint/no-explicit-any': 'error',
@@ -249,15 +243,18 @@ module.exports = [
 			'no-console': 'error',
 			'prefer-const': 'error',
 			'no-var': 'error',
-			'eqeqeq': ['error', 'always', { null: 'ignore' }],
-			'curly': ['error', 'multi-line'],
+			eqeqeq: ['error', 'always', { null: 'ignore' }],
+			curly: ['error', 'multi-line'],
 			'no-duplicate-imports': 'error',
 
 			// Null/Undefined handling (modern approach)
-			'@typescript-eslint/prefer-nullish-coalescing': ['error', {
-				ignoreConditionalTests: false,
-				ignoreMixedLogicalExpressions: false,
-			}],
+			'@typescript-eslint/prefer-nullish-coalescing': [
+				'error',
+				{
+					ignoreConditionalTests: false,
+					ignoreMixedLogicalExpressions: false,
+				},
+			],
 			'@typescript-eslint/prefer-optional-chain': 'error',
 			'@typescript-eslint/no-unnecessary-type-assertion': 'error',
 
@@ -270,9 +267,12 @@ module.exports = [
 			'import/no-named-as-default-member': 'error',
 			// React specific rules
 			'react/prop-types': 'off',
-			'react/no-unescaped-entities': ['error', {
-				'forbid': ['>', '}']
-			}],
+			'react/no-unescaped-entities': [
+				'error',
+				{
+					forbid: ['>', '}'],
+				},
+			],
 			'react/jsx-uses-react': 'error',
 			// React Hooks rules
 			'react-hooks/rules-of-hooks': 'error',
@@ -337,5 +337,5 @@ module.exports = [
 	},
 
 	// Prettier config - must be last to override conflicting rules
-	prettier
+	prettier,
 ];

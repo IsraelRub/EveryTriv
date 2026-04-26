@@ -1,6 +1,7 @@
 import { VALIDATION_COUNT } from '@shared/constants';
 
-export const isAvatarIdOrClear = (id: number): boolean => id === 0 || isValidAvatarId(id);
+export const isAvatarIdOrClear = (id: number): boolean =>
+	id === VALIDATION_COUNT.AVATAR_ID.CLEAR || isValidAvatarId(id);
 
 export const getAvatarUrl = (avatarId: number | null | undefined): string | undefined => {
 	if (!avatarId) return undefined;

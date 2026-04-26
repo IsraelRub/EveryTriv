@@ -1,30 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Crown, Infinity, ListOrdered, LucideIcon, Play, Timer, Users } from 'lucide-react';
+import { CreditCard, Crown, Loader2, Play } from 'lucide-react';
 
-import {
-	DEFAULT_GAME_CONFIG,
-	GAME_MODES,
-	GAME_MODES_CONFIG,
-	GameMode as GameModeEnum,
-	VALIDATION_COUNT,
-} from '@shared/constants';
+import { DEFAULT_GAME_CONFIG, GAME_MODES_CONFIG, GameMode as GameModeEnum, VALIDATION_COUNT } from '@shared/constants';
 import type { GameConfig } from '@shared/types';
-import { calculateRequiredCredits } from '@shared/utils';
+import { calculateRequiredCredits, getErrorMessage, isRecord } from '@shared/utils';
 
 import {
 	AlertIconSize,
 	AlertVariant,
-	ANIMATION_DELAYS,
-	GAME_MODES_UI_CONFIG,
+	AnimationDelays,
+	GAME_MODE_PRESENTATION,
 	GameKey,
-	ROUTES,
+	Routes,
+	SINGLE_PLAYER_SETUP_GAME_MODES_ORDER,
 	VariantBase,
 } from '@/constants';
-import type { GameModeOption } from '@/types';
-import { cn } from '@/utils';
+import { gameHistoryService, clientLogger as logger } from '@/services';
+import { cn, getTranslatedErrorMessage } from '@/utils';
 import {
 	Alert,
 	AlertDescription,
@@ -39,53 +34,30 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components';
-import { useCanPlay, useGameSettingsForm } from '@/hooks';
+import { useAppSelector, useCanPlay, useCurrentUserData, useGameSettingsForm } from '@/hooks';
+import { selectLocale } from '@/redux/selectors';
+import { GameSettingsFlowIssuesAlert, mergeGameSettingsFlowIssueMessages } from './GameSettingsFlowIssuesAlert';
 import { GameSettingsForm } from './GameSettingsForm';
 
-// Icon mapping for game modes
-const GAME_MODE_ICONS: Record<GameModeEnum, LucideIcon> = {
-	[GameModeEnum.QUESTION_LIMITED]: ListOrdered,
-	[GameModeEnum.TIME_LIMITED]: Timer,
-	[GameModeEnum.UNLIMITED]: Infinity,
-	[GameModeEnum.MULTIPLAYER]: Users,
-} as const;
+const GAME_MODES_OPTIONS = SINGLE_PLAYER_SETUP_GAME_MODES_ORDER.map(
+	mode => [mode, GAME_MODE_PRESENTATION[mode]] as const
+);
 
-const GAME_MODE_NAME_KEYS: Record<GameModeEnum, string> = {
-	[GameModeEnum.QUESTION_LIMITED]: 'game:modeQuestionLimited',
-	[GameModeEnum.TIME_LIMITED]: 'game:modeTimeLimited',
-	[GameModeEnum.UNLIMITED]: 'game:modeUnlimited',
-	[GameModeEnum.MULTIPLAYER]: 'game:multiplayer',
-} as const;
-
-const GAME_MODE_DESC_KEYS: Record<GameModeEnum, string> = {
-	[GameModeEnum.QUESTION_LIMITED]: 'game:modeQuestionLimitedDescription',
-	[GameModeEnum.TIME_LIMITED]: 'game:modeTimeLimitedDescription',
-	[GameModeEnum.UNLIMITED]: 'game:modeUnlimitedDescription',
-	[GameModeEnum.MULTIPLAYER]: 'game:competeWithFriends',
-} as const;
-
-const GAME_MODES_OPTIONS: [GameModeEnum, GameModeOption & { nameKey: string; descKey: string }][] = Object.keys(
-	GAME_MODES_CONFIG
-)
-	.filter((key: string): key is GameModeEnum => GAME_MODES.has(key))
-	.filter(mode => mode !== GameModeEnum.MULTIPLAYER)
-	.map(mode => [
-		mode,
-		{
-			nameKey: GAME_MODE_NAME_KEYS[mode],
-			descKey: GAME_MODE_DESC_KEYS[mode],
-			icon: GAME_MODE_ICONS[mode],
-			showQuestionLimit: GAME_MODES_UI_CONFIG[mode].showQuestionLimit,
-			showTimeLimit: GAME_MODES_UI_CONFIG[mode].showTimeLimit,
-		},
-	]);
-
-export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig) => void }): JSX.Element {
+export function GameMode({
+	onModeSelect,
+}: {
+	onModeSelect: (settings: GameConfig, gameId: string, meta: { serverSessionPreflightOk: boolean }) => void;
+}): JSX.Element {
 	const { t } = useTranslation('game');
+	const { t: tGlobal } = useTranslation();
 	const navigate = useNavigate();
+	const locale = useAppSelector(selectLocale);
+	const currentUser = useCurrentUserData();
 	const [selectedMode, setSelectedMode] = useState<GameModeEnum | undefined>(undefined);
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [noCreditsDialogOpen, setNoCreditsDialogOpen] = useState(false);
+	const [sessionPreflightLoading, setSessionPreflightLoading] = useState(false);
+	const [flowBlockingIssues, setFlowBlockingIssues] = useState<string[]>([]);
 
 	// Shared game settings form state & validation
 	const {
@@ -107,8 +79,18 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 		setCustomDifficultyError,
 		setAnswerCount,
 		validateSettings,
+		validateTriviaTopicGate,
 		resetForm,
 	} = useGameSettingsForm();
+
+	const summaryFlowIssues = useMemo(
+		() => mergeGameSettingsFlowIssueMessages(flowBlockingIssues, [topicError], [customDifficultyError]),
+		[flowBlockingIssues, topicError, customDifficultyError]
+	);
+
+	useEffect(() => {
+		setFlowBlockingIssues([]);
+	}, [topic, customDifficulty, selectedDifficulty]);
 
 	// Mode-specific state (not shared with multiplayer)
 	const [maxQuestionsPerGame, setMaxQuestionsPerGame] = useState<number>(
@@ -151,7 +133,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 	const creditCheckValue = getCreditCheckValue();
 	const { data: canPlay } = useCanPlay(creditCheckValue, selectedMode ?? GameModeEnum.QUESTION_LIMITED);
 
-	const SelectedModeIcon = selectedMode ? GAME_MODE_ICONS[selectedMode] : null;
+	const SelectedModeIcon = selectedMode ? GAME_MODE_PRESENTATION[selectedMode].icon : null;
 	const selectedModeConfig = selectedMode ? GAME_MODES_CONFIG[selectedMode] : null;
 
 	// Calculate the actual credit cost to display to the user
@@ -178,11 +160,12 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 		}
 
 		resetForm();
+		setFlowBlockingIssues([]);
 		setSelectedMode(mode);
 		setDialogOpen(true);
 	};
 
-	const handleStartGame = () => {
+	const handleStartGame = async () => {
 		if (!selectedMode) return;
 
 		// Check if user has enough credits (admins are always allowed)
@@ -192,12 +175,26 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 			return;
 		}
 
-		const { isValid, finalDifficulty } = validateSettings();
-		if (!isValid) return;
-		if (!canSubmitLanguage) return;
+		const validation = validateSettings({ applyFieldErrors: false });
+		if (!validation.isValid) {
+			setFlowBlockingIssues(validation.issues);
+			return;
+		}
+		const { finalDifficulty } = validation;
+
+		try {
+			await validateTriviaTopicGate(finalDifficulty);
+		} catch (error) {
+			const message = getTranslatedErrorMessage(tGlobal, error);
+			logger.userError('Trivia topic gate failed from game settings', {
+				errorInfo: { message: isRecord(error) ? getErrorMessage(error) : String(error) },
+			});
+			setFlowBlockingIssues([message]);
+			return;
+		}
 
 		const modeConfig = GAME_MODES_CONFIG[selectedMode];
-		const modeUi = GAME_MODES_UI_CONFIG[selectedMode];
+		const modeUi = GAME_MODE_PRESENTATION[selectedMode];
 		const settings: GameConfig = {
 			mode: selectedMode,
 			difficulty: finalDifficulty,
@@ -207,7 +204,33 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 			answerCount,
 		};
 
-		onModeSelect(settings);
+		const gameId = crypto.randomUUID();
+		setFlowBlockingIssues([]);
+
+		// Preflight matches useSingleSession: server session start only for signed-in users (avoids failing after navigate).
+		if (currentUser?.id) {
+			setSessionPreflightLoading(true);
+			try {
+				await gameHistoryService.startGameSession(
+					gameId,
+					settings.topic ?? DEFAULT_GAME_CONFIG.defaultTopic,
+					settings.difficulty ?? DEFAULT_GAME_CONFIG.defaultDifficulty,
+					settings.mode,
+					locale
+				);
+			} catch (error) {
+				const message = getTranslatedErrorMessage(tGlobal, error);
+				logger.userError('Session preflight failed from game settings dialog', {
+					errorInfo: { message: isRecord(error) ? getErrorMessage(error) : String(error) },
+				});
+				setFlowBlockingIssues([message]);
+				return;
+			} finally {
+				setSessionPreflightLoading(false);
+			}
+		}
+
+		onModeSelect(settings, gameId, { serverSessionPreflightOk: Boolean(currentUser?.id) });
 		setDialogOpen(false);
 	};
 
@@ -222,7 +245,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 							key={mode}
 							initial={{ opacity: 0, y: 20 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: index * ANIMATION_DELAYS.STAGGER_NORMAL }}
+							transition={{ delay: index * AnimationDelays.STAGGER_NORMAL }}
 						>
 							<Card
 								className='p-6 hover:shadow-lg transition-all cursor-pointer group hover:border-primary/50'
@@ -247,14 +270,20 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 			</div>
 
 			{/* Settings Dialog */}
-			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+			<Dialog
+				open={dialogOpen}
+				onOpenChange={open => {
+					setDialogOpen(open);
+					if (!open) setFlowBlockingIssues([]);
+				}}
+			>
 				<DialogContent className='sm:max-w-lg max-h-[90vh] flex flex-col'>
 					<DialogHeader className='flex-shrink-0'>
 						<DialogTitle className='flex items-center gap-2'>
 							{selectedMode && SelectedModeIcon && selectedModeConfig && (
 								<>
 									<SelectedModeIcon className='w-5 h-5 text-primary' />
-									{t(GAME_MODE_NAME_KEYS[selectedMode])}
+									{t(GAME_MODE_PRESENTATION[selectedMode].nameKey)}
 								</>
 							)}
 							{isAdmin && (
@@ -304,6 +333,8 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 							</Alert>
 						)}
 
+						<GameSettingsFlowIssuesAlert items={summaryFlowIssues} />
+
 						<GameSettingsForm
 							topic={topic}
 							onTopicChange={handleTopicChange}
@@ -325,6 +356,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 							onMaxQuestionsPerGameChange={setMaxQuestionsPerGame}
 							timeLimit={timeLimit}
 							onTimeLimitChange={setTimeLimit}
+							hideInlineFieldAlerts
 						/>
 					</div>
 
@@ -332,8 +364,15 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 						<Button variant={VariantBase.OUTLINE} onClick={() => setDialogOpen(false)}>
 							{t(GameKey.CANCEL)}
 						</Button>
-						<Button onClick={handleStartGame} disabled={(!isAdmin && !canPlay) || !canSubmitLanguage}>
-							<Play className='h-4 w-4 me-2' />
+						<Button
+							onClick={() => void handleStartGame()}
+							disabled={(!isAdmin && !canPlay) || !canSubmitLanguage || sessionPreflightLoading}
+						>
+							{sessionPreflightLoading ? (
+								<Loader2 className='h-4 w-4 me-2 animate-spin' />
+							) : (
+								<Play className='h-4 w-4 me-2' />
+							)}
 							{t(GameKey.START_GAME)}
 						</Button>
 					</DialogFooter>
@@ -359,7 +398,7 @@ export function GameMode({ onModeSelect }: { onModeSelect: (settings: GameConfig
 						<Button variant={VariantBase.OUTLINE} onClick={() => setNoCreditsDialogOpen(false)}>
 							{t(GameKey.CANCEL)}
 						</Button>
-						<Button onClick={() => navigate(ROUTES.PAYMENT, { state: { modal: true, returnUrl: ROUTES.GAME_SINGLE } })}>
+						<Button onClick={() => navigate(Routes.PAYMENT, { state: { modal: true, returnUrl: Routes.GAME_SINGLE } })}>
 							<CreditCard className='w-4 h-4 me-2' />
 							{t(GameKey.GET_CREDITS)}
 						</Button>

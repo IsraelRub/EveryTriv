@@ -14,9 +14,9 @@ const dialogContentVariants = cva(
 	{
 		variants: {
 			size: {
-				[DialogContentSize.SM]: 'max-w-lg',
-				[DialogContentSize.MD]: 'max-w-xl',
-				[DialogContentSize.LG]: 'max-w-2xl',
+				[DialogContentSize.SM]: 'max-w-[min(32rem,calc(100vw-2rem))]',
+				[DialogContentSize.MD]: 'max-w-[min(36rem,calc(100vw-2rem))]',
+				[DialogContentSize.LG]: 'max-w-[min(42rem,calc(100vw-2rem))]',
 			},
 		},
 		defaultVariants: {

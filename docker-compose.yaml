@@ -1,3 +1,10 @@
+# Bounded json-file logs for every service (stdout/stderr); avoids unbounded Docker host disk use.
+x-json-file-logging: &json-file-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   # PostgreSQL Database
   postgres:
@@ -20,6 +27,7 @@ services:
       retries: 5
     networks:
       - everytriv-network
+    logging: *json-file-logging
 
   # Redis Cache
   redis:
@@ -42,6 +50,7 @@ services:
       retries: 5
     networks:
       - everytriv-network
+    logging: *json-file-logging
 
   # Backend Server
   server:
@@ -53,7 +62,7 @@ services:
     env_file:
       - path: .env
         required: false
-    # Runtime config: root `.env` only (avoids contradicting overrides vs env_file).
+    # Runtime: Compose `env_file` (.env) + optional merge of tracked root `.env.prod` in the image (see `server/src/loadEnv.ts`).
     ports:
       - '3002:3002'
     depends_on:
@@ -62,9 +71,11 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./server/logs:/app/logs
+      # ServerLogger uses LOG_DIR (default `logs`) relative to WORKDIR `/app/server`.
+      - ./server/logs:/app/server/logs
     networks:
       - everytriv-network
+    logging: *json-file-logging
     # HEALTHCHECK: defined in server/Dockerfile (single definition)
 
   # Frontend Client
@@ -83,6 +94,7 @@ services:
       - server
     networks:
       - everytriv-network
+    logging: *json-file-logging
 
   # Cloudflare Quick Tunnel → public https URL to the client container (same Docker network as nginx :3000).
   # Start with: docker compose --profile demo-tunnel up --build -d   (or pnpm run start:demo:up; full demo+sync: pnpm run start:demo)
@@ -98,6 +110,7 @@ services:
       - everytriv-network
     profiles:
       - demo-tunnel
+    logging: *json-file-logging
 
   # pgAdmin - Web-based PostgreSQL administration (Development only)
   pgadmin:
@@ -116,6 +129,7 @@ services:
       - everytriv-network
     profiles:
       - dev
+    logging: *json-file-logging
 
   # Redis Commander - Web-based Redis administration (Development only)
   redis-commander:
@@ -132,6 +146,7 @@ services:
       - everytriv-network
     profiles:
       - dev
+    logging: *json-file-logging
 
   # WebDB — DB UI (development); start with: docker compose --profile dev up
   webdb:
@@ -151,6 +166,7 @@ services:
       - everytriv-network
     profiles:
       - dev
+    logging: *json-file-logging
 
 volumes:
   postgres_data:

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { LogContext } from '@shared/constants';
+import { LogContext, VALIDATION_COUNT } from '@shared/constants';
 import type { AdminUserData, AdminUsersListResponse } from '@shared/types';
 import { clamp, getErrorMessage } from '@shared/utils';
 
@@ -16,10 +16,17 @@ export class UserCoreService {
 		private readonly userRepository: Repository<UserEntity>
 	) {}
 
-	async getAllUsers(limit: number = 50, offset: number = 0): Promise<AdminUsersListResponse> {
+	async getAllUsers(
+		limit: number = VALIDATION_COUNT.ADMIN_USERS_LIST.DEFAULT_LIMIT,
+		offset: number = VALIDATION_COUNT.ADMIN_USERS_LIST.DEFAULT_OFFSET
+	): Promise<AdminUsersListResponse> {
 		try {
-			const safeLimit = clamp(limit, 1, 200);
-			const safeOffset = Math.max(offset, 0);
+			const safeLimit = clamp(
+				limit,
+				VALIDATION_COUNT.ADMIN_USERS_LIST.LIMIT_MIN,
+				VALIDATION_COUNT.ADMIN_USERS_LIST.LIMIT_MAX
+			);
+			const safeOffset = Math.max(offset, VALIDATION_COUNT.ADMIN_USERS_LIST.DEFAULT_OFFSET);
 
 			const [users, total] = await this.userRepository.findAndCount({
 				where: { isActive: true },
@@ -32,6 +39,8 @@ export class UserCoreService {
 				id: user.id,
 				email: user.email,
 				role: user.role,
+				firstName: user.firstName,
+				lastName: user.lastName,
 				createdAt: user.createdAt ? user.createdAt.toISOString() : new Date().toISOString(),
 				lastLogin: user.lastLogin ? user.lastLogin.toISOString() : undefined,
 			}));

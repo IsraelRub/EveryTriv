@@ -1,9 +1,9 @@
-import { StorageType, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import { MEBIBYTE, StorageType, TIME_DURATIONS_SECONDS } from '@shared/constants';
 
 export const SERVER_STORAGE_CONFIG = {
 	prefix: 'everytriv_',
 	defaultTtl: TIME_DURATIONS_SECONDS.HOUR,
-	maxSize: 5 * 1024 * 1024, // 5MB
+	maxSize: 5 * MEBIBYTE,
 	enableCompression: false,
 	enableMetrics: true,
 	enableSync: true,
@@ -13,7 +13,7 @@ export const SERVER_STORAGE_CONFIG = {
 export const CACHE_CONFIG = {
 	prefix: 'everytriv_cache_',
 	defaultTtl: TIME_DURATIONS_SECONDS.HOUR,
-	maxSize: 100 * 1024 * 1024, // 100MB for cache
+	maxSize: 100 * MEBIBYTE,
 	enableCompression: false,
 	enableMetrics: true,
 	enableSync: false,

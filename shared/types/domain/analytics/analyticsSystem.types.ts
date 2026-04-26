@@ -1,5 +1,7 @@
 import type { RecommendationPriority, SystemInsightStatus } from '@shared/constants';
 
+export type SystemRecommendationEffort = 'low' | 'medium' | 'high';
+
 export interface SystemStats {
 	totalUsers: number;
 	activeUsers24h: number;
@@ -30,13 +32,10 @@ export interface SystemInsights {
 export interface SystemRecommendation {
 	id: string;
 	type: string;
-	title: string;
-	description: string;
-	message: string;
-	action: string;
 	priority: RecommendationPriority;
-	estimatedImpact: string;
-	implementationEffort: string;
+	implementationEffort: SystemRecommendationEffort;
+
+	i18nParams?: Readonly<Record<string, string>>;
 }
 
 export interface BusinessMetricsRevenue {

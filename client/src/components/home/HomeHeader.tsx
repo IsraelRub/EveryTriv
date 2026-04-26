@@ -4,7 +4,7 @@ import { BarChart3, History, Trophy } from 'lucide-react';
 
 import { APP_NAME } from '@shared/constants';
 
-import { ANIMATION_CONFIG, ANIMATION_DELAYS, HomeKey } from '@/constants';
+import { ANIMATION_CONFIG, AnimationDelays, HomeKey } from '@/constants';
 import type { HomeHeaderProps } from '@/types';
 import { Card } from '@/components';
 
@@ -39,7 +39,7 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 				<motion.div
 					initial={{ opacity: 0, y: 10 }}
 					animate={{ opacity: 1, y: 0 }}
-					transition={{ delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM }}
+					transition={{ delay: AnimationDelays.SEQUENCE_MEDIUM }}
 					className={action ? 'flex flex-col items-center justify-center gap-4 text-center' : 'text-center mb-6'}
 				>
 					<h2 className='text-xl md:text-2xl lg:text-3xl font-medium text-muted-foreground'>
@@ -59,7 +59,7 @@ export function HomeHeader({ isAuthenticated, firstName, showWelcome, showGuestC
 				<motion.div
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
-					transition={{ delay: ANIMATION_DELAYS.SEQUENCE_LARGE }}
+					transition={{ delay: AnimationDelays.SEQUENCE_LARGE }}
 					className='mt-8'
 				>
 					<div className='grid grid-cols-1 md:grid-cols-3 gap-6'>

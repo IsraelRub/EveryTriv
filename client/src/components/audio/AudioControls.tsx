@@ -1,12 +1,20 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Volume2, VolumeX } from 'lucide-react';
+import { Volume2, VolumeX } from 'lucide-react';
 
 import { calculatePercentage } from '@shared/utils';
 
 import { ButtonSize, CommonKey, SliderSize, VariantBase } from '@/constants';
 import { cn } from '@/utils';
-import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, Label, Slider } from '@/components';
+import {
+	Button,
+	DisclosureChevron,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuTrigger,
+	Label,
+	Slider,
+} from '@/components';
 import { useAudioSettings } from '@/hooks';
 
 export function AudioControls() {
@@ -40,7 +48,7 @@ export function AudioControls() {
 						className='h-9 w-8 rounded-none hover:bg-muted/50 shrink-0'
 						title={t(CommonKey.AUDIO_SETTINGS)}
 					>
-						<ChevronDown className={cn('h-4 w-4 transition-transform duration-200', isOpen && 'rotate-180')} />
+						<DisclosureChevron expanded={isOpen} className='h-4 w-4' />
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent className='w-64 p-4' align='end' sideOffset={8}>

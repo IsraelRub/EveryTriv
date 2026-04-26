@@ -79,9 +79,8 @@ export function getSingleSessionCompletionState(params: SingleSessionCompletionP
 	const questionsExhausted = nextQuestionIndex >= questionsLength;
 
 	const shouldFetchMore = flags.isTimeLimited && questionsExhausted;
-	const shouldEndGame =
-		(flags.hasQuestionLimit && gameQuestionCount != null && nextQuestionIndex >= gameQuestionCount) ||
-		(flags.isTimeLimited && questionsExhausted);
+	// Time-limited games end only via the session timer (handleGameTimeout), not when the buffer is empty.
+	const shouldEndGame = flags.hasQuestionLimit && gameQuestionCount != null && nextQuestionIndex >= gameQuestionCount;
 
 	return { shouldEndGame, shouldFetchMore };
 }

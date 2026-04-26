@@ -64,10 +64,6 @@ export class LocalAuthGuard implements CanActivate {
 				userId: payload.sub,
 				role: request.user.role,
 			});
-			logger.securityLogin('Authentication successful', {
-				userId: payload.sub,
-				role: request.user.role,
-			});
 
 			return true;
 		} catch (error) {

@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { isNonEmptyString, isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { ROUTES } from '@/constants';
+import { Routes } from '@/constants';
 import type { UseModalRouteReturn } from '@/types';
 import { isProtectedAppPath } from '@/utils';
 import { useIsAuthenticated } from '../useAuth';
@@ -32,14 +32,14 @@ export function useModalRoute(): UseModalRouteReturn {
 	const returnUrl = modalState?.returnUrl;
 
 	const closeModal = useCallback(() => {
-		const safeReturnUrl = returnUrl && !isAuthenticated && isProtectedAppPath(returnUrl) ? ROUTES.HOME : returnUrl;
+		const safeReturnUrl = returnUrl && !isAuthenticated && isProtectedAppPath(returnUrl) ? Routes.HOME : returnUrl;
 
 		if (safeReturnUrl) {
 			navigate(safeReturnUrl, { replace: true });
 		} else if (window.history.length > 1) {
 			navigate(-1);
 		} else {
-			navigate(ROUTES.HOME, { replace: true });
+			navigate(Routes.HOME, { replace: true });
 		}
 	}, [returnUrl, isAuthenticated, navigate]);
 

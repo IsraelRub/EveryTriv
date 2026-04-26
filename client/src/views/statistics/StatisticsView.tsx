@@ -1,8 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { DashboardTabBundle, STATISTICS_TAB_PARAM, STATISTICS_TABS, StatisticsKey } from '@/constants';
+import { DashboardTabBundle, STATISTICS_TAB_SEARCH_PARAM, STATISTICS_TABS, StatisticsKey } from '@/constants';
 import { queryInvalidationService } from '@/services';
 import { createTabLoader } from '@/utils';
 import { DashboardWithTabs } from '@/components';
@@ -14,6 +14,12 @@ export function StatisticsView() {
 	const currentUser = useCurrentUserData();
 	const isAuthenticated = useIsAuthenticated();
 	const loadModule = useMemo(() => createTabLoader(DashboardTabBundle.STATISTICS), []);
+
+	useEffect(() => {
+		if (currentUser?.id) {
+			void queryInvalidationService.invalidateGameQueries(queryClient, currentUser.id);
+		}
+	}, [currentUser?.id, queryClient]);
 
 	const onRefresh = useCallback(async () => {
 		await queryInvalidationService.invalidateGameQueries(queryClient, currentUser?.id);
@@ -28,7 +34,7 @@ export function StatisticsView() {
 		<DashboardWithTabs
 			specs={STATISTICS_TABS}
 			loadModule={loadModule}
-			tabParam={STATISTICS_TAB_PARAM}
+			tabParam={STATISTICS_TAB_SEARCH_PARAM}
 			i18nNamespace='statistics'
 			title={t(StatisticsKey.TITLE)}
 			description={isAuthenticated ? t(StatisticsKey.DESCRIPTION_AUTHENTICATED) : t(StatisticsKey.DESCRIPTION_GUEST)}

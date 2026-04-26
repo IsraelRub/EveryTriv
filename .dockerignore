@@ -12,12 +12,8 @@ build/
 .nuxt/
 .output/
 
-# Environment files
+# Environment — do not copy real secrets into the image; no `*.local` env layout.
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
 # IDE files
 .vscode/

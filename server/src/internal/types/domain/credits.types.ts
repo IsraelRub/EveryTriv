@@ -4,6 +4,8 @@ export interface CreditPackageConfigItem {
 	id: string;
 	credits: number;
 	price: number;
+
+	priceIls?: number;
 	tier?: string;
 }
 

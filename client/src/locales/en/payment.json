@@ -33,6 +33,7 @@
 	"creditsAddedToAccountShort": "Credits have been added to your account.",
 	"addCredits": "ADD",
 	"grantedCreditsRefillHint": "Refill to {{cap}} credits by {{dateTime}}",
+	"paypalBrand": "PayPal",
 	"continueToPaypal": "Continue to PayPal",
 	"manualPaymentConfirmTitle": "Confirm simulated payment",
 	"manualPaymentConfirmDescription": "This path runs a development-style card flow on the server (no real charge). Continue only if you understand this is not a live payment processor.",

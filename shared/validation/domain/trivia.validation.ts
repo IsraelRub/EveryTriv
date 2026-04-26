@@ -1,4 +1,4 @@
-import { DIFFICULTIES, LengthKey } from '@shared/constants';
+import { DIFFICULTIES, DifficultyLevel, ERROR_MESSAGES, LengthKey } from '@shared/constants';
 import type { GameDifficulty, TriviaInputValidationResult, ValidationResult } from '@shared/types';
 
 import { validateNoForbiddenWords, validateStringLength } from '../core/content.validation';
@@ -32,6 +32,11 @@ export function validateTriviaInputQuick(topic: string, difficulty: string): Tri
 		if (!customValidation.isValid) {
 			result.difficulty = customValidation;
 		}
+	} else if (difficulty.toLowerCase() === DifficultyLevel.CUSTOM) {
+		result.difficulty = {
+			isValid: false,
+			errors: [ERROR_MESSAGES.validation.CUSTOM_DIFFICULTY_REQUIRES_DESCRIPTION],
+		};
 	} else if (!isRegisteredDifficulty(difficulty)) {
 		result.difficulty = {
 			isValid: false,
@@ -65,6 +70,8 @@ export function validateTriviaRequest(topic: string, difficulty: GameDifficulty)
 		if (!customDifficultyValidation.isValid) {
 			errors.push(...customDifficultyValidation.errors);
 		}
+	} else if (difficulty.toLowerCase() === DifficultyLevel.CUSTOM) {
+		errors.push(ERROR_MESSAGES.validation.CUSTOM_DIFFICULTY_REQUIRES_DESCRIPTION);
 	} else {
 		if (!isRegisteredDifficulty(difficulty)) {
 			errors.push(`Difficulty must be one of: ${[...DIFFICULTIES].join(', ')}`);

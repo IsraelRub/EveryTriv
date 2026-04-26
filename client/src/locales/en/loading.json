@@ -21,5 +21,8 @@
 	"joiningRoom": "Joining room...",
 	"waitingForGameState": "Waiting for game state...",
 	"loadingMultiplayerQuestions": "Loading questions...",
+	"multiplayerReconnecting": "Connection lost — reconnecting to the game...",
+	"multiplayerResyncingRoom": "Syncing room state from the server...",
+	"multiplayerResyncAction": "Sync from server",
 	"noQuestionsAvailable": "No questions available"
 }

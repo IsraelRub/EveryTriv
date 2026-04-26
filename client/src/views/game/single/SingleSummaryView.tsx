@@ -9,10 +9,10 @@ import { calculatePercentage, calculateScoreRate, formatTitle, getErrorMessage, 
 
 import {
 	ANIMATION_CONFIG,
-	ANIMATION_DELAYS,
+	AnimationDelays,
 	AudioKey,
 	GameKey,
-	ROUTES,
+	Routes,
 	SEMANTIC_ICON_TEXT,
 	SINGLE_SUMMARY_STAR_SEQUENCE_MS,
 	SocialShareMode,
@@ -187,9 +187,9 @@ export function SingleSummaryView() {
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
 			transition={{ duration: TRANSITION_DURATIONS.SMOOTH, ease: ANIMATION_CONFIG.EASING_NAMES.EASE_OUT }}
-			className='view-main'
+			className='view-main flex flex-col min-h-0'
 		>
-			<div className='view-centered-2xl h-full flex flex-col'>
+			<div className='view-centered-2xl w-full flex-1 min-h-0 flex flex-col'>
 				<Card className='card-padding text-center view-spacing-lg flex-1 flex flex-col overflow-y-auto'>
 					{/* Header */}
 					<div>
@@ -198,7 +198,7 @@ export function SingleSummaryView() {
 							initial={{ opacity: 0, scale: 2.5, rotate: -10, filter: 'blur(10px)' }}
 							animate={{ opacity: 1, scale: 1, rotate: 0, filter: 'blur(0px)' }}
 							transition={{
-								delay: ANIMATION_DELAYS.STAGGER_NORMAL,
+								delay: AnimationDelays.STAGGER_NORMAL,
 								...SPRING_CONFIGS.BOUNCY,
 							}}
 							className='text-4xl md:text-5xl font-extrabold mb-2 md:mb-4 bg-gradient-to-r from-primary via-purple-500 to-primary bg-clip-text text-transparent tracking-wider'
@@ -208,7 +208,7 @@ export function SingleSummaryView() {
 						<motion.div
 							initial={{ scale: 0, rotate: -90 }}
 							animate={{ scale: 1, rotate: 0 }}
-							transition={{ delay: ANIMATION_DELAYS.SEQUENCE_MEDIUM, ...SPRING_CONFIGS.GENTLE }}
+							transition={{ delay: AnimationDelays.SEQUENCE_MEDIUM, ...SPRING_CONFIGS.GENTLE }}
 						>
 							<Trophy
 								className={cn(
@@ -221,7 +221,7 @@ export function SingleSummaryView() {
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							transition={{
-								delay: ANIMATION_DELAYS.SINGLE_SUMMARY_HEADER_TAIL,
+								delay: AnimationDelays.SINGLE_SUMMARY_HEADER_TAIL,
 							}}
 							className='text-muted-foreground'
 						>
@@ -232,7 +232,7 @@ export function SingleSummaryView() {
 								initial={{ opacity: 0, scale: 0.9, y: 10 }}
 								animate={{ opacity: 1, scale: 1, y: 0 }}
 								transition={{
-									delay: ANIMATION_DELAYS.SINGLE_SUMMARY_HEADER_TAIL,
+									delay: AnimationDelays.SINGLE_SUMMARY_HEADER_TAIL,
 									...SPRING_CONFIGS.BOUNCY,
 								}}
 								className='mt-4'
@@ -252,7 +252,7 @@ export function SingleSummaryView() {
 						initial={{ opacity: 0, scale: 0.8, y: 20 }}
 						animate={{ opacity: 1, scale: 1, y: 0 }}
 						transition={{
-							delay: ANIMATION_DELAYS.SEQUENCE_AFTER_HEADER,
+							delay: AnimationDelays.SEQUENCE_AFTER_HEADER,
 							...SPRING_CONFIGS.GENTLE,
 						}}
 					>
@@ -294,19 +294,19 @@ export function SingleSummaryView() {
 					<div className='grid grid-cols-3 gap-6'>
 						{[
 							{
-								delay: ANIMATION_DELAYS.SEQUENCE_STATS_BASE,
+								delay: AnimationDelays.SEQUENCE_STATS_BASE,
 								Icon: CircleStar,
 								value: animatedScore.toLocaleString(),
 								labelKey: GameKey.TOTAL_SCORE,
 							},
 							{
-								delay: ANIMATION_DELAYS.SINGLE_SUMMARY_STATS_CORRECT,
+								delay: AnimationDelays.SINGLE_SUMMARY_STATS_CORRECT,
 								Icon: CopyCheck,
 								value: `${animatedCorrect}/${gameStats.total}`,
 								labelKey: GameKey.CORRECT_ANSWERS,
 							},
 							{
-								delay: ANIMATION_DELAYS.SINGLE_SUMMARY_STATS_TIME,
+								delay: AnimationDelays.SINGLE_SUMMARY_STATS_TIME,
 								Icon: Clock,
 								value: gameStats.time,
 								labelKey: GameKey.TIME_TAKEN,
@@ -337,12 +337,12 @@ export function SingleSummaryView() {
 						initial={{ opacity: 0, scale: 0.9, y: 10 }}
 						animate={{ opacity: 1, scale: 1, y: 0 }}
 						transition={{
-							delay: ANIMATION_DELAYS.SINGLE_SUMMARY_ACTION_BUTTONS,
+							delay: AnimationDelays.SINGLE_SUMMARY_ACTION_BUTTONS,
 							...SPRING_CONFIGS.GENTLE,
 						}}
 					>
 						<SummaryActionButtons
-							playAgainTo={ROUTES.GAME_SINGLE}
+							playAgainTo={Routes.GAME_SINGLE}
 							share={
 								gameStats.total > 0
 									? {

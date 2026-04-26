@@ -1,9 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 
-/**
- * Mirrors `value` after `delayMs`, unless `shouldSkipDebounce` returns true for the latest `value`
- * (then the debounced output updates immediately in the effect).
- */
 export function useDebouncedValue<T>(value: T, delayMs: number, shouldSkipDebounce?: (next: T) => boolean): T {
 	const [debounced, setDebounced] = useState<T>(value);
 	const shouldSkipRef = useRef(shouldSkipDebounce);

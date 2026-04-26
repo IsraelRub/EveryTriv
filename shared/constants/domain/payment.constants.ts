@@ -47,20 +47,32 @@ export enum PaymentClientAction {
 
 export const PAYMENT_METHODS = new Set<string>(Object.values(PaymentMethod));
 
-export const CREDIT_PURCHASE_PACKAGES = [
-	{ id: 'cpkg_def_1', credits: 50, price: 2.99, tier: 'basic' },
-	{ id: 'cpkg_def_2', credits: 100, price: 4.99, tier: 'basic' },
-	{ id: 'cpkg_def_3', credits: 250, price: 9.99, tier: 'standard' },
-	{ id: 'cpkg_def_4', credits: 500, price: 18.99, tier: 'premium' },
-	{ id: 'cpkg_def_5', credits: 1000, price: 34.99, tier: 'ultimate' },
-	{ id: 'cpkg_def_6', credits: 2000, price: 64.99, tier: 'ultimate' },
-].map(pkg => ({
+export enum PurchaseCurrency {
+	USD = 'USD',
+	ILS = 'ILS',
+}
+
+export const PURCHASE_CURRENCIES = new Set<string>(Object.values(PurchaseCurrency));
+
+const CREDIT_PACKAGE_ROWS = [
+	{ id: 'cpkg_def_1', credits: 50, price: 3, priceIls: 10, tier: 'basic' },
+	{ id: 'cpkg_def_2', credits: 100, price: 5, priceIls: 20, tier: 'basic' },
+	{ id: 'cpkg_def_3', credits: 250, price: 10, priceIls: 40, tier: 'standard' },
+	{ id: 'cpkg_def_4', credits: 500, price: 20, priceIls: 70, tier: 'premium' },
+	{ id: 'cpkg_def_5', credits: 1000, price: 35, priceIls: 130, tier: 'ultimate' },
+	{ id: 'cpkg_def_6', credits: 2000, price: 65, priceIls: 240, tier: 'ultimate' },
+] as const;
+
+export const CREDIT_PURCHASE_PACKAGES = CREDIT_PACKAGE_ROWS.map(pkg => ({
 	...pkg,
 	paypalProductId: buildPaypalProductIdForCreditPackage(pkg.id),
 	paypalPrice: pkg.price.toFixed(2),
+	paypalPriceIls: pkg.priceIls.toFixed(2),
 	supportedMethods: [PaymentMethod.MANUAL_CREDIT, PaymentMethod.PAYPAL],
 	pricePerCredit: pkg.price / pkg.credits,
+	pricePerCreditIls: pkg.priceIls / pkg.credits,
 	priceDisplay: `$${pkg.price.toFixed(2)}`,
+	priceDisplayIls: `₪${pkg.priceIls.toFixed(2)}`,
 	currency: 'USD',
 	bonus: 0,
 }));

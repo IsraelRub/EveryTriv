@@ -14,7 +14,7 @@ import {
 	ComponentSize,
 	LoadingKey,
 	PLACEHOLDER_EMAIL,
-	ROUTES,
+	Routes,
 	ValidationKey,
 	VariantBase,
 } from '@/constants';
@@ -212,7 +212,7 @@ export function LoginView() {
 						type='button'
 						variant={VariantBase.MINIMAL}
 						size={ButtonSize.SM}
-						onClick={() => navigate(ROUTES.REGISTER, { state: { modal: isModal } })}
+						onClick={() => navigate(Routes.REGISTER, { state: { modal: isModal } })}
 						className='link-primary h-auto p-0 font-medium'
 					>
 						{t(AuthKey.SIGN_UP)}

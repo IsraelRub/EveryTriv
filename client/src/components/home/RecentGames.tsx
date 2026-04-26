@@ -10,6 +10,7 @@ import {
 	SEMANTIC_ICON_TEXT,
 	SKELETON_PLACEHOLDER_COUNTS,
 	SkeletonVariant,
+	UiDensity,
 	VariantBase,
 	ViewAllDestination,
 } from '@/constants';
@@ -98,6 +99,7 @@ export function RecentGames() {
 								data='recent games'
 								title={t(HomeKey.NO_RECENT_GAMES)}
 								description={t(HomeKey.NO_RECENT_GAMES_DESCRIPTION)}
+								density={UiDensity.COMPACT}
 							/>
 						</div>
 					)

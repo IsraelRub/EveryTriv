@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { CheckCircle, Coins, Play, Wallet } from 'lucide-react';
+import { CheckCircle2, Coins, Play, Wallet } from 'lucide-react';
 
 import {
 	AnalyticsAction,
@@ -10,6 +10,7 @@ import {
 	CREDIT_PURCHASE_PACKAGES,
 	EMPTY_VALUE,
 	PaymentStatus,
+	PurchaseCurrency,
 } from '@shared/constants';
 import type { CreditPurchaseOption } from '@shared/types';
 import { formatCurrency } from '@shared/utils';
@@ -25,6 +26,11 @@ import {
 	VariantBase,
 } from '@/constants';
 import { cn, repeat } from '@/utils';
+import {
+	formatPriceForPurchaseCurrency,
+	formatPricePerCreditForCurrency,
+	getDefaultPurchaseCurrencyFromLanguageTag,
+} from '@/utils/domain/purchaseCurrency.utils';
 import {
 	Badge,
 	Button,
@@ -53,19 +59,6 @@ import {
 	usePaymentHistory,
 	useTrackAnalyticsEvent,
 } from '@/hooks';
-
-function formatPricePerCredit(value: number): string {
-	if (!Number.isFinite(value) || value <= 0) {
-		return '$0.00';
-	}
-	if (value < 0.01) {
-		return `$${value.toFixed(4)}`;
-	}
-	if (value < 0.1) {
-		return `$${value.toFixed(3)}`;
-	}
-	return `$${value.toFixed(2)}`;
-}
 
 function paymentStatusLabelKey(status: string): PaymentKey | null {
 	switch (status) {
@@ -112,15 +105,20 @@ function CreditPackageCard({
 	onPurchase,
 	isPurchasing,
 	isBestValue,
+	purchaseCurrency,
 	t,
 }: {
 	pkg: CreditPurchaseOption;
 	onPurchase: () => void;
 	isPurchasing: boolean;
 	isBestValue: boolean;
+	purchaseCurrency: PurchaseCurrency;
 	t: (key: string, opts?: { count?: number }) => string;
 }) {
 	const hasBonus = pkg.bonus && pkg.bonus > 0;
+	const priceIls = pkg.priceIls ?? 0;
+	const mainPrice = formatPriceForPurchaseCurrency(purchaseCurrency, pkg.price, priceIls);
+	const perCredit = formatPricePerCreditForCurrency(purchaseCurrency, pkg.price, priceIls, pkg.credits);
 
 	return (
 		<motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
@@ -151,9 +149,9 @@ function CreditPackageCard({
 					)}
 				</CardHeader>
 				<CardContent>
-					<div className='text-3xl font-bold'>{pkg.priceDisplay}</div>
+					<div className='text-3xl font-bold'>{mainPrice}</div>
 					<p className='text-sm text-muted-foreground mt-1'>
-						{formatPricePerCredit(pkg.pricePerCredit)} {t(PaymentKey.PER_CREDIT)}
+						{perCredit} {t(PaymentKey.PER_CREDIT)}
 					</p>
 				</CardContent>
 				<CardFooter>
@@ -167,7 +165,7 @@ function CreditPackageCard({
 }
 
 export function PaymentView() {
-	const { t } = useTranslation(['payment', 'loading']);
+	const { t, i18n } = useTranslation(['payment', 'loading']);
 	const { handleClose } = useNavigationClose();
 	const [selectedPackage, setSelectedPackage] = useState<CreditPurchaseOption | null>(null);
 	const [showPaymentDialog, setShowPaymentDialog] = useState(false);
@@ -178,9 +176,11 @@ export function PaymentView() {
 	const { data: creditBalance, isLoading: balanceLoading, refetch: refetchCreditBalance } = useCreditBalance();
 	const { data: creditPackages, isLoading: packagesLoading } = useCreditPackages();
 	const { data: paymentHistory, isLoading: paymentHistoryLoading } = usePaymentHistory();
-	const trackAnalyticsEvent = useTrackAnalyticsEvent();
+	const { mutate: trackAnalyticsEvent } = useTrackAnalyticsEvent();
 
 	const balance = creditBalance?.totalCredits ?? 0;
+
+	const purchaseCurrency = useMemo(() => getDefaultPurchaseCurrencyFromLanguageTag(i18n.language), [i18n.language]);
 
 	// Use packages from API or fallback to shared constants
 	const packages: CreditPurchaseOption[] =
@@ -189,8 +189,15 @@ export function PaymentView() {
 			id: pkg.id,
 			credits: pkg.credits,
 			price: pkg.price,
+			priceIls: pkg.priceIls,
 			priceDisplay: pkg.priceDisplay,
+			priceDisplayIls: pkg.priceDisplayIls,
 			pricePerCredit: pkg.pricePerCredit,
+			pricePerCreditIls: pkg.pricePerCreditIls,
+			paypalProductId: pkg.paypalProductId,
+			paypalPrice: pkg.paypalPrice,
+			paypalPriceIls: pkg.paypalPriceIls,
+			supportedMethods: pkg.supportedMethods,
 			description: t(PaymentKey.CREDITS_PACKAGE, { count: pkg.credits }),
 		}));
 
@@ -208,9 +215,9 @@ export function PaymentView() {
 		return best.id;
 	}, [packages]);
 
-	// Track page view analytics
+	// Track page view analytics (depend on stable mutate only — full mutation object changes every render)
 	useEffect(() => {
-		trackAnalyticsEvent.mutate({
+		trackAnalyticsEvent({
 			eventType: AnalyticsEventType.PAGE_VIEW,
 			page: AnalyticsPageName.PAYMENT,
 			action: AnalyticsAction.VIEW,
@@ -226,20 +233,23 @@ export function PaymentView() {
 			setShowSuccessDialog(true);
 			// Track analytics event for purchase
 			if (selectedPackage) {
-				trackAnalyticsEvent.mutate({
+				const priceForAnalytics =
+					purchaseCurrency === PurchaseCurrency.ILS ? selectedPackage.priceIls : selectedPackage.price;
+				trackAnalyticsEvent({
 					eventType: AnalyticsEventType.PURCHASE_CREDITS,
 					page: AnalyticsPageName.PAYMENT,
 					action: AnalyticsAction.PURCHASE_SUCCESS,
-					value: selectedPackage.price,
+					value: priceForAnalytics,
 					properties: {
 						packageId: selectedPackage.id,
 						credits: credits,
-						price: selectedPackage.price,
+						price: priceForAnalytics,
+						currency: purchaseCurrency,
 					},
 				});
 			}
 		},
-		[creditBalance?.totalCredits, refetchCreditBalance, selectedPackage, trackAnalyticsEvent]
+		[creditBalance?.totalCredits, purchaseCurrency, refetchCreditBalance, selectedPackage, trackAnalyticsEvent]
 	);
 
 	const handleSuccessDialogOpenChange = useCallback((open: boolean) => {
@@ -305,6 +315,7 @@ export function PaymentView() {
 										<CreditPackageCard
 											key={pkg.id}
 											pkg={pkg}
+											purchaseCurrency={purchaseCurrency}
 											t={t}
 											isBestValue={bestValuePackageId != null && pkg.id === bestValuePackageId}
 											onPurchase={() => {
@@ -413,7 +424,7 @@ export function PaymentView() {
 				<DialogContent className='sm:max-w-md'>
 					<DialogHeader>
 						<DialogTitle className={cn('flex items-center gap-2', SEMANTIC_ICON_TEXT.success)}>
-							<CheckCircle className='w-6 h-6' />
+							<CheckCircle2 className='w-6 h-6' />
 							{t(PaymentKey.PURCHASE_COMPLETE)}
 						</DialogTitle>
 						<DialogDescription>{t(PaymentKey.CREDITS_ADDED_TO_ACCOUNT)}</DialogDescription>

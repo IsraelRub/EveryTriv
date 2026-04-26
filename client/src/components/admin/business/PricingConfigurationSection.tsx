@@ -4,25 +4,10 @@ import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BadgeDollarSign, ExternalLink, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 
-import {
-	ADMIN_CREDIT_PACKAGES_COUNT_MAX,
-	ADMIN_CREDIT_PACKAGES_COUNT_MIN,
-	CREDIT_PURCHASE_PACKAGES,
-	ERROR_MESSAGES,
-	TIME_PERIODS_MS,
-} from '@shared/constants';
-import { generateCreditPackageId } from '@shared/utils';
+import { CREDIT_PURCHASE_PACKAGES, ERROR_MESSAGES, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
+import { clamp, generateCreditPackageId } from '@shared/utils';
 
-import {
-	ADMIN_PRICING_PACKAGE,
-	AdminKey,
-	ButtonSize,
-	CommonKey,
-	QUERY_KEYS,
-	ROUTES,
-	SkeletonVariant,
-	VariantBase,
-} from '@/constants';
+import { AdminKey, ButtonSize, CommonKey, QUERY_KEYS, Routes, SkeletonVariant, VariantBase } from '@/constants';
 import type { AdminPricingResponse, AdminPricingUpdatePayload, CreditPackageEditItem } from '@/types';
 import { adminService } from '@/services';
 import {
@@ -41,7 +26,7 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
-	Input,
+	NumberInput,
 	SectionCard,
 	Skeleton,
 	Table,
@@ -53,27 +38,36 @@ import {
 } from '@/components';
 import { useUserRole } from '@/hooks';
 
+function normalizeAdminPackagePrice(value: number): number {
+	const { MIN, MAX } = VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE;
+	return clamp(Math.round(value), MIN, MAX);
+}
+
 function toLocalPackages(packages: AdminPricingResponse['packages']): CreditPackageEditItem[] {
 	return packages.map(p => ({
 		id: p.id,
 		credits: p.credits,
-		price: p.price,
+		price: normalizeAdminPackagePrice(p.price),
+		priceIls: normalizeAdminPackagePrice(p.priceIls),
 		tier: undefined,
 	}));
 }
 
 function validatePackageCredits(value: number): boolean {
-	return (
-		Number.isInteger(value) && value >= ADMIN_PRICING_PACKAGE.credits.min && value <= ADMIN_PRICING_PACKAGE.credits.max
-	);
+	const { MIN, MAX } = VALIDATION_COUNT.CREDITS;
+	return Number.isInteger(value) && value >= MIN && value <= MAX;
 }
 
 function validatePackagePrice(value: number): boolean {
-	return Number.isFinite(value) && value >= ADMIN_PRICING_PACKAGE.price.min && value <= ADMIN_PRICING_PACKAGE.price.max;
+	const { MIN, MAX } = VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE;
+	return Number.isFinite(value) && Number.isInteger(value) && value >= MIN && value <= MAX;
 }
 
 function validatePackagesForSave(packages: CreditPackageEditItem[]): AdminKey | null {
-	if (packages.length < ADMIN_CREDIT_PACKAGES_COUNT_MIN || packages.length > ADMIN_CREDIT_PACKAGES_COUNT_MAX) {
+	if (
+		packages.length < VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MIN ||
+		packages.length > VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MAX
+	) {
 		return AdminKey.PRICING_VALIDATION_PACKAGE_COUNT;
 	}
 	const ids = packages.map(p => p.id);
@@ -86,6 +80,9 @@ function validatePackagesForSave(packages: CreditPackageEditItem[]): AdminKey | 
 		}
 		if (!validatePackagePrice(pkg.price)) {
 			return AdminKey.PRICING_VALIDATION_PRICE;
+		}
+		if (!validatePackagePrice(pkg.priceIls)) {
+			return AdminKey.PRICING_VALIDATION_PRICE_ILS;
 		}
 	}
 	return null;
@@ -129,9 +126,7 @@ export function PricingConfigurationSection() {
 
 	const firstInvalidKey = useMemo(() => validatePackagesForSave(localPackages), [localPackages]);
 
-	const handleCreditsChange = useCallback((index: number, raw: string) => {
-		const parsed = Number.parseInt(raw, 10);
-		const value = Number.isFinite(parsed) ? parsed : 0;
+	const handleCreditsChange = useCallback((index: number, value: number) => {
 		setLocalPackages(prev => {
 			const next = [...prev];
 			const current = next[index];
@@ -142,14 +137,23 @@ export function PricingConfigurationSection() {
 		setHasChanges(true);
 	}, []);
 
-	const handlePriceChange = useCallback((index: number, raw: string) => {
-		const parsed = Number.parseFloat(raw);
-		const value = Number.isFinite(parsed) ? parsed : 0;
+	const handlePriceUsdChange = useCallback((index: number, value: number) => {
 		setLocalPackages(prev => {
 			const next = [...prev];
 			const current = next[index];
 			if (current == null) return next;
 			next[index] = { ...current, price: value };
+			return next;
+		});
+		setHasChanges(true);
+	}, []);
+
+	const handlePriceIlsChange = useCallback((index: number, value: number) => {
+		setLocalPackages(prev => {
+			const next = [...prev];
+			const current = next[index];
+			if (current == null) return next;
+			next[index] = { ...current, priceIls: value };
 			return next;
 		});
 		setHasChanges(true);
@@ -173,6 +177,7 @@ export function PricingConfigurationSection() {
 			id: p.id,
 			credits: p.credits,
 			price: p.price,
+			priceIls: p.priceIls,
 			tier: p.tier,
 		}));
 		setLocalPackages(defaults);
@@ -182,7 +187,7 @@ export function PricingConfigurationSection() {
 
 	const handleAddPackage = useCallback(() => {
 		setLocalPackages(prev => {
-			if (prev.length >= ADMIN_CREDIT_PACKAGES_COUNT_MAX) {
+			if (prev.length >= VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MAX) {
 				return prev;
 			}
 			return [
@@ -190,7 +195,8 @@ export function PricingConfigurationSection() {
 				{
 					id: generateCreditPackageId(),
 					credits: 100,
-					price: 4.99,
+					price: 5,
+					priceIls: 20,
 				},
 			];
 		});
@@ -199,7 +205,7 @@ export function PricingConfigurationSection() {
 
 	const handleRemovePackage = useCallback((index: number) => {
 		setLocalPackages(prev => {
-			if (prev.length <= ADMIN_CREDIT_PACKAGES_COUNT_MIN) {
+			if (prev.length <= VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MIN) {
 				return prev;
 			}
 			return prev.filter((_, i) => i !== index);
@@ -253,21 +259,25 @@ export function PricingConfigurationSection() {
 					</div>
 					<CardDescription>{t(AdminKey.PRICING_CONFIG_DESC)}</CardDescription>
 					<Link
-						to={ROUTES.PAYMENT}
+						to={Routes.PAYMENT}
 						target='_blank'
 						rel='noopener noreferrer'
 						className='mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline'
 					>
-						<ExternalLink className='h-4 w-4 shrink-0' aria-hidden />
+						<ExternalLink className='h-4 w-4 shrink-0' />
 						{t(AdminKey.VIEW_PAYMENT_PAGE)}
 					</Link>
 				</CardHeader>
 				<CardContent>
 					{firstInvalidKey != null && (
-						<p className='mb-3 text-sm text-destructive' role='status'>
+						<p className='mb-3 text-sm text-destructive'>
 							{t(firstInvalidKey, {
-								min: ADMIN_CREDIT_PACKAGES_COUNT_MIN,
-								max: ADMIN_CREDIT_PACKAGES_COUNT_MAX,
+								min: VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MIN,
+								max: VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MAX,
+								minCredits: VALIDATION_COUNT.CREDITS.MIN,
+								maxCredits: VALIDATION_COUNT.CREDITS.MAX,
+								minPrice: VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MIN,
+								maxPrice: VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MAX,
 							})}
 						</p>
 					)}
@@ -277,6 +287,7 @@ export function PricingConfigurationSection() {
 								<TableHead>{t(AdminKey.PACKAGE_ID)}</TableHead>
 								<TableHead>{t(AdminKey.CREDITS_TABLE_HEAD)}</TableHead>
 								<TableHead>{t(AdminKey.PRICE_USD)}</TableHead>
+								<TableHead>{t(AdminKey.PRICE_ILS)}</TableHead>
 								<TableHead className='w-[1%] whitespace-nowrap text-end'>{t(AdminKey.PRICING_ACTIONS)}</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -284,31 +295,41 @@ export function PricingConfigurationSection() {
 							{localPackages.map((pkg, index) => {
 								const creditsInvalid = !validatePackageCredits(pkg.credits);
 								const priceInvalid = !validatePackagePrice(pkg.price);
+								const priceIlsInvalid = !validatePackagePrice(pkg.priceIls);
 								return (
 									<TableRow key={pkg.id}>
 										<TableCell className='font-mono text-muted-foreground'>{pkg.id}</TableCell>
 										<TableCell>
-											<Input
-												type='number'
-												min={ADMIN_PRICING_PACKAGE.credits.min}
-												max={ADMIN_PRICING_PACKAGE.credits.max}
-												step={1}
+											<NumberInput
 												value={pkg.credits}
-												onChange={e => handleCreditsChange(index, e.target.value)}
-												className='w-28'
-												aria-invalid={creditsInvalid}
+												onChange={v => handleCreditsChange(index, v)}
+												min={VALIDATION_COUNT.CREDITS.MIN}
+												max={VALIDATION_COUNT.CREDITS.MAX}
+												step={1}
+												disabled={updatePricing.isPending}
+												error={creditsInvalid}
 											/>
 										</TableCell>
 										<TableCell>
-											<Input
-												type='number'
-												min={ADMIN_PRICING_PACKAGE.price.min}
-												max={ADMIN_PRICING_PACKAGE.price.max}
-												step={0.01}
+											<NumberInput
 												value={pkg.price}
-												onChange={e => handlePriceChange(index, e.target.value)}
-												className='w-28'
-												aria-invalid={priceInvalid}
+												onChange={v => handlePriceUsdChange(index, v)}
+												min={VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MIN}
+												max={VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MAX}
+												step={VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.STEP}
+												disabled={updatePricing.isPending}
+												error={priceInvalid}
+											/>
+										</TableCell>
+										<TableCell>
+											<NumberInput
+												value={pkg.priceIls}
+												onChange={v => handlePriceIlsChange(index, v)}
+												min={VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MIN}
+												max={VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MAX}
+												step={VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.STEP}
+												disabled={updatePricing.isPending}
+												error={priceIlsInvalid}
 											/>
 										</TableCell>
 										<TableCell className='text-end'>
@@ -317,11 +338,13 @@ export function PricingConfigurationSection() {
 												size={ButtonSize.SM}
 												variant={VariantBase.OUTLINE}
 												className='shrink-0'
-												disabled={updatePricing.isPending || localPackages.length <= ADMIN_CREDIT_PACKAGES_COUNT_MIN}
+												disabled={
+													updatePricing.isPending ||
+													localPackages.length <= VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MIN
+												}
 												onClick={() => handleRemovePackage(index)}
-												aria-label={t(AdminKey.PRICING_REMOVE_PACKAGE)}
 											>
-												<Trash2 className='h-4 w-4' aria-hidden />
+												<Trash2 className='h-4 w-4' />
 											</Button>
 										</TableCell>
 									</TableRow>
@@ -334,10 +357,13 @@ export function PricingConfigurationSection() {
 							type='button'
 							size={ButtonSize.SM}
 							variant={VariantBase.OUTLINE}
-							disabled={updatePricing.isPending || localPackages.length >= ADMIN_CREDIT_PACKAGES_COUNT_MAX}
+							disabled={
+								updatePricing.isPending ||
+								localPackages.length >= VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MAX
+							}
 							onClick={handleAddPackage}
 						>
-							<Plus className='h-4 w-4 me-1' aria-hidden />
+							<Plus className='h-4 w-4 me-1' />
 							{t(AdminKey.PRICING_ADD_PACKAGE)}
 						</Button>
 					</div>

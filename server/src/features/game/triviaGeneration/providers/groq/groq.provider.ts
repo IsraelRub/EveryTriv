@@ -5,14 +5,15 @@ import {
 	DifficultyLevel,
 	ERROR_MESSAGES,
 	ErrorCode,
+	HTTP_TIMEOUTS,
 	OUTPUT_LANGUAGE_LABELS,
 	SurpriseScope,
 	VALIDATION_COUNT,
 	VALIDATION_LENGTH,
 	type Locale,
 } from '@shared/constants';
-import type { SurprisePickResult, TriviaQuestion, TriviaQuestionDetailsMetadata } from '@shared/types';
-import { calculateDuration, clamp, getErrorMessage, isRecord, shuffle } from '@shared/utils';
+import type { GameDifficulty, SurprisePickResult, TriviaQuestion, TriviaQuestionDetailsMetadata } from '@shared/types';
+import { calculateDuration, clamp, getErrorMessage, isRecord, sanitizeInput, shuffle } from '@shared/utils';
 import {
 	createCustomDifficulty,
 	extractCustomDifficultyText,
@@ -30,6 +31,8 @@ import {
 	GROQ_PROVIDER_MAX_TOKENS,
 	GROQ_PROVIDER_NAME,
 	GROQ_PROVIDER_VERSION,
+	GROQ_TOPIC_DIFFICULTY_GATE_MAX_TOKENS,
+	parseTriviaGenerationDeclinedReason,
 	TRIVIA_GENERATION_DECLINED_REASON,
 	type TriviaGenerationDeclinedReason,
 } from '@internal/constants';
@@ -42,7 +45,13 @@ import type {
 } from '@internal/types';
 import { createServerError } from '@internal/utils';
 
-import { buildSurprisePickPrompt, buildTriviaPrompt, SURPRISE_PICK_SYSTEM_PROMPT } from '../prompts';
+import {
+	buildSurprisePickPrompt,
+	buildTopicDifficultyGateUserPrompt,
+	buildTriviaPrompt,
+	SURPRISE_PICK_SYSTEM_PROMPT,
+	TOPIC_DIFFICULTY_GATE_SYSTEM_PROMPT,
+} from '../prompts';
 import { GroqApiClient } from './groq.apiClient';
 import { GroqResponseParser } from './groq.responseParser';
 
@@ -76,10 +85,102 @@ export class GroqTriviaProvider {
 		currentLoad: 0,
 	};
 
+	private static stripControlCharacters(value: string): string {
+		return value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+	}
+
 	constructor() {
 		this.apiKey = process.env.GROQ_API_KEY ?? '';
 		this.apiClient = new GroqApiClient(this.apiKey, this.name);
 		this.responseParser = new GroqResponseParser(this.name);
+	}
+
+	async evaluateTopicDifficultyGate(params: {
+		topic: string;
+		difficulty: GameDifficulty;
+		outputLanguage: Locale;
+		outputLanguageLabel: string;
+	}): Promise<TriviaGenerationDeclinedReason | null> {
+		const startTime = Date.now();
+		try {
+			const sanitizedTopic = GroqTriviaProvider.stripControlCharacters(
+				sanitizeInput(params.topic, VALIDATION_LENGTH.TOPIC.MAX)
+			);
+
+			let sanitizedDifficulty: GameDifficulty = params.difficulty;
+			if (isCustomDifficulty(params.difficulty)) {
+				sanitizedDifficulty = createCustomDifficulty(
+					GroqTriviaProvider.stripControlCharacters(
+						sanitizeInput(extractCustomDifficultyText(params.difficulty), VALIDATION_LENGTH.CUSTOM_DIFFICULTY.MAX)
+					)
+				);
+			} else {
+				const normalizedRegistered = GroqTriviaProvider.stripControlCharacters(
+					sanitizeInput(params.difficulty, 32)
+				).toLowerCase();
+				sanitizedDifficulty = isRegisteredDifficulty(normalizedRegistered)
+					? normalizedRegistered
+					: toDifficultyLevel(params.difficulty);
+			}
+
+			const userPrompt = buildTopicDifficultyGateUserPrompt({
+				topic: sanitizedTopic,
+				difficulty: sanitizedDifficulty,
+				outputLanguageLabel: params.outputLanguageLabel,
+				outputLanguage: params.outputLanguage,
+			});
+
+			const response = await this.apiClient.makeApiCall(userPrompt, TOPIC_DIFFICULTY_GATE_SYSTEM_PROMPT, {
+				maxTokens: GROQ_TOPIC_DIFFICULTY_GATE_MAX_TOKENS,
+				timeoutMs: HTTP_TIMEOUTS.TOPIC_DIFFICULTY_GATE,
+			});
+
+			const rawContent = response.data?.choices?.[0]?.message?.content;
+			const content = VALIDATORS.string(rawContent)
+				? rawContent
+				: typeof rawContent === 'object' && rawContent != null
+					? JSON.stringify(rawContent)
+					: '';
+			if (!content || content.trim().length === 0) {
+				return TRIVIA_GENERATION_DECLINED_REASON.UNCLEAR_TOPIC_AND_DIFFICULTY;
+			}
+
+			let jsonString: string;
+			try {
+				jsonString = this.extractSurprisePickJson(content.trim());
+			} catch {
+				return TRIVIA_GENERATION_DECLINED_REASON.UNCLEAR_TOPIC_AND_DIFFICULTY;
+			}
+
+			let parsed: Record<string, unknown>;
+			try {
+				const parsedResult = JSON.parse(jsonString);
+				parsed = isRecord(parsedResult) ? parsedResult : {};
+			} catch {
+				return TRIVIA_GENERATION_DECLINED_REASON.UNCLEAR_TOPIC_AND_DIFFICULTY;
+			}
+
+			if (parsed.ok === true) {
+				logger.providerStats(this.name, {
+					eventType: 'topic_difficulty_gate_accepted',
+					responseTime: calculateDuration(startTime),
+				});
+				return null;
+			}
+
+			const reason = parseTriviaGenerationDeclinedReason(parsed.reason);
+			logger.providerStats(this.name, {
+				eventType: 'topic_difficulty_gate_rejected',
+				reason,
+				responseTime: calculateDuration(startTime),
+			});
+			return reason;
+		} catch (error) {
+			logger.providerError(this.name, 'Topic difficulty gate failed', {
+				errorInfo: { message: getErrorMessage(error) },
+			});
+			throw createServerError('topic difficulty gate', error);
+		}
 	}
 
 	async generateTriviaQuestion(params: PromptParams): Promise<ProviderTriviaGenerationResult> {
@@ -105,10 +206,44 @@ export class GroqTriviaProvider {
 				});
 			}
 
-			const prompt = buildTriviaPrompt({
+			const sanitizedTopic = GroqTriviaProvider.stripControlCharacters(
+				sanitizeInput(params.topic, VALIDATION_LENGTH.TOPIC.MAX)
+			);
+
+			let sanitizedDifficulty: GameDifficulty = params.difficulty;
+			if (isCustomDifficulty(params.difficulty)) {
+				sanitizedDifficulty = createCustomDifficulty(
+					GroqTriviaProvider.stripControlCharacters(
+						sanitizeInput(extractCustomDifficultyText(params.difficulty), VALIDATION_LENGTH.CUSTOM_DIFFICULTY.MAX)
+					)
+				);
+			} else {
+				const normalizedRegistered = GroqTriviaProvider.stripControlCharacters(
+					sanitizeInput(params.difficulty, 32)
+				).toLowerCase();
+				sanitizedDifficulty = isRegisteredDifficulty(normalizedRegistered)
+					? normalizedRegistered
+					: toDifficultyLevel(params.difficulty);
+			}
+
+			const mappedExcludes = params.excludeQuestions
+				?.map(q => GroqTriviaProvider.stripControlCharacters(sanitizeInput(q, VALIDATION_LENGTH.QUESTION.MAX)))
+				.filter(q => q.length > 0);
+
+			const sanitizedParams: PromptParams = {
 				...params,
 				answerCount: actualAnswerCount,
-				isCustomDifficulty: isCustomDifficulty(params.difficulty),
+				topic: sanitizedTopic,
+				difficulty: sanitizedDifficulty,
+				...(mappedExcludes && mappedExcludes.length > 0
+					? { excludeQuestions: mappedExcludes }
+					: { excludeQuestions: undefined }),
+			};
+
+			const prompt = buildTriviaPrompt({
+				...sanitizedParams,
+				answerCount: actualAnswerCount,
+				isCustomDifficulty: isCustomDifficulty(sanitizedParams.difficulty),
 			});
 
 			const response = await this.apiClient.makeApiCall(prompt);
@@ -243,7 +378,12 @@ export class GroqTriviaProvider {
 		const { excludeTopics, scope, locale } = options;
 		const outputLanguage = OUTPUT_LANGUAGE_LABELS[locale ?? DEFAULT_LANGUAGE];
 		try {
-			const userPrompt = buildSurprisePickPrompt({ excludeTopics, scope, outputLanguage });
+			const userPrompt = buildSurprisePickPrompt({
+				excludeTopics,
+				scope,
+				outputLanguageLabel: outputLanguage,
+				locale: locale ?? DEFAULT_LANGUAGE,
+			});
 			const response = await this.apiClient.makeApiCall(userPrompt, SURPRISE_PICK_SYSTEM_PROMPT);
 
 			const rawContent = response.data?.choices?.[0]?.message?.content;

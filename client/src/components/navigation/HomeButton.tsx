@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Home } from 'lucide-react';
 
-import { ButtonSize, CommonKey, ROUTES, VariantBase } from '@/constants';
+import { ButtonSize, CommonKey, Routes, VariantBase } from '@/constants';
 import type { HomeButtonProps } from '@/types';
 import { Button } from '../ui/button';
 
@@ -13,7 +13,7 @@ export const HomeButton = forwardRef<HTMLButtonElement, HomeButtonProps>(({ onBe
 
 	const handleClick = useCallback(() => {
 		onBeforeNavigate?.();
-		navigate(ROUTES.HOME, { replace: true });
+		navigate(Routes.HOME, { replace: true });
 	}, [navigate, onBeforeNavigate]);
 
 	return (

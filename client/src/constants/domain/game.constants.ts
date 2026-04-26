@@ -49,15 +49,8 @@ export const DIFFICULTY_UI_CONFIG: Record<
 	},
 	[DifficultyLevel.CUSTOM]: {
 		dotColor: 'bg-purple-500',
-		badgeClasses: 'bg-muted text-muted-foreground',
+		badgeClasses: 'bg-purple-500/10 text-purple-500 border-purple-500/30',
 	},
-};
-
-export const GAME_MODES_UI_CONFIG: Record<GameMode, { showQuestionLimit: boolean; showTimeLimit: boolean }> = {
-	[GameMode.QUESTION_LIMITED]: { showQuestionLimit: true, showTimeLimit: false },
-	[GameMode.TIME_LIMITED]: { showQuestionLimit: false, showTimeLimit: true },
-	[GameMode.UNLIMITED]: { showQuestionLimit: false, showTimeLimit: false },
-	[GameMode.MULTIPLAYER]: { showQuestionLimit: false, showTimeLimit: false },
 };
 
 export enum TimerMode {

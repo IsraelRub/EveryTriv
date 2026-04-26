@@ -200,11 +200,11 @@ export function ConsistencyManagementSection() {
 				description={t(AdminKey.DATA_CONSISTENCY_DESC)}
 			>
 				{allConsistencyLoading ? (
-					<div className='grid grid-cols-4 gap-4'>
+					<div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
 						<Skeleton variant={SkeletonVariant.Card} count={SKELETON_PLACEHOLDER_COUNTS.CARDS} />
 					</div>
 				) : allConsistency ? (
-					<div className='grid grid-cols-4 gap-4'>
+					<div className='grid grid-cols-2 lg:grid-cols-4 gap-4'>
 						<StatCard
 							stackIconLabel
 							variant={StatCardVariant.CENTERED}

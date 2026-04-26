@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { CACHE_KEYS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS } from '@shared/constants';
+import { CACHE_KEYS, TIME_DURATIONS_SECONDS, TIME_PERIODS_MS, VALIDATION_COUNT } from '@shared/constants';
 import type { AdminGameStatistics, AdminTriviaQuestion, CountRecord, TriviaQuestionsResponse } from '@shared/types';
 import { buildCountRecord, calculateScoreRate, getErrorMessage } from '@shared/utils';
 
@@ -124,7 +124,10 @@ export class AdminService {
 
 	async getAllTriviaQuestions(params: { limit: number; offset: number }): Promise<TriviaQuestionsResponse> {
 		try {
-			const take = Math.min(Math.max(params.limit, 1), 1000);
+			const take = Math.min(
+				Math.max(params.limit, VALIDATION_COUNT.ADMIN_TRIVIA_LIST.LIMIT_MIN),
+				VALIDATION_COUNT.ADMIN_TRIVIA_LIST.LIMIT_MAX
+			);
 			const skip = Math.max(params.offset, 0);
 
 			const [questionEntities, totalCount] = await this.triviaRepository.findAndCount({

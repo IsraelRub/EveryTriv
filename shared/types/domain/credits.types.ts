@@ -1,5 +1,5 @@
 // Credits System Types for EveryTriv.
-import { PaymentMethod } from '../../constants';
+import { PaymentMethod, type PurchaseCurrency } from '../../constants';
 import type { ManualPaymentDetails } from './payment.types';
 
 export interface CreditBalance {
@@ -15,8 +15,12 @@ export interface CreditPurchaseOption {
 	id: string;
 	credits: number;
 	price: number;
+
+	priceIls: number;
 	priceDisplay: string;
+	priceDisplayIls?: string;
 	pricePerCredit: number;
+	pricePerCreditIls?: number;
 	description?: string;
 	currency?: string;
 	bonus?: number;
@@ -24,6 +28,7 @@ export interface CreditPurchaseOption {
 	popular?: boolean;
 	paypalProductId?: string;
 	paypalPrice?: string;
+	paypalPriceIls?: string;
 	supportedMethods?: PaymentMethod[];
 }
 
@@ -35,6 +40,8 @@ export interface CanPlayResponse {
 export interface CreditsPurchaseRequest {
 	packageId: string;
 	paymentMethod: PaymentMethod;
+
+	currency?: PurchaseCurrency;
 	paypalOrderId?: string;
 	paypalPaymentId?: string;
 	manualPayment?: ManualPaymentDetails;

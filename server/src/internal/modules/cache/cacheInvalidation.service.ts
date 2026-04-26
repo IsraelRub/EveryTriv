@@ -14,7 +14,6 @@ export class CacheInvalidationService {
 	async invalidateOnGameComplete(userId: string): Promise<void> {
 		try {
 			const invalidationPromises: Promise<unknown>[] = [
-				// Analytics caches
 				this.cacheService.delete(CACHE_KEYS.ANALYTICS.GLOBAL_DIFFICULTY),
 				this.cacheService.delete(CACHE_KEYS.ANALYTICS.USER(userId)),
 				this.cacheService.invalidatePattern(CACHE_KEYS.ANALYTICS.USER_UNIFIED_PATTERN(userId)),
@@ -22,21 +21,20 @@ export class CacheInvalidationService {
 				this.cacheService.delete(CACHE_KEYS.ANALYTICS.GLOBAL_STATS),
 				this.cacheService.delete(CACHE_KEYS.ANALYTICS.BUSINESS_METRICS),
 				this.cacheService.invalidatePattern(CACHE_KEYS.ANALYTICS.TOPICS_STATS_PATTERN),
-
-				// Leaderboard caches
 				this.cacheService.invalidatePattern(CACHE_KEYS.LEADERBOARD.ALL_PATTERN),
-
-				// Game History caches
 				this.cacheService.delete(CACHE_KEYS.GAME_HISTORY.USER_WITH_PREFIX(userId)),
 				this.cacheService.delete(CACHE_KEYS.GAME_HISTORY.USER(userId)),
-
-				// Admin caches
 				this.cacheService.delete(CACHE_KEYS.ADMIN.STATISTICS),
+
+				this.cacheService.invalidatePattern(`cache:auto:get:*${userId}*`),
+				this.cacheService.invalidatePattern(`cache:auto:get:*/analytics/global/*`),
+				this.cacheService.invalidatePattern(`cache:auto:get:*/analytics/leaderboard/*`),
+				this.cacheService.invalidatePattern(`cache:auto:get:*/game/history*${userId}*`),
 			];
 
 			await Promise.allSettled(invalidationPromises);
 
-			logger.cacheInfo('Cache invalidated on game completion', {
+			logger.cacheInfo('Cache invalidated on game completion (semantic + decorator)', {
 				userId,
 				keysInvalidated: invalidationPromises.length,
 			});
@@ -96,6 +94,8 @@ export class CacheInvalidationService {
 				this.cacheService.invalidatePattern(CACHE_KEYS.ANALYTICS.TOPICS_STATS_PATTERN),
 				this.cacheService.invalidatePattern(CACHE_KEYS.ANALYTICS.GLOBAL_TRENDS_PATTERN),
 				this.cacheService.delete(CACHE_KEYS.ADMIN.STATISTICS),
+				this.cacheService.invalidatePattern(`cache:auto:get:*/analytics/global/*`),
+				this.cacheService.invalidatePattern(`cache:auto:get:*/analytics/leaderboard/*`),
 			];
 
 			if (userId) {
@@ -103,11 +103,12 @@ export class CacheInvalidationService {
 				invalidationPromises.push(
 					this.cacheService.invalidatePattern(CACHE_KEYS.ANALYTICS.USER_UNIFIED_PATTERN(userId))
 				);
+				invalidationPromises.push(this.cacheService.invalidatePattern(`cache:auto:get:*${userId}*`));
 			}
 
 			await Promise.allSettled(invalidationPromises);
 
-			logger.cacheInfo('Cache invalidated on analytics update', {
+			logger.cacheInfo('Cache invalidated on analytics update (semantic + decorator)', {
 				userId: userId ?? 'all',
 				keysInvalidated: invalidationPromises.length,
 			});

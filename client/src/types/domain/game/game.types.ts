@@ -1,5 +1,3 @@
-import type { LucideIcon } from 'lucide-react';
-
 import type { DifficultyLevel, GameMode } from '@shared/constants';
 import type { AnswerHistory, GameConfig, GameDifficulty, GameHistoryEntry, TriviaRequest } from '@shared/types';
 
@@ -14,13 +12,6 @@ export interface GameModeState {
 	error?: string;
 }
 
-export interface GameModeOption {
-	icon: LucideIcon;
-	showQuestionLimit: boolean;
-	showTimeLimit: boolean;
-}
-
-/** Used to detect duplicate finalization for the same session outcome on the single-player summary screen. */
 export interface FinalizedGameSessionKey {
 	score: number;
 	gameQuestionCount: number;
@@ -60,6 +51,11 @@ export type RankDisplayEntry = (typeof RANK_DISPLAY)[RankKey];
 export interface GameSettingsValidationResult {
 	isValid: boolean;
 	finalDifficulty: GameDifficulty;
+	issues: string[];
+}
+
+export interface ValidateGameSettingsOptions {
+	applyFieldErrors?: boolean;
 }
 
 export type TriviaRequestWithSignal = TriviaRequest & { signal?: AbortSignal };
@@ -83,7 +79,9 @@ export interface UseGameSettingsFormReturn {
 	setCustomDifficulty: (text: string) => void;
 	setCustomDifficultyError: (error: string) => void;
 	setAnswerCount: (count: number) => void;
-	validateSettings: () => GameSettingsValidationResult;
+	validateSettings: (options?: ValidateGameSettingsOptions) => GameSettingsValidationResult;
+
+	validateTriviaTopicGate: (finalDifficulty: GameDifficulty) => Promise<void>;
 	resetForm: () => void;
 }
 export interface CustomSettings {

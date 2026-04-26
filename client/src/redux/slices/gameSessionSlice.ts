@@ -98,6 +98,7 @@ const gameSessionSlice = createSlice({
 			state.currentQuestionIndex += 1;
 			state.selectedAnswer = null;
 			state.answered = false;
+			state.questionStartTime = Date.now();
 		},
 		setLoading: (state, action: PayloadAction<{ loading: boolean; loadingStep?: LoadingMessages }>) => {
 			state.loading = action.payload.loading;

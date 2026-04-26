@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import { Baby, Cookie, Database, Eye, History, Lock, Mail, Scale, Share, ShieldCheck } from 'lucide-react';
 
-import { LegalKey, ROUTES } from '@/constants';
+import { LegalKey, Routes } from '@/constants';
 import type { LegalDocumentSectionSpec } from '@/types';
 import { NavLink } from '@/components/navigation/NavLink';
 
@@ -195,7 +195,7 @@ export function buildPrivacyPolicySections(t: TFunction<'legal'>): LegalDocument
 						<p>Email: privacy@everytriv.com</p>
 						<p>
 							Website:{' '}
-							<NavLink to={ROUTES.CONTACT} className='link-primary'>
+							<NavLink to={Routes.CONTACT} className='link-primary'>
 								{t(LegalKey.CONTACT_PAGE)}
 							</NavLink>
 						</p>

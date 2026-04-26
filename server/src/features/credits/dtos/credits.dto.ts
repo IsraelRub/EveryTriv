@@ -17,13 +17,7 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import {
-	ADMIN_CREDIT_PACKAGES_COUNT_MAX,
-	ADMIN_CREDIT_PACKAGES_COUNT_MIN,
-	GameMode,
-	VALIDATION_COUNT,
-	VALIDATION_LENGTH,
-} from '@shared/constants';
+import { GameMode, PurchaseCurrency, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
 import { parseOptionalQueryInt, parseRequiredNumericInput } from '@shared/utils';
 
 import { PaymentMethodDetailsDto } from '../../payment/dtos';
@@ -96,6 +90,14 @@ export class PurchaseCreditsDto extends PaymentMethodDetailsDto {
 		message: `Package ID cannot exceed ${VALIDATION_LENGTH.NAME.MAX} characters`,
 	})
 	packageId: string;
+
+	@ApiPropertyOptional({
+		description: 'Purchase currency (defaults to USD on server if omitted)',
+		enum: PurchaseCurrency,
+	})
+	@IsOptional()
+	@IsEnum(PurchaseCurrency, { message: 'Currency must be USD or ILS' })
+	currency?: PurchaseCurrency;
 }
 
 export class CreditPackageItemDto {
@@ -110,15 +112,35 @@ export class CreditPackageItemDto {
 	})
 	id: string;
 
-	@ApiProperty({ description: 'Number of credits', minimum: 1 })
+	@ApiProperty({
+		description: 'Number of credits',
+		minimum: VALIDATION_COUNT.CREDITS.MIN,
+		maximum: VALIDATION_COUNT.CREDITS.MAX,
+	})
 	@IsNumber()
-	@Min(1)
+	@Min(VALIDATION_COUNT.CREDITS.MIN)
+	@Max(VALIDATION_COUNT.CREDITS.MAX)
 	credits: number;
 
-	@ApiProperty({ description: 'Price in USD', minimum: 0.01 })
+	@ApiProperty({
+		description: 'Price in USD',
+		minimum: VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MIN,
+		maximum: VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MAX,
+	})
 	@IsNumber()
-	@Min(0.01)
+	@Min(VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MIN)
+	@Max(VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MAX)
 	price: number;
+
+	@ApiProperty({
+		description: 'Price in ILS (required for Hebrew checkout)',
+		minimum: VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MIN,
+		maximum: VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MAX,
+	})
+	@IsNumber()
+	@Min(VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MIN)
+	@Max(VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PRICE.MAX)
+	priceIls: number;
 
 	@ApiPropertyOptional({ description: 'Tier label', example: 'basic' })
 	@IsOptional()
@@ -129,8 +151,8 @@ export class CreditPackageItemDto {
 export class UpdateCreditPackagesDto {
 	@ApiProperty({ type: [CreditPackageItemDto], description: 'Credit packages to set' })
 	@IsArray()
-	@ArrayMinSize(ADMIN_CREDIT_PACKAGES_COUNT_MIN)
-	@ArrayMaxSize(ADMIN_CREDIT_PACKAGES_COUNT_MAX)
+	@ArrayMinSize(VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MIN)
+	@ArrayMaxSize(VALIDATION_COUNT.ADMIN_CREDIT_PACKAGE.PACKAGES_COUNT.MAX)
 	@ValidateNested({ each: true })
 	@Type(() => CreditPackageItemDto)
 	packages: CreditPackageItemDto[];

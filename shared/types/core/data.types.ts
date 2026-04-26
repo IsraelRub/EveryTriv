@@ -31,6 +31,9 @@ export interface ActivityEntry {
 	detail?: string;
 	topic?: string;
 	durationSeconds?: number;
+	score?: number;
+	gameQuestionCount?: number;
+	correctAnswers?: number;
 }
 
 export type CountRecord = Record<string, number>;

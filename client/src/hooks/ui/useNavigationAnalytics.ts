@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { matchPath, useLocation } from 'react-router-dom';
 
-import { AudioKey, ROUTES } from '@/constants';
+import { AudioKey, Routes } from '@/constants';
 import { audioService, clientLogger as logger } from '@/services';
 
 export function useNavigationAnalytics() {
@@ -20,7 +20,7 @@ export function useNavigationAnalytics() {
 			type: 'spa_navigation',
 		});
 
-		if (location.pathname === ROUTES.AUTH_GOOGLE) {
+		if (location.pathname === Routes.AUTH_GOOGLE) {
 			logger.navigationOAuth('Google', {
 				path: location.pathname,
 				timestamp: new Date().toISOString(),
@@ -28,25 +28,25 @@ export function useNavigationAnalytics() {
 		}
 
 		const routePatterns = [
-			ROUTES.HOME,
-			ROUTES.GAME,
-			ROUTES.GAME_SINGLE,
-			ROUTES.GAME_SINGLE_PLAY,
-			ROUTES.GAME_SINGLE_SUMMARY,
-			ROUTES.PAYMENT,
-			ROUTES.REGISTER,
-			ROUTES.LOGIN,
-			ROUTES.ADMIN,
-			ROUTES.AUTH_CALLBACK,
-			ROUTES.COMPLETE_PROFILE,
-			ROUTES.STATISTICS,
-			ROUTES.MULTIPLAYER,
-			ROUTES.MULTIPLAYER_PLAY,
-			ROUTES.MULTIPLAYER_SUMMARY,
-			ROUTES.PRIVACY,
-			ROUTES.TERMS,
-			ROUTES.CONTACT,
-			ROUTES.UNAUTHORIZED,
+			Routes.HOME,
+			Routes.GAME,
+			Routes.GAME_SINGLE,
+			Routes.GAME_SINGLE_PLAY,
+			Routes.GAME_SINGLE_SUMMARY,
+			Routes.PAYMENT,
+			Routes.REGISTER,
+			Routes.LOGIN,
+			Routes.ADMIN,
+			Routes.AUTH_CALLBACK,
+			Routes.COMPLETE_PROFILE,
+			Routes.STATISTICS,
+			Routes.MULTIPLAYER,
+			Routes.MULTIPLAYER_PLAY,
+			Routes.MULTIPLAYER_SUMMARY,
+			Routes.PRIVACY,
+			Routes.TERMS,
+			Routes.CONTACT,
+			Routes.UNAUTHORIZED,
 		];
 
 		const isValidRoute = routePatterns.some(pattern => matchPath({ path: pattern, end: true }, location.pathname));

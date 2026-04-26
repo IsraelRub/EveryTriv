@@ -133,7 +133,7 @@ export function PerformanceTabContent() {
 					<AccordionItem value={PerformanceTabAccordion.CHARTS}>
 						<AccordionTrigger className='px-4'>{t(AdminKey.DETAILED_PLATFORM_ANALYTICS)}</AccordionTrigger>
 						<AccordionContent className='px-4'>
-							<div className='grid grid-cols-2 gap-8'>
+							<div className='space-y-8'>
 								<PerformanceAnalysis mainData={globalDifficultyStats} isLoading={difficultyLoading} />
 								<CategoryAnalysis topicsData={topicsData?.topics} isLoading={topicsLoading} />
 							</div>

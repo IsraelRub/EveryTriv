@@ -3,6 +3,7 @@ export * from './audio';
 export * from './table';
 export * from './auth';
 export * from './charts';
+export * from './dialogs';
 export * from './game';
 export * from './home';
 export * from './legal';

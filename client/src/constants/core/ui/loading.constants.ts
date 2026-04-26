@@ -21,5 +21,8 @@ export enum LoadingMessages {
 	JOINING_ROOM = 'loading:joiningRoom',
 	WAITING_FOR_GAME_STATE = 'loading:waitingForGameState',
 	LOADING_MULTIPLAYER_QUESTIONS = 'loading:loadingMultiplayerQuestions',
+	MULTIPLAYER_RECONNECTING = 'loading:multiplayerReconnecting',
+	MULTIPLAYER_RESYNCING_ROOM = 'loading:multiplayerResyncingRoom',
+	MULTIPLAYER_RESYNC_ACTION = 'loading:multiplayerResyncAction',
 	NO_QUESTIONS_AVAILABLE = 'loading:noQuestionsAvailable',
 }

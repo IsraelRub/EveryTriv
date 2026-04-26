@@ -106,6 +106,7 @@ export class AdminController {
 				id: p.id,
 				credits: p.credits,
 				price: p.price,
+				priceIls: p.priceIls,
 				tier: p.tier,
 			}));
 			await this.creditsService.setCreditPackages(items);

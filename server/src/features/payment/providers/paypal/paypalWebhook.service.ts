@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { CACHE_KEYS, PaymentStatus, PAYPAL_WEBHOOK_EVENTS, TIME_DURATIONS_SECONDS } from '@shared/constants';
+import {
+	CACHE_KEYS,
+	PaymentStatus,
+	PAYPAL_WEBHOOK_EVENTS,
+	TIME_DURATIONS_SECONDS,
+	VALIDATION_COUNT,
+} from '@shared/constants';
 import { getErrorMessage } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
@@ -121,7 +127,7 @@ export class PayPalWebhookService {
 
 		const credits = metadata.credits;
 		const packageId = metadata.packageId;
-		const hasCredits = VALIDATORS.number(credits) && credits > 0 && credits <= 10000;
+		const hasCredits = VALIDATORS.number(credits) && credits > 0 && credits <= VALIDATION_COUNT.CREDITS.MAX;
 		const hasPackageId = VALIDATORS.string(packageId) && packageId.trim().length > 0;
 
 		if (!hasCredits || !hasPackageId) {

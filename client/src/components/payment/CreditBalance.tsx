@@ -3,15 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CalendarClock, Coins, Crown, Plus } from 'lucide-react';
 
-import { GRANTED_CREDITS_CAP, Locale } from '@shared/constants';
+import { GRANTED_CREDITS_CAP } from '@shared/constants';
+import { formatDateTime } from '@shared/utils';
 
-import { ComponentSize, GameKey, LoadingKey, PaymentKey, ROUTES, SEMANTIC_ICON_TEXT } from '@/constants';
+import { ComponentSize, GameKey, LoadingKey, PaymentKey, Routes, SEMANTIC_ICON_TEXT } from '@/constants';
 import { cn } from '@/utils';
 import { Spinner } from '@/components';
 import { useCreditBalance, useUserRole } from '@/hooks';
 
 export function CreditBalance() {
-	const { t, i18n } = useTranslation(['game', 'payment', 'loading']);
+	const { t } = useTranslation(['game', 'payment', 'loading']);
 	const { data: creditBalance, isLoading } = useCreditBalance();
 	const { isAdmin } = useUserRole();
 
@@ -20,13 +21,9 @@ export function CreditBalance() {
 		if (isAdmin || nextRefillAt == null || (creditBalance?.credits ?? 0) >= GRANTED_CREDITS_CAP) {
 			return null;
 		}
-		const locale = i18n.language === Locale.HE ? 'he-IL' : 'en-US';
-		const dateTime = new Date(nextRefillAt).toLocaleString(locale, {
-			dateStyle: 'short',
-			timeStyle: 'short',
-		});
+		const dateTime = formatDateTime(nextRefillAt);
 		return t(PaymentKey.GRANTED_CREDITS_REFILL_HINT, { cap: GRANTED_CREDITS_CAP, dateTime });
-	}, [creditBalance, i18n.language, isAdmin, t]);
+	}, [creditBalance, isAdmin, t]);
 
 	if (isLoading) {
 		return (
@@ -73,7 +70,7 @@ export function CreditBalance() {
 				</div>
 			) : (
 				<Link
-					to={ROUTES.PAYMENT}
+					to={Routes.PAYMENT}
 					className='flex items-center gap-1.5 px-3 py-1.5 hover:bg-primary/20 transition-colors cursor-pointer group'
 				>
 					<Plus

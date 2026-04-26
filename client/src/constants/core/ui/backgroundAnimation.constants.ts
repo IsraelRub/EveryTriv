@@ -42,10 +42,6 @@ export const ANIMATION_COLORS = [
 	'hsl(217 33% 17%)', // muted
 ] as const;
 
-/**
- * Unit offset per axis (× `movementOffset`) for each travel direction.
- * Single source: string keys are the persisted `WordDirection` values.
- */
 export const WORD_DIRECTION_OFFSET_UNIT = {
 	'diagonal-up-right': { dx: 1, dy: -1 },
 	'diagonal-up-left': { dx: -1, dy: -1 },
@@ -69,7 +65,6 @@ export enum BackgroundWordMotionPath {
 	Serpentine = 'serpentine',
 }
 
-/** Weighted pool: more gentle paths appear more often than sharp zigzag. */
 export const BACKGROUND_WORD_MOTION_PATH_POOL: readonly BackgroundWordMotionPath[] = [
 	BackgroundWordMotionPath.Straight,
 	BackgroundWordMotionPath.Straight,

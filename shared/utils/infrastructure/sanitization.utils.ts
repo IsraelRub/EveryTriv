@@ -1,3 +1,5 @@
+import { VALIDATION_LENGTH } from '@shared/constants';
+
 export function sanitizeLogMessage(message: string): string {
 	return message
 		.replace(/password["\s]*[:=]["\s]*[^"\s,}]+/gi, 'password: ***')
@@ -14,7 +16,7 @@ export function sanitizeEmail(email: string): string {
 	return email.trim().toLowerCase();
 }
 
-export function sanitizeInput(value: string, maxLength: number = 10_000): string {
+export function sanitizeInput(value: string, maxLength: number = VALIDATION_LENGTH.INPUT.MAX): string {
 	const trimmed = value.trim().replace(/\s+/g, ' ');
 	const withoutTags = trimmed.replace(/<[^>]*>/g, '');
 	return withoutTags.length > maxLength ? withoutTags.slice(0, maxLength) : withoutTags;

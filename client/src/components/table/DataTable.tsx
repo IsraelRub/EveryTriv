@@ -10,10 +10,12 @@ import { VALIDATORS } from '@shared/validation';
 import {
 	DataTableColumnType,
 	EMPTY_CELL_CLASS,
+	EMPTY_STATE_LUCIDE_ICON,
 	HEADER_ICON_CLASS,
 	SKELETON_PLACEHOLDER_COUNTS,
 	SkeletonVariant,
 	SortDirection,
+	UiDensity,
 	VariantBase,
 } from '@/constants';
 import type { DataTableColumn, DataTableProps } from '@/types';
@@ -203,7 +205,14 @@ function DataTableInner<T>({
 
 	if (data.length === 0 && emptyState) {
 		return (
-			<EmptyState data='items' title={emptyState.title} description={emptyState.description} showPlayNow={false} />
+			<EmptyState
+				data='items'
+				icon={emptyState.icon ?? EMPTY_STATE_LUCIDE_ICON.tableNoRows}
+				title={emptyState.title}
+				description={emptyState.description}
+				density={UiDensity.COMPACT}
+				showPlayNow={false}
+			/>
 		);
 	}
 

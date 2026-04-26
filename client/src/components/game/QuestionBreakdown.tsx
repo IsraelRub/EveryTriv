@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle } from 'lucide-react';
 
-import { ANIMATION_DELAYS, GameKey, ResultTarget, resultVariants, SPRING_CONFIGS, StatusDirection } from '@/constants';
+import { AnimationDelays, GameKey, ResultTarget, resultVariants, SPRING_CONFIGS, StatusDirection } from '@/constants';
 import type { QuestionBreakdownProps } from '@/types';
 import { Card } from '@/components';
 
@@ -16,7 +16,7 @@ export const QuestionBreakdown = memo(function QuestionBreakdown({ entries }: Qu
 		<motion.div
 			initial={{ opacity: 0, y: 20, scale: 0.95 }}
 			animate={{ opacity: 1, y: 0, scale: 1 }}
-			transition={{ delay: ANIMATION_DELAYS.SINGLE_SUMMARY_STATS_TIME, ...SPRING_CONFIGS.GENTLE }}
+			transition={{ delay: AnimationDelays.SINGLE_SUMMARY_STATS_TIME, ...SPRING_CONFIGS.GENTLE }}
 			className='text-left'
 		>
 			<h3 className='text-lg font-semibold mb-4'>{t(GameKey.QUESTION_BREAKDOWN)}</h3>

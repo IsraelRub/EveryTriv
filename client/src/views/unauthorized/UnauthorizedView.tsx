@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShieldX } from 'lucide-react';
 
-import { AuthKey, ButtonSize, CommonKey, ROUTES, VariantBase } from '@/constants';
+import { AuthKey, ButtonSize, CommonKey, Routes, VariantBase } from '@/constants';
 import { Button, Card, HomeButton } from '@/components';
 
 export function UnauthorizedView() {
@@ -14,7 +14,7 @@ export function UnauthorizedView() {
 		<motion.main
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
-			className='view-main flex flex-col items-center justify-center'
+			className='view-main flex flex-col items-center justify-center min-h-[calc(100dvh-var(--navigation-height))]'
 		>
 			<Card className='w-full max-w-md card-padding text-center view-spacing'>
 				<div className='flex justify-center'>
@@ -27,7 +27,7 @@ export function UnauthorizedView() {
 				<div className='flex flex-col gap-2'>
 					<HomeButton />
 					<Button
-						onClick={() => navigate(ROUTES.LOGIN, { state: { modal: true, returnUrl: ROUTES.UNAUTHORIZED } })}
+						onClick={() => navigate(Routes.LOGIN, { state: { modal: true, returnUrl: Routes.UNAUTHORIZED } })}
 						variant={VariantBase.OUTLINE}
 						size={ButtonSize.LG}
 					>

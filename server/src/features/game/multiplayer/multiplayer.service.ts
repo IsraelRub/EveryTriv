@@ -114,6 +114,7 @@ export class MultiplayerService {
 		const defaultQuestions =
 			GAME_MODES_CONFIG[GameMode.MULTIPLAYER].defaults.maxQuestionsPerGame ?? VALIDATION_COUNT.QUESTIONS.MIN;
 		const questionsPerRequest = room.config.questionsPerRequest ?? defaultQuestions;
+		// Host pays for all questions × whoever is in the room at start time (same value enforced in creditsService.deductCredits).
 		const creditsToDeduct = questionsPerRequest * room.players.length;
 		await this.creditsService.deductCredits(hostId, creditsToDeduct, GameMode.MULTIPLAYER, 'multiplayer_host_start');
 

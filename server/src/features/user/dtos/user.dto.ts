@@ -17,7 +17,15 @@ import {
 	ValidateNested,
 } from 'class-validator';
 
-import { DifficultyLevel, GameMode, Locale, UserStatus, VALIDATION_COUNT, VALIDATION_LENGTH } from '@shared/constants';
+import {
+	DifficultyLevel,
+	ERROR_MESSAGES,
+	GameMode,
+	Locale,
+	UserStatus,
+	VALIDATION_COUNT,
+	VALIDATION_LENGTH,
+} from '@shared/constants';
 import type { BasicValue, CustomDifficultyItem, UserPreferences } from '@shared/types';
 import { nullIfBlankString, parseQueryIntDefaultWhenMissing } from '@shared/utils';
 
@@ -31,7 +39,7 @@ export class UpdateUserProfileDto {
 	@MaxLength(VALIDATION_LENGTH.NAME.MAX, {
 		message: `First name cannot exceed ${VALIDATION_LENGTH.NAME.MAX} characters`,
 	})
-	@Matches(/^[a-zA-Z\s'-]+$/, {
+	@Matches(/^[\p{L}\s'-]+$/u, {
 		message: 'First name can only contain letters, spaces, apostrophes, and hyphens',
 	})
 	firstName?: string;
@@ -49,7 +57,7 @@ export class UpdateUserProfileDto {
 		message: `Last name cannot exceed ${VALIDATION_LENGTH.NAME.MAX} characters`,
 	})
 	@ValidateIf(o => o.lastName !== null)
-	@Matches(/^[a-zA-Z\s'-]+$/, {
+	@Matches(/^[\p{L}\s'-]+$/u, {
 		message: 'Last name can only contain letters, spaces, apostrophes, and hyphens',
 	})
 	lastName?: string | null;
@@ -110,6 +118,22 @@ export class UpdateUserGamePreferencesDto {
 	@IsOptional()
 	@IsEnum(DifficultyLevel)
 	defaultDifficulty?: DifficultyLevel;
+
+	@ApiPropertyOptional({
+		description: 'Required when defaultDifficulty is custom — plain-text description (same length rules as gameplay).',
+	})
+	@ValidateIf(o => o.defaultDifficulty !== DifficultyLevel.CUSTOM)
+	@IsOptional()
+	@ValidateIf(o => o.defaultDifficulty === DifficultyLevel.CUSTOM)
+	@IsString()
+	@IsNotEmpty({ message: ERROR_MESSAGES.validation.CUSTOM_DIFFICULTY_REQUIRES_DESCRIPTION })
+	@MinLength(VALIDATION_LENGTH.CUSTOM_DIFFICULTY.MIN, {
+		message: `Custom difficulty description must be at least ${VALIDATION_LENGTH.CUSTOM_DIFFICULTY.MIN} characters`,
+	})
+	@MaxLength(VALIDATION_LENGTH.CUSTOM_DIFFICULTY.MAX, {
+		message: `Custom difficulty description cannot exceed ${VALIDATION_LENGTH.CUSTOM_DIFFICULTY.MAX} characters`,
+	})
+	defaultCustomDifficultyDescription?: string;
 
 	@ApiPropertyOptional({ description: 'Default topic' })
 	@IsOptional()
@@ -201,10 +225,14 @@ export class UpdateUserCreditsDto {
 	@ApiProperty({
 		description: 'Amount of credits to update',
 		minimum: VALIDATION_COUNT.CREDITS.MIN,
+		maximum: VALIDATION_COUNT.CREDITS.MAX,
 	})
 	@IsNumber({}, { message: 'Amount must be a number' })
 	@Min(VALIDATION_COUNT.CREDITS.MIN, {
 		message: `Amount must be at least ${VALIDATION_COUNT.CREDITS.MIN}`,
+	})
+	@Max(VALIDATION_COUNT.CREDITS.MAX, {
+		message: `Amount cannot exceed ${VALIDATION_COUNT.CREDITS.MAX}`,
 	})
 	amount: number;
 
@@ -262,13 +290,15 @@ export class ChangePasswordDto {
 
 export class SetAvatarDto {
 	@ApiProperty({
-		description: `Avatar ID: 0 to clear avatar, ${VALIDATION_COUNT.AVATAR_ID.MIN}-${VALIDATION_COUNT.AVATAR_ID.MAX} to set`,
-		minimum: 0,
+		description: `Avatar ID: ${VALIDATION_COUNT.AVATAR_ID.CLEAR} to clear avatar, ${VALIDATION_COUNT.AVATAR_ID.MIN}-${VALIDATION_COUNT.AVATAR_ID.MAX} to set`,
+		minimum: VALIDATION_COUNT.AVATAR_ID.CLEAR,
 		maximum: VALIDATION_COUNT.AVATAR_ID.MAX,
 	})
 	@IsNumber({}, { message: 'Avatar ID must be a number' })
 	@IsNotEmpty({ message: 'Avatar ID is required' })
-	@Min(0, { message: 'Avatar ID must be 0 (clear) or between 1 and 15' })
+	@Min(VALIDATION_COUNT.AVATAR_ID.CLEAR, {
+		message: `Avatar ID must be ${VALIDATION_COUNT.AVATAR_ID.CLEAR} (clear) or between ${VALIDATION_COUNT.AVATAR_ID.MIN} and ${VALIDATION_COUNT.AVATAR_ID.MAX}`,
+	})
 	@Max(VALIDATION_COUNT.AVATAR_ID.MAX, {
 		message: `Avatar ID cannot exceed ${VALIDATION_COUNT.AVATAR_ID.MAX}`,
 	})

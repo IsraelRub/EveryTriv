@@ -14,14 +14,27 @@ import type { FullPageSpinnerProps, SpinnerProps } from '@/types';
 import { cn } from '@/utils';
 import { HomeButton } from '../navigation/HomeButton';
 
+const spinnerSizeVariants = cva('', {
+	variants: {
+		size: {
+			[ComponentSize.SM]: 'h-4 w-4',
+			[ComponentSize.MD]: 'h-5 w-5',
+			[ComponentSize.LG]: 'h-6 w-6',
+			[ComponentSize.XL]: 'h-12 w-12',
+			[ComponentSize.FULL]: 'h-16 w-16',
+		},
+	},
+	defaultVariants: { size: ComponentSize.MD },
+});
+
 export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>((props, ref) => {
 	const { message, messageInline, size, className, ...rest } = props;
 	const { t } = useTranslation();
 	const sizeClass = spinnerSizeVariants({ size: size ?? ComponentSize.MD });
 	const spinnerSpan = (
 		<span className={cn('relative inline-block', sizeClass, className)} {...rest}>
-			<Circle className='absolute inset-0 size-full opacity-25 text-primary' fill='none' strokeWidth={2} />
-			<Loader2 className='animate-spin size-full text-primary' strokeWidth={2} />
+			<Circle className='absolute inset-0 size-full opacity-25 text-primary' strokeWidth={1.9} />
+			<Loader2 className='animate-spin size-full text-primary' strokeWidth={2.5} />
 		</span>
 	);
 	if (message !== undefined) {
@@ -61,15 +74,3 @@ export function FullPageSpinner({
 		</main>
 	);
 }
-const spinnerSizeVariants = cva('', {
-	variants: {
-		size: {
-			[ComponentSize.SM]: 'h-4 w-4',
-			[ComponentSize.MD]: 'h-5 w-5',
-			[ComponentSize.LG]: 'h-6 w-6',
-			[ComponentSize.XL]: 'h-12 w-12',
-			[ComponentSize.FULL]: 'h-16 w-16',
-		},
-	},
-	defaultVariants: { size: ComponentSize.MD },
-});

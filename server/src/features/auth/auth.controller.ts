@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Post, Query, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthGuard as PassportAuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 
-import { API_ENDPOINTS, ErrorCode, LOCALHOST_CONFIG, VALIDATION_LENGTH } from '@shared/constants';
+import { API_ENDPOINTS, LOCALHOST_CONFIG, VALIDATION_LENGTH } from '@shared/constants';
 import type { BasicUser } from '@shared/types';
 import { getErrorMessage, isNonEmptyString, truncateWithEllipsis } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
@@ -10,16 +10,15 @@ import { VALIDATORS } from '@shared/validation';
 import { CurrentUser, CurrentUserId, NoCache, Public } from '@common/decorators';
 import { serverLogger as logger } from '@internal/services';
 import type { GoogleAuthRequest, TokenPayload } from '@internal/types';
-import { getAvatarUrlForUser } from '@internal/utils';
 
 import { AuthService } from './auth.service';
 import {
+	AcceptLegalConsentDto,
 	AuthResponseDto,
 	LoginDto,
 	RefreshTokenDto,
 	RefreshTokenResponseDto,
 	RegisterDto,
-	VerifyEmailQueryDto,
 } from './dtos/auth.dto';
 
 @Controller(API_ENDPOINTS.AUTH.BASE)
@@ -98,20 +97,6 @@ export class AuthController {
 		}
 	}
 
-	@Post('request-verification-email')
-	async requestVerificationEmail(@CurrentUserId() userId: string | null): Promise<{ verificationLink: string }> {
-		if (!userId) {
-			throw new UnauthorizedException(ErrorCode.USER_NOT_AUTHENTICATED);
-		}
-		return this.authService.requestVerificationEmail(userId);
-	}
-
-	@Get('verify-email')
-	@Public()
-	async verifyEmail(@Query() query: VerifyEmailQueryDto): Promise<{ verified: boolean }> {
-		return this.authService.verifyEmail(query.token);
-	}
-
 	@Get('me')
 	@NoCache()
 	async getCurrentUser(@CurrentUser() user: TokenPayload): Promise<BasicUser> {
@@ -127,33 +112,17 @@ export class AuthController {
 					requested: user.sub,
 				},
 			});
-			const fullUser = await this.authService.getCurrentUser(user.sub);
+			const userData = await this.authService.getCurrentUserPublic(user.sub);
 
 			logger.authDebug('User fetched from database', {
-				userId: fullUser.id,
-				emails: { current: fullUser.email },
-				role: fullUser.role,
+				userId: userData.id,
+				emails: { current: userData.email },
+				role: userData.role,
 				userIds: {
 					requested: user.sub,
 				},
-				userIdMatches: fullUser.id === user.sub,
+				userIdMatches: userData.id === user.sub,
 			});
-
-			const avatarUrl = getAvatarUrlForUser(fullUser);
-			const userData: BasicUser = {
-				id: fullUser.id,
-				email: fullUser.email,
-				role: fullUser.role,
-				...('firstName' in fullUser && isNonEmptyString(fullUser.firstName) ? { firstName: fullUser.firstName } : {}),
-				...('lastName' in fullUser && isNonEmptyString(fullUser.lastName) ? { lastName: fullUser.lastName } : {}),
-				...(fullUser.preferences?.avatar && VALIDATORS.number(fullUser.preferences.avatar)
-					? { avatar: fullUser.preferences.avatar }
-					: {}),
-				...(avatarUrl != null ? { avatarUrl } : {}),
-				...('emailVerified' in fullUser && typeof fullUser.emailVerified === 'boolean'
-					? { emailVerified: fullUser.emailVerified }
-					: {}),
-			};
 
 			logger.systemInfo('Returning user data', {
 				userId: userData.id,
@@ -167,6 +136,12 @@ export class AuthController {
 			});
 			throw error;
 		}
+	}
+
+	@Post('legal-acceptance')
+	async acceptLegalConsent(@CurrentUser() user: TokenPayload, @Body() _dto: AcceptLegalConsentDto): Promise<BasicUser> {
+		logger.authInfo('Legal acceptance request', { userId: user.sub });
+		return this.authService.acceptLegalConsent(user.sub);
 	}
 
 	@Post('logout')

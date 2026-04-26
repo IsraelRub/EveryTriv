@@ -17,7 +17,7 @@ timeout /t 5 /nobreak >nul
 echo.
 echo 🌐 Starting client (port 3000)...
 cd ..\client
-start "EveryTriv Client (Dev)" cmd /k "pnpm run start:dev"
+start "EveryTriv Client (Dev)" cmd /k "pnpm run start"
 
 echo.
 echo ========================================

@@ -9,6 +9,5 @@ export function userProfileToBasicUser(profile: UserProfile): BasicUser {
 		lastName: profile.lastName,
 		avatar: profile.avatar,
 		avatarUrl: profile.avatarUrl,
-		emailVerified: profile.emailVerified,
 	};
 }

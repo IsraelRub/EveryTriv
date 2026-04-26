@@ -20,6 +20,7 @@ COPY .npmrc ./
 COPY client/ ./client/
 COPY server/ ./server/
 COPY shared/ ./shared/
+COPY .env.prod ./.env.prod
 
 RUN pnpm install
 

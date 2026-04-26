@@ -11,7 +11,6 @@ import type {
 	AnswerHistory,
 	BasicValue,
 	BusinessMetrics,
-	ClearOperationResponse,
 	ComparisonQueryOptions,
 	CompleteUserAnalytics,
 	DifficultyBreakdown,
@@ -533,34 +532,6 @@ class AnalyticsService {
 			return response.data;
 		} catch (error) {
 			logger.gameError('Failed to get leaderboard stats', { errorInfo: { message: getErrorMessage(error) }, period });
-			throw error;
-		}
-	}
-
-	// Admin operations
-	async clearAllUserStats(): Promise<ClearOperationResponse> {
-		try {
-			logger.userInfo('Clearing all user stats');
-			const response = await apiService.delete<ClearOperationResponse>(
-				API_ENDPOINTS.MAINTENANCE.DATA_USER_STATS_CLEAR_ALL
-			);
-			const result = response.data;
-			logger.userInfo('All user stats cleared successfully', { deletedCount: result.deletedCount });
-			return result;
-		} catch (error) {
-			logger.userError('Failed to clear all user stats', { errorInfo: { message: getErrorMessage(error) } });
-			throw error;
-		}
-	}
-
-	async clearAllLeaderboard(): Promise<ClearOperationResponse> {
-		try {
-			const response = await apiService.delete<ClearOperationResponse>(
-				`${API_ENDPOINTS.ANALYTICS.LEADERBOARD.ADMIN_CLEAR_ALL}`
-			);
-			return response.data;
-		} catch (error) {
-			logger.gameError('Failed to clear all leaderboard data', { errorInfo: { message: getErrorMessage(error) } });
 			throw error;
 		}
 	}

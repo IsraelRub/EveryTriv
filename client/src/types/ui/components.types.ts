@@ -22,6 +22,7 @@ import {
 	FullPageSpinnerLayout,
 	SliderSize,
 	TabsListVariant,
+	UiDensity,
 	VariantBase,
 	type ViewAllDestination,
 } from '@/constants';
@@ -53,6 +54,11 @@ export interface CloseButtonProps {
 	className?: string;
 	onClose?: () => void;
 }
+
+export type DisclosureChevronProps = {
+	expanded?: boolean;
+	className?: string;
+};
 
 export interface HomeButtonProps {
 	onBeforeNavigate?: () => void;
@@ -89,8 +95,8 @@ export interface EmptyStateProps {
 	icon?: LucideIcon;
 	title?: string;
 	description?: string;
-
 	showPlayNow?: boolean;
+	density?: UiDensity;
 }
 
 export interface PaginationButtonsProps {
@@ -110,6 +116,8 @@ export interface SliderProps extends ComponentPropsWithoutRef<typeof SliderPrimi
 export interface TabsListProps extends ComponentPropsWithoutRef<typeof TabsPrimitive.List> {
 	variant?: TabsListVariant;
 }
+
+export type TabsRootProps = ComponentPropsWithoutRef<typeof TabsPrimitive.Root>;
 
 export interface SectionCardProps {
 	title?: string;

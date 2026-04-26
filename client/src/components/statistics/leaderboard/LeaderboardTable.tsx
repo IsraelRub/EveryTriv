@@ -5,11 +5,13 @@ import { motion } from 'framer-motion';
 import { getDisplayNameFromUserFields } from '@shared/utils';
 
 import {
-	ANIMATION_DELAYS,
+	AnimationDelays,
 	AvatarSize,
 	DISPLAY_NAME_FALLBACKS,
+	EMPTY_STATE_LUCIDE_ICON,
 	RANK_DISPLAY,
 	StatisticsLeaderboardKey,
+	UiDensity,
 } from '@/constants';
 import type { LeaderboardTableProps } from '@/types';
 import { cn } from '@/utils';
@@ -33,8 +35,10 @@ export const LeaderboardTable = memo(function LeaderboardTable({
 			<div className={cn('flex items-center justify-center', fillEmptyStateHeight && 'h-full')}>
 				<EmptyState
 					data='leaderboard'
+					icon={EMPTY_STATE_LUCIDE_ICON.tableNoRows}
 					title={t(StatisticsLeaderboardKey.NO_LEADERBOARD_DATA_TITLE)}
 					description={t(StatisticsLeaderboardKey.NO_LEADERBOARD_DATA_DESCRIPTION)}
+					density={UiDensity.COMPACT}
 					showPlayNow={false}
 				/>
 			</div>
@@ -57,7 +61,7 @@ export const LeaderboardTable = memo(function LeaderboardTable({
 						key={entry.userId}
 						initial={{ opacity: 0, x: -20 }}
 						animate={{ opacity: 1, x: 0 }}
-						transition={{ delay: index * ANIMATION_DELAYS.STAGGER_SMALL }}
+						transition={{ delay: index * AnimationDelays.STAGGER_SMALL }}
 						className={cn(
 							'flex items-center gap-4 p-3 rounded-lg transition-colors',
 							index < 3 ? 'bg-muted/50' : 'hover-row'

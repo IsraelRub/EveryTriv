@@ -1,17 +1,16 @@
 export const LOCALHOST_CONFIG = {
 	urls: {
-		SERVER: 'http://localhost:3002',
-
+		SERVER: 'http://localhost:3001',
 		CLIENT: 'http://localhost:5173',
-
 		CLIENT_DOCKER: 'http://localhost:3000',
 	},
 	ports: {
-		SERVER: 3002,
+		SERVER: 3001,
 		CLIENT: 5173,
 		CLIENT_DOCKER: 3000,
 		DATABASE: 5432,
-		REDIS: 6379,
+
+		REDIS: 6380,
 	},
 	hosts: {
 		DATABASE: 'localhost',

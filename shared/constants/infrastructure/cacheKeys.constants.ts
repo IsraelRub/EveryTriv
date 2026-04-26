@@ -59,7 +59,6 @@ export const CACHE_KEYS = {
 	AUTH: {
 		USER_LOGOUT_PATTERN_1: (userId: string) => `*:${userId}`,
 		USER_LOGOUT_PATTERN_2: (userId: string) => `*:${userId}:*`,
-		EMAIL_VERIFY: (token: string) => `email_verify:${token}`,
 	},
 	MULTIPLAYER: {
 		ROOM: (roomId: string) => `multiplayer:room:${roomId}`,

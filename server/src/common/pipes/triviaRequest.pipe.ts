@@ -23,7 +23,9 @@ export class TriviaRequestPipe implements PipeTransform {
 				isNull: value === null,
 				isString: VALIDATORS.string(value),
 				valueLength: VALIDATORS.string(value) ? value.length : undefined,
-				preview: VALIDATORS.string(value) ? value.substring(0, 100) : undefined,
+				preview: VALIDATORS.string(value)
+					? value.substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.CONTENT_PREVIEW)
+					: undefined,
 			});
 
 			const payload = this.buildTriviaPayload(value);
@@ -96,7 +98,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			const details: string[] = [];
 			if (isRecord(value)) {
 				details.push(
-					`topic: ${typeof value.topic}${value.topic ? ` (${String(value.topic).substring(0, 20)})` : ' (missing)'}`
+					`topic: ${typeof value.topic}${value.topic ? ` (${String(value.topic).substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.FIELD_ERROR_SNIPPET)})` : ' (missing)'}`
 				);
 				details.push(
 					`difficulty: ${typeof value.difficulty}${value.difficulty ? ` (${String(value.difficulty)})` : ' (missing)'}`
@@ -130,7 +132,9 @@ export class TriviaRequestPipe implements PipeTransform {
 			type: typeof value,
 			isString: VALIDATORS.string(value),
 			valueLength: VALIDATORS.string(value) ? value.length : undefined,
-			preview: VALIDATORS.string(value) ? value.substring(0, 200) : undefined,
+			preview: VALIDATORS.string(value)
+				? value.substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.LONG_PREVIEW)
+				: undefined,
 			isObject: isRecord(value),
 			isNull: value === null,
 		});
@@ -152,7 +156,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			// Check if string looks like JSON (starts with { or [)
 			if (trimmedValue.startsWith('{') || trimmedValue.startsWith('[')) {
 				logger.validationDebug('trivia_request', '[REDACTED]', 'normalize_attempting_json_parse', {
-					preview: trimmedValue.substring(0, 100),
+					preview: trimmedValue.substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.MEDIUM_PREVIEW),
 				});
 				try {
 					const parsedValue: unknown = JSON.parse(trimmedValue);
@@ -165,7 +169,7 @@ export class TriviaRequestPipe implements PipeTransform {
 					// If parsing fails, throw a more descriptive error
 					logger.validationError('trivia_request', '[REDACTED]', 'normalize_json_parse_failed', {
 						errorInfo: { message: getErrorMessage(error) },
-						preview: value.substring(0, 100),
+						preview: value.substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.MEDIUM_PREVIEW),
 					});
 					throw new BadRequestException({
 						message: 'Invalid JSON format in request body',
@@ -179,7 +183,7 @@ export class TriviaRequestPipe implements PipeTransform {
 			logger.validationWarn('trivia_request', '[REDACTED]', 'normalize_string_not_json', {
 				type: typeof value,
 				valueLength: value.length,
-				preview: trimmedValue.substring(0, 100),
+				preview: trimmedValue.substring(0, VALIDATION_LENGTH.STRING_TRUNCATION.MEDIUM_PREVIEW),
 				startsWithBrace: trimmedValue.startsWith('{'),
 				startsWithBracket: trimmedValue.startsWith('['),
 			});
@@ -240,7 +244,7 @@ export class TriviaRequestPipe implements PipeTransform {
 
 	private createTriviaRequestDto(payload: TriviaRequest, questionsPerRequest: number): TriviaRequestDto {
 		const dto = new TriviaRequestDto();
-		dto.topic = sanitizeInput(payload.topic, 500);
+		dto.topic = sanitizeInput(payload.topic, VALIDATION_LENGTH.TOPIC.MAX);
 		dto.difficulty = payload.difficulty;
 		dto.questionsPerRequest = questionsPerRequest;
 

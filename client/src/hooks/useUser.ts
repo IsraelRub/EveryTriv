@@ -5,7 +5,6 @@ import type { UpdateUserProfileData, UserPreferences } from '@shared/types';
 
 import { QUERY_KEYS } from '@/constants';
 import { apiService, clientLogger as logger, queryInvalidationService } from '@/services';
-import { getAuthCurrentUserQueryKey, readAuthTokenSnapshotForQueryKey, userProfileToBasicUser } from '@/utils';
 import { useIsAuthenticated } from './useAuth';
 
 export const useUpdateUserProfile = () => {
@@ -14,16 +13,7 @@ export const useUpdateUserProfile = () => {
 	return useMutation({
 		mutationFn: (data: UpdateUserProfileData) => apiService.updateUserProfile(data),
 		onSuccess: async profileResponse => {
-			await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
-			await queryClient.cancelQueries({
-				queryKey: getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-			});
-			queryClient.setQueryData(QUERY_KEYS.user.profile(), profileResponse, { updatedAt: Date.now() });
-			queryClient.setQueryData(
-				getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-				userProfileToBasicUser(profileResponse.profile),
-				{ updatedAt: Date.now() }
-			);
+			await queryInvalidationService.syncUserProfileResponseFromMutation(queryClient, profileResponse);
 		},
 	});
 };
@@ -34,19 +24,7 @@ export const useSetAvatar = () => {
 	return useMutation({
 		mutationFn: (avatarId: number) => apiService.setAvatar(avatarId),
 		onSuccess: async profileResponse => {
-			if (!profileResponse?.profile) {
-				return;
-			}
-			await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
-			await queryClient.cancelQueries({
-				queryKey: getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-			});
-			queryClient.setQueryData(QUERY_KEYS.user.profile(), profileResponse, { updatedAt: Date.now() });
-			queryClient.setQueryData(
-				getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-				userProfileToBasicUser(profileResponse.profile),
-				{ updatedAt: Date.now() }
-			);
+			await queryInvalidationService.syncUserProfileResponseFromMutation(queryClient, profileResponse);
 		},
 	});
 };
@@ -57,19 +35,7 @@ export const useUploadAvatar = () => {
 	return useMutation({
 		mutationFn: (file: File) => apiService.uploadAvatar(file),
 		onSuccess: async profileResponse => {
-			if (!profileResponse?.profile) {
-				return;
-			}
-			await queryClient.cancelQueries({ queryKey: QUERY_KEYS.user.profile() });
-			await queryClient.cancelQueries({
-				queryKey: getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-			});
-			queryClient.setQueryData(QUERY_KEYS.user.profile(), profileResponse, { updatedAt: Date.now() });
-			queryClient.setQueryData(
-				getAuthCurrentUserQueryKey(readAuthTokenSnapshotForQueryKey()),
-				userProfileToBasicUser(profileResponse.profile),
-				{ updatedAt: Date.now() }
-			);
+			await queryInvalidationService.syncUserProfileResponseFromMutation(queryClient, profileResponse);
 		},
 	});
 };

@@ -102,7 +102,6 @@ export class AnalyticsController {
 	}
 
 	@Get('user')
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getAuthenticatedUserAnalytics(@CurrentUserId() userId: string) {
 		try {
 			const result = await this.userAnalyticsService.getUserAnalytics(userId);
@@ -125,7 +124,6 @@ export class AnalyticsController {
 	}
 
 	@Get('user/comparison/:userId')
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserComparison(
 		@Param() params: UserIdParamDto,
 		@Query() query: UserComparisonQueryDto,
@@ -169,7 +167,6 @@ export class AnalyticsController {
 
 	@Get('user/summary/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserSummary(@Param() params: UserIdParamDto, @Query() query: UserSummaryQueryDto) {
 		try {
 			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['summary'], {
@@ -191,7 +188,6 @@ export class AnalyticsController {
 
 	@Get('user/statistics/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserStatistics(@Param() params: UserIdParamDto) {
 		try {
 			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['statistics']);
@@ -211,7 +207,6 @@ export class AnalyticsController {
 
 	@Get('user/performance/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserPerformance(@Param() params: UserIdParamDto) {
 		try {
 			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['performance']);
@@ -231,7 +226,6 @@ export class AnalyticsController {
 
 	@Get('user/insights/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserInsights(@Param() params: UserIdParamDto) {
 		try {
 			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['insights']);
@@ -251,7 +245,6 @@ export class AnalyticsController {
 
 	@Get('user/recommendations/:userId')
 	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getUserRecommendations(@Param() params: UserIdParamDto) {
 		try {
 			const result = await this.userAnalyticsService.getUnifiedUserAnalytics(params.userId, ['recommendations']);
@@ -356,7 +349,6 @@ export class AnalyticsController {
 
 	@Get('global/difficulty')
 	@Public()
-	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
 	async getGlobalDifficultyStats() {
 		try {
 			const result = await this.globalAnalyticsService.getGlobalDifficultyStats();
@@ -377,7 +369,6 @@ export class AnalyticsController {
 
 	@Get('global/stats')
 	@Public()
-	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
 	async getGlobalStats() {
 		try {
 			const result = await this.globalAnalyticsService.getGlobalStats();
@@ -426,7 +417,6 @@ export class AnalyticsController {
 
 	@Get('business/metrics')
 	@Roles(UserRole.ADMIN)
-	@Cache(TIME_DURATIONS_SECONDS.THIRTY_MINUTES)
 	async getBusinessMetrics() {
 		try {
 			const result = await this.businessAnalyticsService.getBusinessMetrics();
@@ -538,7 +528,6 @@ export class AnalyticsController {
 
 	@Get('leaderboard/global')
 	@Public()
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getGlobalLeaderboard(@Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit;
@@ -609,7 +598,6 @@ export class AnalyticsController {
 
 	@Get('leaderboard/period/:period')
 	@Public()
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getLeaderboardByPeriod(@Param('period') periodParam: string, @Query() query: GetLeaderboardDto) {
 		try {
 			const limitNum = query.limit;
@@ -686,7 +674,6 @@ export class AnalyticsController {
 
 	@Get('leaderboard/stats')
 	@Public()
-	@Cache(TIME_DURATIONS_SECONDS.FIFTEEN_MINUTES)
 	async getLeaderboardStats(@Query() query: GetLeaderboardStatsDto) {
 		try {
 			const periodInput = query.period;

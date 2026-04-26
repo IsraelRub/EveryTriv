@@ -24,15 +24,11 @@ export class UserStatusGuard implements CanActivate {
 			return true;
 		}
 
-		const requireEmailVerified = this.reflector.getAllAndOverride<boolean>('requireEmailVerified', [
-			context.getHandler(),
-			context.getClass(),
-		]);
 		const requireUserStatus = this.reflector.getAllAndOverride<string[]>('requireUserStatus', [
 			context.getHandler(),
 			context.getClass(),
 		]);
-		if (!requireEmailVerified && (!requireUserStatus || requireUserStatus.length === 0)) {
+		if (!requireUserStatus || requireUserStatus.length === 0) {
 			return true;
 		}
 
@@ -44,23 +40,16 @@ export class UserStatusGuard implements CanActivate {
 
 		const user = await this.userRepository.findOne({
 			where: { id: userId },
-			select: ['id', 'isActive', 'emailVerified'],
+			select: ['id', 'isActive'],
 		});
 		if (!user) {
 			throw new ForbiddenException(ErrorCode.USER_NOT_AUTHENTICATED);
 		}
 
-		if (requireEmailVerified && !user.emailVerified) {
-			logger.securityDenied('Email verification required', { userId });
-			throw new ForbiddenException(ErrorCode.EMAIL_VERIFICATION_REQUIRED);
-		}
-
-		if (requireUserStatus && requireUserStatus.length > 0) {
-			const requiresActive = requireUserStatus.includes(UserStatus.ACTIVE);
-			if (requiresActive && !user.isActive) {
-				logger.securityDenied('Active user status required', { userId });
-				throw new ForbiddenException(ErrorCode.USER_ACCOUNT_DISABLED);
-			}
+		const requiresActive = requireUserStatus.includes(UserStatus.ACTIVE);
+		if (requiresActive && !user.isActive) {
+			logger.securityDenied('Active user status required', { userId });
+			throw new ForbiddenException(ErrorCode.USER_ACCOUNT_DISABLED);
 		}
 
 		return true;

@@ -11,9 +11,6 @@ const perpendicularUnit = (dx: number, dy: number, chord: number): Point2d => ({
 	y: dx / chord,
 });
 
-/**
- * Builds vw/vh keyframe positions for background word motion. Last point always matches `end`.
- */
 export function buildBackgroundWordPath(params: BuildBackgroundWordPathParams): readonly Point2d[] {
 	const { start, end, motionPath } = params;
 	const dx = end.x - start.x;

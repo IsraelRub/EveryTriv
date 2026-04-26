@@ -47,7 +47,7 @@ echo ========================================
 echo.
 echo Useful commands:
 echo - View logs: pnpm run docker:logs
-echo - Stop services: pnpm run stop:docker
+echo - Stop services: pnpm run docker:stop
 echo - Check status: pnpm run docker:status
 echo.
 echo Press any key to view live logs (Ctrl+C to stop watching)...

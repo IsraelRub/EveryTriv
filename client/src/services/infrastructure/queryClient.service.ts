@@ -1,24 +1,20 @@
 import { QueryClient } from '@tanstack/react-query';
 
 import { RETRY_LIMITS, TIME_PERIODS_MS } from '@shared/constants';
-import { calculateRetryDelay, getErrorMessage, isClientError } from '@shared/utils';
+import { calculateRetryDelay, getErrorMessage, isCancelledOrAbortError, isClientError } from '@shared/utils';
 
-import { QUERY_KEYS, ROUTES } from '@/constants';
+import { QUERY_KEYS, Routes } from '@/constants';
 import { analyticsService, authService, creditsService, clientLogger as logger } from '@/services';
 import { isAuthPage, isSessionExpiredError } from '@/utils';
 
 function shouldRetry(failureCount: number, error: unknown, maxRetries: number): boolean {
-	// Never retry on session expired errors
-	if (isSessionExpiredError(error)) {
-		return false;
-	}
-
-	// Don't retry on 4xx client errors (validation errors, bad requests, etc.)
-	if (isClientError(error)) {
-		return false;
-	}
-
-	return failureCount < maxRetries;
+	// Session expiry, user abort, and 4xx client errors should not trigger retries
+	return (
+		failureCount < maxRetries &&
+		!isSessionExpiredError(error) &&
+		!isCancelledOrAbortError(error) &&
+		!isClientError(error)
+	);
 }
 
 async function handleSessionExpired(client: QueryClient): Promise<void> {
@@ -33,14 +29,14 @@ async function handleSessionExpired(client: QueryClient): Promise<void> {
 
 		// Redirect to home with full page reload so user can continue browsing or choose to log in
 		if (!isAuthPage() && typeof window !== 'undefined') {
-			window.location.href = ROUTES.HOME;
+			window.location.href = Routes.HOME;
 		}
 	} catch (error) {
 		logger.systemError('Failed to handle session expired', {
 			errorInfo: { message: getErrorMessage(error) },
 		});
 		if (!isAuthPage() && typeof window !== 'undefined') {
-			window.location.href = ROUTES.HOME;
+			window.location.href = Routes.HOME;
 		}
 	}
 }
@@ -90,7 +86,7 @@ export const queryClient = new QueryClient({
 		queries: {
 			staleTime: TIME_PERIODS_MS.FIVE_MINUTES,
 			gcTime: TIME_PERIODS_MS.TEN_MINUTES,
-			retry: (failureCount, error: Error & { status?: number }) => {
+			retry: (failureCount, error) => {
 				return shouldRetry(failureCount, error, RETRY_LIMITS.reactQueryQueries);
 			},
 			retryDelay: attemptIndex => {
@@ -105,7 +101,7 @@ export const queryClient = new QueryClient({
 			networkMode: 'online',
 		},
 		mutations: {
-			retry: (failureCount, error: Error & { status?: number }) => {
+			retry: (failureCount, error) => {
 				return shouldRetry(failureCount, error, RETRY_LIMITS.reactQueryMutations);
 			},
 			networkMode: 'online',

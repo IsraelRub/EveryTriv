@@ -9,7 +9,7 @@ import type {
 import { delay, ensureErrorObject, getErrorMessage, hasPropertyOfType, isRecord } from '@shared/utils';
 import { VALIDATORS } from '@shared/validation';
 
-import { EXPECTED_ERROR_CODES, STORAGE_KEYS } from '@/constants';
+import { EXPECTED_ERROR_CODES, StorageKeys } from '@/constants';
 import type { AuthState, CompleteProfileParams, ParsedJwtAuthToken } from '@/types';
 import { ApiConfig, apiService, clientLogger as logger, storageService } from '@/services';
 
@@ -118,7 +118,7 @@ class AuthService {
 
 	async getCurrentUser(): Promise<BasicUser> {
 		try {
-			const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+			const tokenResult = await storageService.getString(StorageKeys.AUTH_TOKEN);
 			const token = tokenResult.success ? (tokenResult.data ?? null) : null;
 			const parsedToken = this.parseAuthToken(token);
 			const tokenUserId = parsedToken?.userId ?? undefined;
@@ -169,7 +169,7 @@ class AuthService {
 			const response = await apiService.refreshToken();
 
 			// Get existing refresh token from storage
-			const refreshTokenResult = await storageService.getString(STORAGE_KEYS.REFRESH_TOKEN);
+			const refreshTokenResult = await storageService.getString(StorageKeys.REFRESH_TOKEN);
 			const refreshToken = refreshTokenResult.success ? refreshTokenResult.data : null;
 			if (!refreshToken) {
 				throw new Error(ERROR_MESSAGES.api.NO_REFRESH_TOKEN_AVAILABLE);
@@ -197,7 +197,7 @@ class AuthService {
 	}
 
 	async getAuthState(): Promise<AuthState> {
-		const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+		const tokenResult = await storageService.getString(StorageKeys.AUTH_TOKEN);
 		const token = tokenResult.success ? (tokenResult.data ?? null) : null;
 
 		return {
@@ -208,7 +208,7 @@ class AuthService {
 
 	async tryRestoreSession(): Promise<boolean> {
 		try {
-			const persistentResult = await storageService.getString(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN);
+			const persistentResult = await storageService.getString(StorageKeys.PERSISTENT_REFRESH_TOKEN);
 			const persistentToken =
 				persistentResult.success && persistentResult.data && VALIDATORS.string(persistentResult.data)
 					? persistentResult.data
@@ -217,13 +217,13 @@ class AuthService {
 				return false;
 			}
 
-			await storageService.setString(STORAGE_KEYS.REFRESH_TOKEN, persistentToken);
+			await storageService.setString(StorageKeys.REFRESH_TOKEN, persistentToken);
 
 			await apiService.refreshToken();
 			logger.authInfo('Session restored from persistent refresh token');
 			return true;
 		} catch {
-			await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN);
+			await storageService.delete(StorageKeys.REFRESH_TOKEN);
 			return false;
 		}
 	}
@@ -234,7 +234,7 @@ class AuthService {
 	): Promise<boolean> {
 		let attempts = 0;
 		while (attempts < maxAttempts) {
-			const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+			const tokenResult = await storageService.getString(StorageKeys.AUTH_TOKEN);
 			const token = tokenResult.success ? (tokenResult.data ?? null) : null;
 			if (token) {
 				return true;
@@ -246,7 +246,7 @@ class AuthService {
 	}
 
 	async verifyStoredTokenForUser(userId: string): Promise<boolean> {
-		const tokenResult = await storageService.getString(STORAGE_KEYS.AUTH_TOKEN);
+		const tokenResult = await storageService.getString(StorageKeys.AUTH_TOKEN);
 		const token = tokenResult.success ? (tokenResult.data ?? null) : null;
 		return this.parseAuthToken(token)?.userId === userId;
 	}
@@ -336,27 +336,27 @@ class AuthService {
 
 	private async clearAuthData(): Promise<void> {
 		// Clear all auth-related storage keys from localStorage
-		await storageService.delete(STORAGE_KEYS.AUTH_TOKEN); // 'access_token'
-		await storageService.delete(STORAGE_KEYS.REFRESH_TOKEN); // 'refresh_token'
-		await storageService.delete(STORAGE_KEYS.PERSISTENT_REFRESH_TOKEN);
+		await storageService.delete(StorageKeys.AUTH_TOKEN); // 'access_token'
+		await storageService.delete(StorageKeys.REFRESH_TOKEN); // 'refresh_token'
+		await storageService.delete(StorageKeys.PERSISTENT_REFRESH_TOKEN);
 
 		// Clear all user-specific data from localStorage
-		await storageService.delete(STORAGE_KEYS.USER_ID);
-		await storageService.delete(STORAGE_KEYS.GAME_PREFERENCES);
-		await storageService.delete(STORAGE_KEYS.GAME_STATE);
-		await storageService.delete(STORAGE_KEYS.GAME_HISTORY);
-		await storageService.delete(STORAGE_KEYS.USER_PREFERENCES);
-		await storageService.delete(STORAGE_KEYS.CUSTOM_DIFFICULTIES);
-		await storageService.delete(STORAGE_KEYS.CUSTOM_DIFFICULTY_HISTORY);
-		await storageService.delete(STORAGE_KEYS.SCORE_HISTORY);
+		await storageService.delete(StorageKeys.USER_ID);
+		await storageService.delete(StorageKeys.GAME_PREFERENCES);
+		await storageService.delete(StorageKeys.GAME_STATE);
+		await storageService.delete(StorageKeys.GAME_HISTORY);
+		await storageService.delete(StorageKeys.USER_PREFERENCES);
+		await storageService.delete(StorageKeys.CUSTOM_DIFFICULTIES);
+		await storageService.delete(StorageKeys.CUSTOM_DIFFICULTY_HISTORY);
+		await storageService.delete(StorageKeys.SCORE_HISTORY);
 
 		// Clear Redux Persist storage manually to avoid non-serializable action
 		// persist:user is in sessionStorage (cleared automatically when tab closes)
 		// persist:gameMode is in localStorage
-		await storageService.delete(STORAGE_KEYS.GAME_MODE);
+		await storageService.delete(StorageKeys.GAME_MODE);
 		// Clear other Redux Persist storage
-		await storageService.delete(STORAGE_KEYS.AUDIO_SETTINGS);
-		await storageService.delete(STORAGE_KEYS.UI_PREFERENCES);
+		await storageService.delete(StorageKeys.AUDIO_SETTINGS);
+		await storageService.delete(StorageKeys.UI_PREFERENCES);
 		// Note: persist:user is in sessionStorage and will be cleared when tab closes
 		// We can't delete from sessionStorage here because storageService only handles localStorage
 

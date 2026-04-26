@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -13,6 +13,7 @@ import {
 	VALIDATION_LENGTH,
 } from '@shared/constants';
 import type { CreateRoomConfig } from '@shared/types';
+import { getErrorMessage, isRecord } from '@shared/utils';
 
 import {
 	AlertVariant,
@@ -20,14 +21,14 @@ import {
 	ComponentSize,
 	ExitGameButtonVariant,
 	GameKey,
-	ROUTES,
+	Routes,
 	TabsListVariant,
 	TextLanguageStatus,
 	VALIDATION_MESSAGES,
 	VariantBase,
 } from '@/constants';
 import { clientLogger as logger } from '@/services';
-import { toLobbyPlayerRowsFromMultiplayerRoom } from '@/utils';
+import { cn, getTranslatedErrorMessage, toLobbyPlayerRowsFromMultiplayerRoom } from '@/utils';
 import {
 	Alert,
 	AlertDescription,
@@ -37,7 +38,6 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
-	Checkbox,
 	ExitGameButton,
 	Input,
 	Label,
@@ -45,16 +45,18 @@ import {
 	LobbyPlayersCard,
 	LobbyRoomCodeBlock,
 	Spinner,
+	Switch,
 	Tabs,
 	TabsContent,
 } from '@/components';
-import { GameSettingsForm } from '@/components/game';
+import { GameSettingsFlowIssuesAlert, GameSettingsForm, mergeGameSettingsFlowIssueMessages } from '@/components/game';
 import { TabsBar } from '@/components/layout';
 import { useAppSelector, useCanPlay, useCopyRoomCode, useGameSettingsForm, useMultiplayer, useUserRole } from '@/hooks';
 import { selectLocale } from '@/redux/selectors';
 
 export function MultiplayerLobbyView() {
 	const { t } = useTranslation(['game', 'loading']);
+	const { t: tGlobal } = useTranslation();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const outputLanguage = useAppSelector(selectLocale);
@@ -78,6 +80,7 @@ export function MultiplayerLobbyView() {
 		setCustomDifficultyError,
 		setAnswerCount,
 		validateSettings,
+		validateTriviaTopicGate,
 	} = useGameSettingsForm();
 
 	const {
@@ -113,9 +116,21 @@ export function MultiplayerLobbyView() {
 	const [joinRoomId, setJoinRoomId] = useState('');
 	const [lobbyUiTab, setLobbyUiTab] = useState<'create' | 'join'>('create');
 
+	const joinFromQueryHandledForSearchRef = useRef<string | null>(null);
+
 	const { copied: roomCodeCopied, copy: copyRoomCode } = useCopyRoomCode(roomCode);
 
 	const lobbyPlayerRows = useMemo(() => (room ? toLobbyPlayerRowsFromMultiplayerRoom(room) : []), [room]);
+
+	const [createRoomFlowIssues, setCreateRoomFlowIssues] = useState<string[]>([]);
+
+	const lobbyNoRoomBannerIssues = useMemo(() => {
+		const connection = error ? [error] : [];
+		if (lobbyUiTab === 'join') {
+			return mergeGameSettingsFlowIssueMessages(connection);
+		}
+		return mergeGameSettingsFlowIssueMessages(connection, createRoomFlowIssues, [topicError], [customDifficultyError]);
+	}, [lobbyUiTab, error, createRoomFlowIssues, topicError, customDifficultyError]);
 
 	const [gameSettings, setGameSettings] = useState<CreateRoomConfig>({
 		topic: DEFAULT_GAME_CONFIG.defaultTopic,
@@ -141,9 +156,24 @@ export function MultiplayerLobbyView() {
 	}, [gameSettings.questionsPerRequest, gameSettings.maxPlayers]);
 
 	const handleCreateRoom = async () => {
-		const { isValid, finalDifficulty } = validateSettings();
-		if (!isValid) return;
-		if (!canSubmitLanguage) return;
+		setCreateRoomFlowIssues([]);
+		const validation = validateSettings({ applyFieldErrors: false });
+		if (!validation.isValid) {
+			setCreateRoomFlowIssues(validation.issues);
+			return;
+		}
+		const { finalDifficulty } = validation;
+
+		try {
+			await validateTriviaTopicGate(finalDifficulty);
+		} catch (gateError) {
+			const message = getTranslatedErrorMessage(tGlobal, gateError);
+			logger.userError('Trivia topic gate failed from multiplayer create room', {
+				errorInfo: { message: isRecord(gateError) ? getErrorMessage(gateError) : String(gateError) },
+			});
+			setCreateRoomFlowIssues([message]);
+			return;
+		}
 
 		await createRoom({
 			...gameSettings,
@@ -151,7 +181,7 @@ export function MultiplayerLobbyView() {
 			difficulty: finalDifficulty,
 			answerCount,
 			outputLanguage,
-			isPublicLobby: gameSettings.isPublicLobby === true,
+			isPublicLobby: Boolean(gameSettings.isPublicLobby),
 		});
 	};
 
@@ -171,22 +201,55 @@ export function MultiplayerLobbyView() {
 	}, [error]);
 
 	useEffect(() => {
+		setCreateRoomFlowIssues([]);
+	}, [topic, customDifficulty, selectedDifficulty]);
+
+	useEffect(() => {
+		if (lobbyUiTab === 'join') {
+			setCreateRoomFlowIssues([]);
+		}
+	}, [lobbyUiTab]);
+
+	useEffect(() => {
 		const params = new URLSearchParams(location.search);
 		const join = params.get('join');
 		if (!join || join.length !== VALIDATION_LENGTH.ROOM_CODE.LENGTH) {
+			joinFromQueryHandledForSearchRef.current = null;
 			return;
 		}
-		setJoinRoomId(join.toUpperCase());
-		setLobbyUiTab('join');
+		const code = join.toUpperCase();
+		if (!room) {
+			setJoinRoomId(code);
+			setLobbyUiTab('join');
+		}
+		if (!isConnected || room) {
+			return;
+		}
+		if (joinFromQueryHandledForSearchRef.current === location.search) {
+			return;
+		}
+		joinFromQueryHandledForSearchRef.current = location.search;
+		void joinRoom(code);
+	}, [location.search, isConnected, room, joinRoom]);
+
+	useEffect(() => {
+		if (!room?.roomId) {
+			return;
+		}
+		const params = new URLSearchParams(location.search);
+		const join = params.get('join');
+		if (!join || join.toUpperCase() !== room.roomId) {
+			return;
+		}
 		params.delete('join');
 		const qs = params.toString();
-		navigate({ pathname: ROUTES.MULTIPLAYER, search: qs ? `?${qs}` : '' }, { replace: true });
-	}, [location.search, navigate]);
+		navigate({ pathname: Routes.MULTIPLAYER, search: qs ? `?${qs}` : '' }, { replace: true });
+	}, [room?.roomId, location.search, navigate]);
 
 	// Navigate to game view if game has started
 	useEffect(() => {
 		if (room?.status === RoomStatus.PLAYING && room.roomId) {
-			navigate(ROUTES.MULTIPLAYER_PLAY.replace(':roomId', room.roomId));
+			navigate(Routes.MULTIPLAYER_PLAY.replace(':roomId', room.roomId));
 		}
 	}, [room?.status, room?.roomId, navigate]);
 
@@ -253,25 +316,26 @@ export function MultiplayerLobbyView() {
 					/>
 
 					{isHost && room.status === RoomStatus.WAITING && (
-						<Card>
-							<CardHeader>
-								<CardTitle className='text-base'>{t(GameKey.PUBLIC_LOBBY_LIST_HOME_LABEL)}</CardTitle>
-								<CardDescription>{t(GameKey.PUBLIC_LOBBY_LIST_HOME_DESCRIPTION)}</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className='flex items-start gap-3'>
-									<Checkbox
-										id='public-lobby-host'
-										checked={room.isPublicLobby === true}
-										onCheckedChange={checked => updatePublicLobbyVisibility(checked === true)}
-										className='mt-1'
-									/>
-									<Label htmlFor='public-lobby-host' className='cursor-pointer font-medium leading-snug'>
-										{t(GameKey.PUBLIC_LOBBY_LIST_HOME_LABEL)}
-									</Label>
-								</div>
-							</CardContent>
-						</Card>
+						<div
+							className={cn(
+								'rounded-lg border p-3 transition-colors',
+								room.isPublicLobby ? 'border-primary/50 bg-primary/5' : 'border-border/60 bg-muted/30'
+							)}
+						>
+							<div className='flex items-center justify-between gap-3'>
+								<Label htmlFor='public-lobby-host' className='cursor-pointer text-sm font-semibold leading-snug'>
+									{t(GameKey.PUBLIC_LOBBY_LIST_HOME_LABEL)}
+								</Label>
+								<Switch
+									id='public-lobby-host'
+									checked={room.isPublicLobby ?? false}
+									onCheckedChange={next => updatePublicLobbyVisibility(next)}
+									className='shrink-0'
+								/>
+							</div>
+							<p className='mt-1.5 text-xs text-muted-foreground'>{t(GameKey.PUBLIC_LOBBY_LIST_HOME_SUBTITLE)}</p>
+							<p className='mt-1.5 text-sm text-muted-foreground'>{t(GameKey.PUBLIC_LOBBY_LIST_HOME_DESCRIPTION)}</p>
+						</div>
 					)}
 
 					{isHost && !canHostAffordGame && playerCount >= VALIDATION_COUNT.PLAYERS.MIN && (
@@ -288,7 +352,7 @@ export function MultiplayerLobbyView() {
 									variant={VariantBase.DEFAULT}
 									size={ButtonSize.SM}
 									className='w-fit'
-									onClick={() => navigate(ROUTES.PAYMENT, { state: { modal: true, returnUrl: ROUTES.MULTIPLAYER } })}
+									onClick={() => navigate(Routes.PAYMENT, { state: { modal: true, returnUrl: Routes.MULTIPLAYER } })}
 								>
 									{t(GameKey.GET_CREDITS)}
 								</Button>
@@ -337,11 +401,7 @@ export function MultiplayerLobbyView() {
 					<p className='text-sm md:text-base text-muted-foreground'>{t(GameKey.MULTIPLAYER_SUBTITLE)}</p>
 				</div>
 
-				{error && (
-					<Alert variant={AlertVariant.DESTRUCTIVE}>
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-				)}
+				<GameSettingsFlowIssuesAlert items={lobbyNoRoomBannerIssues} />
 
 				<Tabs
 					value={lobbyUiTab}
@@ -353,7 +413,7 @@ export function MultiplayerLobbyView() {
 							variant={VariantBase.OUTLINE}
 							size={ButtonSize.LG}
 							className='shrink-0'
-							onClick={() => navigate(ROUTES.GAME, { replace: true })}
+							onClick={() => navigate(Routes.GAME, { replace: true })}
 						>
 							<ArrowLeft className='me-2 h-4 w-4 rtl:scale-x-[-1]' />
 							{t(GameKey.BACK_TO_GAME_TYPE)}
@@ -371,11 +431,37 @@ export function MultiplayerLobbyView() {
 
 					<TabsContent value='create' className='mt-6'>
 						<Card>
-							<CardHeader>
-								<CardTitle className='flex items-center gap-2'>
-									<Grid2x2Plus className='h-5 w-5 text-primary' />
-									{t(GameKey.CREATE_NEW_ROOM)}
-								</CardTitle>
+							<CardHeader className='space-y-3'>
+								<div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4'>
+									<CardTitle className='flex min-w-0 flex-1 items-center gap-2'>
+										<Grid2x2Plus className='h-5 w-5 shrink-0 text-primary' />
+										{t(GameKey.CREATE_NEW_ROOM)}
+									</CardTitle>
+									<div
+										className={cn(
+											'flex min-w-0 max-w-full shrink-0 flex-col gap-1 self-stretch rounded-lg border px-2.5 py-2 transition-colors sm:max-w-[min(100%,16rem)] sm:self-center',
+											gameSettings.isPublicLobby ? 'border-primary/50 bg-primary/5' : 'border-border/60 bg-muted/30'
+										)}
+									>
+										<div className='flex items-center justify-between gap-2'>
+											<Label
+												htmlFor='public-lobby-create'
+												className='cursor-pointer text-xs font-semibold leading-tight text-foreground'
+											>
+												{t(GameKey.PUBLIC_LOBBY_LIST_HOME_LABEL)}
+											</Label>
+											<Switch
+												id='public-lobby-create'
+												className='shrink-0'
+												checked={gameSettings.isPublicLobby ?? false}
+												onCheckedChange={next => setGameSettings(prev => ({ ...prev, isPublicLobby: next }))}
+											/>
+										</div>
+										<p className='text-[0.7rem] leading-snug text-muted-foreground'>
+											{t(GameKey.PUBLIC_LOBBY_LIST_HOME_SUBTITLE)}
+										</p>
+									</div>
+								</div>
 								{!isAdmin && (
 									<Card className='border border-border bg-muted/50 p-3'>
 										<div className='mb-2 flex items-center gap-2 text-sm font-medium text-foreground'>
@@ -402,7 +488,7 @@ export function MultiplayerLobbyView() {
 										</p>
 									</Card>
 								)}
-								<CardDescription>{t(GameKey.SET_UP_GAME_ROOM)}</CardDescription>
+								<CardDescription className='text-sm leading-relaxed'>{t(GameKey.SET_UP_GAME_ROOM)}</CardDescription>
 							</CardHeader>
 							<CardContent className='space-y-6'>
 								<GameSettingsForm
@@ -434,22 +520,8 @@ export function MultiplayerLobbyView() {
 									maxPlayers={gameSettings.maxPlayers}
 									onMaxPlayersChange={value => setGameSettings(prev => ({ ...prev, maxPlayers: value }))}
 									showMaxPlayers={true}
+									hideInlineFieldAlerts
 								/>
-
-								<div className='flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 p-4'>
-									<Checkbox
-										id='public-lobby-create'
-										checked={gameSettings.isPublicLobby === true}
-										onCheckedChange={checked => setGameSettings(prev => ({ ...prev, isPublicLobby: checked === true }))}
-										className='mt-1'
-									/>
-									<div className='min-w-0 space-y-1'>
-										<Label htmlFor='public-lobby-create' className='cursor-pointer text-base font-medium'>
-											{t(GameKey.PUBLIC_LOBBY_LIST_HOME_LABEL)}
-										</Label>
-										<p className='text-sm text-muted-foreground'>{t(GameKey.PUBLIC_LOBBY_LIST_HOME_DESCRIPTION)}</p>
-									</div>
-								</div>
 
 								<Button
 									className='w-full'

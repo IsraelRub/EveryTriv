@@ -21,5 +21,8 @@
 	"joiningRoom": "מצטרף לחדר...",
 	"waitingForGameState": "מחכה למצב המשחק...",
 	"loadingMultiplayerQuestions": "טוען שאלות...",
+	"multiplayerReconnecting": "החיבור נותק — מתחבר מחדש למשחק...",
+	"multiplayerResyncingRoom": "מסנכרן את מצב החדר מהשרת...",
+	"multiplayerResyncAction": "סנכרן מהשרת",
 	"noQuestionsAvailable": "אין שאלות זמינות"
 }
